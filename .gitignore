@@ -1,0 +1,14 @@
+debug*
+vendor/
+dist/
+.idea/
+
+logs/
+*.log*
+
+network/config/
+network/crypto-config/
+
+.DS_Store
+*.tar*
+*.zip
