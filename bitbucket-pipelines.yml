@@ -1,0 +1,24 @@
+image: alext234/ubuntu-golang
+
+
+pipelines:
+  default: # run pipeline for all branches
+      - step:
+          name: Sanity-check build chaincode
+          script:
+              # install some dependencies; using `dep` is not successful yet; may switch back to `dep` in the future
+              - export GO111MODULE=on
+              - echo "Simply build the chaincode to see if there is any error"
+              - cd $BITBUCKET_CLONE_DIR/chaincode
+              - go build -o ./main ./src/...
+              # build the test binary
+              - go test -c -o ./main_test ./src/...
+
+          artifacts: # get those  test binaries
+              - chaincode/main_test
+
+      - step:
+          name: Run chaincode unit tests
+          script:
+            - chaincode/main_test -test.v -v
+
