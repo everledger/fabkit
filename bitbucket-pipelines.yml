@@ -1,4 +1,5 @@
-image: alext234/ubuntu-golang
+image: golang:1.11.4-alpine3.8
+
 
 
 pipelines:
