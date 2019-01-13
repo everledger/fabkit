@@ -71,6 +71,3 @@ It will stop and remove all the blockchain network containers including the `dev
 ```bash
 ./run.sh stop_network
 ```
-
-
-
