@@ -21,5 +21,5 @@ pipelines:
       - step:
           name: Run chaincode unit tests
           script:
-            - chaincode/main_test -test.v -v
+            - chaincode/main_test -test.v
 
