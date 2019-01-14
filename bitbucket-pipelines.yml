@@ -1,6 +1,4 @@
-image: alext234/ubuntu-golang
-
-
+image: everledgerio/golang:1.11.4-alpine3.8-git
 
 pipelines:
   default: # run pipeline for all branches
