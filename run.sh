@@ -5,7 +5,7 @@ set -o pipefail
 
 readonly ROOT=$PWD
 readonly CONFIG_PATH=${ROOT}/network
-readonly CHAINCODE_PATH=${ROOT}/chaincode/src
+readonly CHAINCODE_PATH=${ROOT}/chaincode
 readonly CHAINCODE_UTIL_CONTAINER=channel-chaincode-util
 readonly CHANNEL_BLOCK=mychannel.block
 readonly CHANNEL_CONFIG_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/channel-artifacts/channel.tx
@@ -61,8 +61,8 @@ __docker_third_party_images_pull() {
 }
 
 start_network() {
-	test_chaincode
 	build_chaincode
+	test_chaincode
 	echo "Starting Fabric network"
 	generate_cryptos
 	docker-compose up -d
@@ -80,17 +80,20 @@ initialize_network() {
 }
 
 test_chaincode() {
-	echo "Testing chaincode"
-	cd $CHAINCODE_PATH
+	echo "Running unit testing on chaincode"
 	go test
-	cd $ROOT
+	# docker run --rm -v "$CHAINCODE_PATH":/usr/src/myapp -w /usr/src/myapp everledgerio/golang sh -c "go clean -modcache; rm go.sum; go test"
 }
 
 build_chaincode() {
 	echo "Building chaincode"
 	cd $CHAINCODE_PATH
-	go build -o output
-	rm output
+	CGO_ENABLED=0 go build -a -installsuffix nocgo -o binary ./...
+	# docker run -v "$CHAINCODE_PATH":/usr/src/myapp -w /usr/src/myapp -e CGO_ENABLED=0 everledgerio/golang sh -c "go clean -modcache; rm go.sum; go build -a -installsuffix nocgo -o binary ./..."
+	echo "Testing built chaincode"
+	go test -c -o binary_test ./...
+	# docker run -v "$CHAINCODE_PATH":/usr/src/myapp -w /usr/src/myapp -e CGO_ENABLED=0 everledgerio/golang sh -c "go clean -modcache; rm go.sum; go test -c -o binary_test ./..."
+	rm -rf binary binary_test
 	cd $ROOT
 }
 
@@ -209,8 +212,8 @@ upgrade_chaincode() {
 	local chaincode_version="$2"
 	local channel_name="$3"
 
-	test_chaincode
 	build_chaincode
+	test_chaincode
 	install_chaincode $chaincode_name $chaincode_version $channel_name
 	docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode upgrade -n $chaincode_name -v $chaincode_version -C $channel_name -c '{"Args":[]}'
 }

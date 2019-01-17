@@ -9,7 +9,7 @@ import (
 	pb "github.com/hyperledger/fabric/protos/peer"
 )
 
-type SimpleChaincode struct {
+type Chaincode struct {
 }
 
 // for scan or query results
@@ -23,43 +23,39 @@ type CompositeKey struct {
 	Attributes []string
 }
 
-// var Function = map[string]func(shim.ChaincodeStubInterface, []string) {
-// 	"put": t.put(stub, args),
-// }
-
-func (t *SimpleChaincode) Init(stub shim.ChaincodeStubInterface) pb.Response {
+func (c *Chaincode) Init(stub shim.ChaincodeStubInterface) pb.Response {
 	fmt.Println("Chaincode Init")
 	return shim.Success(nil)
 }
 
-func (t *SimpleChaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
+func (c *Chaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 	function, args := stub.GetFunctionAndParameters()
 	fmt.Printf("Chaincode Invoke; function='%s'\n", function)
 
 	if function == "put" {
-		return t.put(stub, args)
+		return c.put(stub, args)
 	} else if function == "bulkPut" {
-		return t.bulkPut(stub, args)
+		return c.bulkPut(stub, args)
 	} else if function == "bulkCreateCompositeKey" {
-		return t.bulkCreateCompositeKey(stub, args)
+		return c.bulkCreateCompositeKey(stub, args)
 	} else if function == "get" {
-		return t.get(stub, args)
+		return c.get(stub, args)
 	} else if function == "scan" {
-		return t.scan(stub, args)
+		return c.scan(stub, args)
 	} else if function == "scanByPartialCompositeKey" {
-		return t.scanByPartialCompositeKey(stub, args)
+		return c.scanByPartialCompositeKey(stub, args)
 	} else if function == "scanByPartialCompositeKeyForAttributes" { // return list of attributes instead of KV
-		return t.scanByPartialCompositeKeyForAttributes(stub, args)
+		return c.scanByPartialCompositeKeyForAttributes(stub, args)
 	} else if function == "query" {
-		return t.query(stub, args)
+		return c.query(stub, args)
 	} else if function == "delete" {
-		return t.delete(stub, args)
+		return c.delete(stub, args)
 	}
 
 	return shim.Error("Invalid invoke function name. Expecting \"put\" \"get\" \"scan\" \"query\"")
 }
 
-func (t *SimpleChaincode) delete(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (c *Chaincode) delete(stub shim.ChaincodeStubInterface, args []string) pb.Response {
 	key := args[0]
 	fmt.Printf("Deleting key='%s'\n", key)
 
@@ -71,7 +67,7 @@ func (t *SimpleChaincode) delete(stub shim.ChaincodeStubInterface, args []string
 	return shim.Success(nil)
 }
 
-func (t *SimpleChaincode) put(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (c *Chaincode) put(stub shim.ChaincodeStubInterface, args []string) pb.Response {
 	key := args[0]
 	value := args[1]
 
@@ -84,7 +80,7 @@ func (t *SimpleChaincode) put(stub shim.ChaincodeStubInterface, args []string) p
 	return shim.Success(nil)
 }
 
-func (t *SimpleChaincode) bulkPut(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (c *Chaincode) bulkPut(stub shim.ChaincodeStubInterface, args []string) pb.Response {
 	kvListJsonString := args[0] // a json string of a list
 
 	kvList := make([]KV, 0)
@@ -110,7 +106,7 @@ func (t *SimpleChaincode) bulkPut(stub shim.ChaincodeStubInterface, args []strin
 	return shim.Success(nil)
 }
 
-func (t *SimpleChaincode) bulkCreateCompositeKey(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (c *Chaincode) bulkCreateCompositeKey(stub shim.ChaincodeStubInterface, args []string) pb.Response {
 	compositeKeyListJsonString := args[0] // a json string of a list
 
 	compositeKeyList := make([]CompositeKey, 0)
@@ -146,7 +142,7 @@ func (t *SimpleChaincode) bulkCreateCompositeKey(stub shim.ChaincodeStubInterfac
 	return shim.Success(nil)
 }
 
-func (t *SimpleChaincode) get(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (c *Chaincode) get(stub shim.ChaincodeStubInterface, args []string) pb.Response {
 	key := args[0]
 
 	fmt.Printf("Getting key='%s'\n", key)
@@ -159,7 +155,7 @@ func (t *SimpleChaincode) get(stub shim.ChaincodeStubInterface, args []string) p
 	return shim.Success(payload)
 }
 
-func (t *SimpleChaincode) scan(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (c *Chaincode) scan(stub shim.ChaincodeStubInterface, args []string) pb.Response {
 	startKey := args[0]
 	endKey := args[1]
 
@@ -195,7 +191,7 @@ func (t *SimpleChaincode) scan(stub shim.ChaincodeStubInterface, args []string) 
 
 }
 
-func (t *SimpleChaincode) scanByPartialCompositeKey(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (c *Chaincode) scanByPartialCompositeKey(stub shim.ChaincodeStubInterface, args []string) pb.Response {
 	objectType := args[0]
 	valuesListJson := args[1]
 
@@ -253,7 +249,7 @@ func (t *SimpleChaincode) scanByPartialCompositeKey(stub shim.ChaincodeStubInter
 
 }
 
-func (t *SimpleChaincode) scanByPartialCompositeKeyForAttributes(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (c *Chaincode) scanByPartialCompositeKeyForAttributes(stub shim.ChaincodeStubInterface, args []string) pb.Response {
 	objectType := args[0]
 	valuesListJson := args[1]
 
@@ -307,7 +303,7 @@ func (t *SimpleChaincode) scanByPartialCompositeKeyForAttributes(stub shim.Chain
 
 }
 
-func (t *SimpleChaincode) query(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+func (c *Chaincode) query(stub shim.ChaincodeStubInterface, args []string) pb.Response {
 
 	queryString := args[0]
 
@@ -353,7 +349,7 @@ func getQueryResultForQueryString(stub shim.ChaincodeStubInterface, queryString 
 }
 
 func main() {
-	err := shim.Start(new(SimpleChaincode))
+	err := shim.Start(new(Chaincode))
 	if err != nil {
 		fmt.Printf("Error starting Procurement chaincode: %s", err)
 	}

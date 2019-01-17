@@ -1,6 +1,4 @@
-image: golang:1.11.4-alpine3.8
-
-
+image: everledgerio/golang:1.11.4-alpine3.8-git
 
 pipelines:
   default: # run pipeline for all branches
@@ -9,9 +7,10 @@ pipelines:
           script:
               # install some dependencies; using `dep` is not successful yet; may switch back to `dep` in the future
               - export GO111MODULE=on
+              - export CGO_ENABLED=0
               - echo "Simply build the chaincode to see if there is any error"
               - cd $BITBUCKET_CLONE_DIR/chaincode
-              - go build -o ./main ./src/...
+              - go build -a -installsuffix nocgo -o main ./src/...
               # build the test binary
               - go test -c -o ./main_test ./src/...
 
@@ -21,5 +20,5 @@ pipelines:
       - step:
           name: Run chaincode unit tests
           script:
-            - chaincode/main_test -test.v -v
+            - chaincode/main_test -test.v
 
