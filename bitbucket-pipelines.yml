@@ -7,9 +7,10 @@ pipelines:
           script:
               # install some dependencies; using `dep` is not successful yet; may switch back to `dep` in the future
               - export GO111MODULE=on
+              - export CGO_ENABLED=0
               - echo "Simply build the chaincode to see if there is any error"
               - cd $BITBUCKET_CLONE_DIR/chaincode
-              - CGO_ENABLED=0 go build -a -installsuffix nocgo -o main ./src/...
+              - go build -a -installsuffix nocgo -o main ./src/...
               # build the test binary
               - go test -c -o ./main_test ./src/...
 
