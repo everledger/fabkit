@@ -16,7 +16,7 @@ type ChaincodeTS struct {
 
 // setup will be run for all tests in the suite
 func (suite *ChaincodeTS) SetupTest() {
-	suite.stub = shim.NewMockStub("mockStub", new(SimpleChaincode))
+	suite.stub = shim.NewMockStub("mockStub", new(Chaincode))
 	assert.NotNil(suite.T(), suite.stub, "MockStub creation failed")
 	// call the constructor
 	result := suite.stub.MockInit("1",[][]byte{

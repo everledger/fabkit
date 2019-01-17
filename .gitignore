@@ -12,3 +12,7 @@ network/crypto-config/
 .DS_Store
 *.tar*
 *.zip
+binary
+binary_test
+
+go.sum
