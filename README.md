@@ -3,6 +3,7 @@ A basic and simple boilerplate which contains utilities for efficiently writing 
 
 # Purpose
 The codebase of this repository is meant to serve the following scopes:
+
 - as a starting point for any new project which will use a Hyperledger Fabric native chaincode
 - as an open project shared across all the development teams which are asked to participate and contribute following the common issue tracking system and merge request procedure
 - as a space where to define coding standards and best practices through a process of peer reviewing and features proposing (working as a discussion forum)
