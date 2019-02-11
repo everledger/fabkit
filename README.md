@@ -36,6 +36,8 @@ install_chaincode
 instantiate_chaincode
 ```
 
+Run `./run.sh help` for the complete list of functionalities.
+
 ## Upgrade chaincode
 Run the following command in order to install and instantiate a new version of the chaincode:
 ```bash
@@ -63,6 +65,8 @@ It is possible to use the CLI to run and test functionalities.
 # e.g.
 ./run.sh query mychannel mychaincode '{"Args":["get","key1"]}'
 ```
+
+
 ## Register and enroll users
 todo
 

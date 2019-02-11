@@ -21,13 +21,21 @@ export FABRIC_THIRDPARTY_IMAGE_VERSION=0.4.14
 
 help() {
   echo "Usage: run.sh [command]"
-  echo
+  echo 
   echo "commands:"
-  echo
-  echo "help	: this help"
-  echo "start_network	: start the blockchain network and initialize it"
-  echo "stop_fabric 	: stop the blockchain network and remove all the docker containers"
-  echo "upgrade_chaincode [channel_name] [chaincode_name] [chaincode_version] 	: upgrade chaincode with a new version"
+  echo 
+  echo "help                                                                    : this help"
+  echo "start_network                                                           : start the blockchain network and initialize it"
+  echo "stop_fabric                                                             : stop the blockchain network and remove all the docker containers"
+  echo "upgrade_chaincode [channel_name] [chaincode_name] [chaincode_version]   : upgrade chaincode with a new version"
+  echo "query [channel_name] [chaincode_name] [data_in_json]                    : run query in the format '{\"Args\":\"queryFunction\",\"key\"]}'"
+  echo "invoke [channel_name] [chaincode_name] [data_in_json]                   : run invoke in the format '{\"Args\":[\"invokeFunction\",\"key\",\"value\"]}'"
+  echo "test_chaincode                                                          : run unit tests"
+  echo "build_chaincode                                                         : run build and test against the binary file"
+  echo "generate_cryptos                                                        : generate all the crypto keys and certificates for the network"
+  echo "create_channel [channel_name]                                           : generate channel configuration file"
+  echo "update_channel [channel_name]                                           : update channel with anchor peers"
+  echo "join_channel [channel_name]                                             : run by a peer to join a channel"
 }
 
 install() {
@@ -186,7 +194,7 @@ install_chaincode() {
 	local chaincode_version="$2"
 	local channel_name="$3"
 
-    docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode install -n $chaincode_name -v $chaincode_version -p $chaincode_name
+  docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode install -n $chaincode_name -v $chaincode_version -p $chaincode_name
 }
 
 instantiate_chaincode() {
