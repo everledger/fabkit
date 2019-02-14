@@ -1,8 +1,9 @@
-image: alext234/ubuntu-golang:1.11.5
+image: everledgerio/golang:1.11.4-alpine3.8-git
 
 pipelines:
   default: # run pipeline for all branches
     - step:
         name: Run chaincode unit tests
         script:
+            - export CGO_ENABLED=0
             - ./run.sh test_chaincode
