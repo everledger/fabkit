@@ -3,11 +3,6 @@ image: everledgerio/golang:1.11.4-alpine3.8-git
 pipelines:
   default: # run pipeline for all branches
     - step:
-        name: Sanity-check build chaincode
-        script:
-            - ./run.sh build_chaincode
-
-    - step:
         name: Run chaincode unit tests
         script:
             - ./run.sh test_chaincode
