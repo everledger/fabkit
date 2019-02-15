@@ -26,7 +26,7 @@ help() {
   echo 
   echo "help                                                                    : this help"
   echo "start_network                                                           : start the blockchain network and initialize it"
-  echo "stop_network                                                             : stop the blockchain network and remove all the docker containers"
+  echo "stop_network                                                            : stop the blockchain network and remove all the docker containers"
   echo "upgrade_chaincode [channel_name] [chaincode_name] [chaincode_version]   : upgrade chaincode with a new version"
   echo "query [channel_name] [chaincode_name] [data_in_json]                    : run query in the format '{\"Args\":\"queryFunction\",\"key\"]}'"
   echo "invoke [channel_name] [chaincode_name] [data_in_json]                   : run invoke in the format '{\"Args\":[\"invokeFunction\",\"key\",\"value\"]}'"
