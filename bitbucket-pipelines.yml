@@ -2,23 +2,8 @@ image: everledgerio/golang:1.11.4-alpine3.8-git
 
 pipelines:
   default: # run pipeline for all branches
-      - step:
-          name: Sanity-check build chaincode
-          script:
-              # install some dependencies; using `dep` is not successful yet; may switch back to `dep` in the future
-              - export GO111MODULE=on
-              - export CGO_ENABLED=0
-              - echo "Simply build the chaincode to see if there is any error"
-              - cd $BITBUCKET_CLONE_DIR/chaincode
-              - go build -a -installsuffix nocgo -o main ./src/...
-              # build the test binary
-              - go test -c -o ./main_test ./src/...
-
-          artifacts: # get those  test binaries
-              - chaincode/main_test
-
-      - step:
-          name: Run chaincode unit tests
-          script:
-            - chaincode/main_test -test.v
-
+    - step:
+        name: Run chaincode unit tests
+        script:
+            - export CGO_ENABLED=0
+            - ./run.sh test_chaincode

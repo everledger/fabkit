@@ -1,7 +1,7 @@
 #!/bin/sh
 
 set -o errexit
-set -o pipefail
+export GO111MODULE=on
 
 readonly ROOT=$PWD
 readonly CONFIG_PATH=${ROOT}/network
@@ -26,7 +26,7 @@ help() {
   echo 
   echo "help                                                                    : this help"
   echo "start_network                                                           : start the blockchain network and initialize it"
-  echo "stop_fabric                                                             : stop the blockchain network and remove all the docker containers"
+  echo "stop_network                                                            : stop the blockchain network and remove all the docker containers"
   echo "upgrade_chaincode [channel_name] [chaincode_name] [chaincode_version]   : upgrade chaincode with a new version"
   echo "query [channel_name] [chaincode_name] [data_in_json]                    : run query in the format '{\"Args\":\"queryFunction\",\"key\"]}'"
   echo "invoke [channel_name] [chaincode_name] [data_in_json]                   : run invoke in the format '{\"Args\":[\"invokeFunction\",\"key\",\"value\"]}'"
@@ -89,14 +89,14 @@ initialize_network() {
 
 test_chaincode() {
 	echo "Running unit testing on chaincode"
-	go test
+	(cd $CHAINCODE_PATH; go test ./src/... -v)
 	# docker run --rm -v "$CHAINCODE_PATH":/usr/src/myapp -w /usr/src/myapp everledgerio/golang sh -c "go clean -modcache; rm go.sum; go test"
 }
 
 build_chaincode() {
 	echo "Building chaincode"
 	cd $CHAINCODE_PATH
-	CGO_ENABLED=0 go build -a -installsuffix nocgo -o binary ./...
+	CGO_ENABLED=0 go build -a -installsuffix nocgo -o binary ./src/...
 	# docker run -v "$CHAINCODE_PATH":/usr/src/myapp -w /usr/src/myapp -e CGO_ENABLED=0 everledgerio/golang sh -c "go clean -modcache; rm go.sum; go build -a -installsuffix nocgo -o binary ./..."
 	echo "Testing built chaincode"
 	go test -c -o binary_test ./...
@@ -186,20 +186,19 @@ update_channel() {
 
 install_chaincode() {
 	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
-		echo "The command should be in the format: ./run.sh install_chaincode mychaincode 1.0 mychannel"
+		echo "The command should be in the format: ./run.sh install_chaincode chaincode_name 1.0 channel_name"
 		exit 1
 	fi
 
 	declare chaincode_name="$1"
 	local chaincode_version="$2"
 	local channel_name="$3"
-
   docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode install -n $chaincode_name -v $chaincode_version -p $chaincode_name
 }
 
 instantiate_chaincode() {
 	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
-		echo "The command should be in the format: ./run.sh instantiate_chaincode mychaincode 1.0 mychannel"
+		echo "The command should be in the format: ./run.sh instantiate_chaincode chaincode_name 1.0 channel_name"
 		exit 1
 	fi
 
@@ -228,7 +227,7 @@ upgrade_chaincode() {
 
 invoke() {
 	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
-		echo 'The command should be in the format: ./run.sh invoke mychannel mychaincode '{"Args":["put","key1","10"]}''
+		echo 'The command should be in the format: ./run.sh invoke channel_name chaincode_name '{"Args":["put","key1","10"]}''
 		exit 1
 	fi
 
@@ -241,7 +240,7 @@ invoke() {
 
 query() {
 	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
-		echo 'The command should be in the format: ./run.sh query mychannel mychaincode '{"Args":"get","key1"]}''
+		echo 'The command should be in the format: ./run.sh query channel_name chaincode_name '{"Args":"get","key1"]}''
 		exit 1
 	fi
 
