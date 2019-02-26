@@ -111,6 +111,14 @@ stop_network() {
 }
 
 generate_cryptos() {
+	if [ -d "network/crypto-config" ]; then
+		echo "crypto-config already exists"
+		read -p "Do you wish to re-generate crypto-config?" yn
+		case $yn in
+			[Yy]* ) echo "regenerating crypto-config";;
+			* ) return 0
+    	esac
+	fi 
 	echo "Generating crypto-config"
 
 	local channel_name=mychannel
@@ -252,3 +260,4 @@ query() {
 }
 
 "$@"
+
