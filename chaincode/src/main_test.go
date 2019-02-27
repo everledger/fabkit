@@ -183,7 +183,7 @@ func (suite *ChaincodeTS) TestScan() {
 		[]byte(endKey) })
 	assert.EqualValues(suite.T(), shim.OK, result.Status, "Scan failed")
 
-	expectedPayload :="[{\"Key\":\"key07\",\"Value\":\"value07\"},{\"Key\":\"key08\",\"Value\":\"value08\"},{\"Key\":\"key09\",\"Value\":\"value09\"},{\"Key\":\"key10\",\"Value\":\"value10\"},{\"Key\":\"key11\",\"Value\":\"value11\"},{\"Key\":\"key12\",\"Value\":\"value12\"},{\"Key\":\"key13\",\"Value\":\"value13\"},{\"Key\":\"key14\",\"Value\":\"value14\"}]\n"
+	expectedPayload :="[{\"Key\":\"key07\",\"Value\":\"value07\"},{\"Key\":\"key08\",\"Value\":\"value08\"},{\"Key\":\"key09\",\"Value\":\"value09\"},{\"Key\":\"key10\",\"Value\":\"value10\"},{\"Key\":\"key11\",\"Value\":\"value11\"},{\"Key\":\"key12\",\"Value\":\"value12\"},{\"Key\":\"key13\",\"Value\":\"value13\"}]\n"
 	assert.EqualValues(suite.T(), expectedPayload, string(result.Payload), "Scan payload is incorrect")
 }
 

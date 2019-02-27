@@ -3,7 +3,7 @@ module bitbucket.org/everledger/fabric-chaincode-boilerplate
 require (
 	github.com/fsouza/go-dockerclient v1.3.1 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.0.0 // indirect
-	github.com/hyperledger/fabric v1.3.0
+	github.com/hyperledger/fabric v1.4.0
 	github.com/hyperledger/fabric-amcl v0.0.0-20181230093703-5ccba6eab8d6 // indirect
 	github.com/op/go-logging v0.0.0-20160315200505-970db520ece7 // indirect
 	github.com/spf13/viper v1.3.1 // indirect
