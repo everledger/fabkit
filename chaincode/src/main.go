@@ -365,10 +365,6 @@ func (c *Chaincode) getHistoryForKey(stub shim.ChaincodeStubInterface, args []st
 
 	resultsIterator, err := stub.GetHistoryForKey(key)
 	if err != nil {
-		return shim.Error(err.Error())
-	}
-
-	if err != nil {
 		fmt.Println("Error with GetHistoryForKey :", err)
 		return shim.Error(err.Error())
 	}
