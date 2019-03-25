@@ -20,10 +20,10 @@ type KV struct {
 }
 
 type KeyModification struct {
-    TxId                 string               
-	Value                string
-	Timestamp			 time.Time
-    IsDelete             bool                 
+	TxId      string
+	Value     string
+	Timestamp time.Time
+	IsDelete  bool
 }
 
 type CompositeKey struct {
@@ -381,10 +381,10 @@ func (c *Chaincode) getHistoryForKey(stub shim.ChaincodeStubInterface, args []st
 			return shim.Error(err.Error())
 		}
 		arr = append(arr, KeyModification{
-			TxId: queryResponse.GetTxId(),
-			Value: string(queryResponse.GetValue()),
+			TxId:      queryResponse.GetTxId(),
+			Value:     string(queryResponse.GetValue()),
 			Timestamp: time.Unix(queryResponse.GetTimestamp().GetSeconds(), 0),
-			IsDelete: queryResponse.GetIsDelete(),
+			IsDelete:  queryResponse.GetIsDelete(),
 		})
 	}
 
