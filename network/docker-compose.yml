@@ -86,18 +86,18 @@ services:
     environment:
       - GOPATH=/opt/gopath
       - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
-      - CORE_LOGGING_LEVEL=DEBUG
+      - FABRIC_LOGGING_SPEC=DEBUG
       - CORE_PEER_ID=cli
       - CORE_PEER_ADDRESS=peer0.org1.example.com:7051
       - CORE_PEER_LOCALMSPID=Org1MSP
-      - CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/msp/peer/
       - CORE_CHAINCODE_KEEPALIVE=10
-    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
+    working_dir: /opt/gopath
     command: /bin/bash
     volumes:
         - /var/run/:/host/var/run/
-        - ./crypto-config:/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/
-        - ./config:/opt/gopath/src/github.com/hyperledger/fabric/peer/channel-artifacts/
+        - ./crypto-config/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp:/etc/hyperledger/msp/peer
+        - ./config:/etc/hyperledger/channels/mychannel
         - ./../chaincode/src/:/opt/gopath/src/mychaincode
     #depends_on:
     #  - orderer.example.com
