@@ -7,10 +7,8 @@ readonly ROOT=$PWD
 readonly CONFIG_PATH=${ROOT}/network
 readonly CHAINCODE_PATH=${ROOT}/chaincode
 readonly CHAINCODE_UTIL_CONTAINER=channel-chaincode-util
-readonly CHANNEL_BLOCK=mychannel.block
-readonly CHANNEL_CONFIG_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/channel-artifacts/channel.tx
+readonly CHANNELS_CONFIG_PATH=/etc/hyperledger/channels
 readonly ORDERER_ADDRESS=orderer.example.com:7050
-readonly ANCHORS_CONFIG_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/channel-artifacts/Org1MSPanchors.tx
 
 readonly GOLANG_DOCKER_IMAGE=golang
 readonly GOLANG_DOCKER_TAG=1.11.4-alpine3.8
@@ -24,18 +22,20 @@ help() {
   echo 
   echo "commands:"
   echo 
-  echo "help                                                                    : this help"
-  echo "start_network                                                           : start the blockchain network and initialize it"
-  echo "stop_network                                                            : stop the blockchain network and remove all the docker containers"
-  echo "upgrade_chaincode [channel_name] [chaincode_name] [chaincode_version]   : upgrade chaincode with a new version"
-  echo "query [channel_name] [chaincode_name] [data_in_json]                    : run query in the format '{\"Args\":\"queryFunction\",\"key\"]}'"
-  echo "invoke [channel_name] [chaincode_name] [data_in_json]                   : run invoke in the format '{\"Args\":[\"invokeFunction\",\"key\",\"value\"]}'"
-  echo "test_chaincode                                                          : run unit tests"
-  echo "build_chaincode                                                         : run build and test against the binary file"
-  echo "generate_cryptos                                                        : generate all the crypto keys and certificates for the network"
-  echo "create_channel [channel_name]                                           : generate channel configuration file"
-  echo "update_channel [channel_name]                                           : update channel with anchor peers"
-  echo "join_channel [channel_name]                                             : run by a peer to join a channel"
+  echo "help                                                                        : this help"
+  echo "start_network                                                               : start the blockchain network and initialize it"
+  echo "stop_network                                                                : stop the blockchain network and remove all the docker containers"
+  echo "install_chaincode [chaincode_name] [chaincode_version] [chaincode_path]     : install chaincode on a peer"
+  echo "instantiate_chaincode [chaincode_name] [chaincode_version] [channel_name]   : instantiate chaincode on a peer for an assigned channel"
+  echo "upgrade_chaincode [channel_name] [chaincode_name] [chaincode_version]       : upgrade chaincode with a new version"
+  echo "query [channel_name] [chaincode_name] [data_in_json]                        : run query in the format '{\"Args\":\"queryFunction\",\"key\"]}'"
+  echo "invoke [channel_name] [chaincode_name] [data_in_json]                       : run invoke in the format '{\"Args\":[\"invokeFunction\",\"key\",\"value\"]}'"
+  echo "test_chaincode                                                              : run unit tests"
+  echo "build_chaincode                                                             : run build and test against the binary file"
+  echo "generate_cryptos                                                            : generate all the crypto keys and certificates for the network"
+  echo "create_channel [channel_name]                                               : generate channel configuration file"
+  echo "update_channel [channel_name] [org]                                         : update channel with anchor peers"
+  echo "join_channel [channel_name]                                                 : run by a peer to join a channel"
 }
 
 install() {
@@ -82,8 +82,8 @@ initialize_network() {
 	echo "Initializing Fabric network"
 	create_channel mychannel
 	join_channel mychannel
-	update_channel mychannel
-	install_chaincode mychaincode 1.0 mychannel
+	update_channel mychannel Org1MSP
+	install_chaincode mychaincode 1.0 mychaincode
 	instantiate_chaincode mychaincode 1.0 mychannel
 }
 
@@ -113,15 +113,16 @@ stop_network() {
 generate_cryptos() {
 	if [ -d "network/crypto-config" ]; then
 		echo "crypto-config already exists"
-		read -p "Do you wish to re-generate crypto-config?" yn
+		read -p "Do you wish to re-generate crypto-config? [yes/no] " yn
 		case $yn in
-			[Yy]* ) echo "regenerating crypto-config";;
+			[YyEeSs]* ) ;;
 			* ) return 0
     	esac
 	fi 
 	echo "Generating crypto-config"
 
 	local channel_name=mychannel
+    local org=Org1MSP
 
 	# remove previous crypto material and config transactions
 	rm -fr ${CONFIG_PATH}/config ${CONFIG_PATH}/crypto-config
@@ -142,14 +143,14 @@ generate_cryptos() {
 	fi
 
 	# generate channel configuration transaction
-	docker run --rm -v ${CONFIG_PATH}/configtx.yaml:/configtx.yaml -v ${CONFIG_PATH}/config:/config -v ${CONFIG_PATH}/crypto-config:/crypto-config -e FABRIC_CFG_PATH=/ hyperledger/fabric-tools:$FABRIC_VERSION configtxgen -profile OneOrgChannel -outputCreateChannelTx /config/channel.tx -channelID $channel_name /configtx.yaml
+	docker run --rm -v ${CONFIG_PATH}/configtx.yaml:/configtx.yaml -v ${CONFIG_PATH}/config:/config -v ${CONFIG_PATH}/crypto-config:/crypto-config -e FABRIC_CFG_PATH=/ hyperledger/fabric-tools:$FABRIC_VERSION configtxgen -profile OneOrgChannel -outputCreateChannelTx /config/${channel_name}.tx -channelID $channel_name /configtx.yaml
 	if [ "$?" -ne 0 ]; then
 		echo "Failed to generate channel configuration transaction..."
 		exit 1
 	fi
 
 	# generate anchor peer transaction
-	docker run --rm -v ${CONFIG_PATH}/configtx.yaml:/configtx.yaml -v ${CONFIG_PATH}/config:/config -v ${CONFIG_PATH}/crypto-config:/crypto-config -e FABRIC_CFG_PATH=/ hyperledger/fabric-tools:$FABRIC_VERSION configtxgen -profile OneOrgChannel -outputAnchorPeersUpdate /config/Org1MSPanchors.tx -channelID $channel_name -asOrg Org1MSP /configtx.yaml
+	docker run --rm -v ${CONFIG_PATH}/configtx.yaml:/configtx.yaml -v ${CONFIG_PATH}/config:/config -v ${CONFIG_PATH}/crypto-config:/crypto-config -e FABRIC_CFG_PATH=/ hyperledger/fabric-tools:$FABRIC_VERSION configtxgen -profile OneOrgChannel -outputAnchorPeersUpdate /config/${org}_anchors.tx -channelID $channel_name -asOrg ${org} /configtx.yaml
 	if [ "$?" -ne 0 ]; then
 		echo "Failed to generate anchor peer update for Org1MSP..."
 		exit 1
@@ -164,8 +165,8 @@ create_channel() {
 
 	local channel_name="$1"
 
-	echo "Creating channel $channel_name using configuration file $CHANNEL_CONFIG_FILE"
-	docker exec $CHAINCODE_UTIL_CONTAINER peer channel create -o $ORDERER_ADDRESS -c $channel_name -f $CHANNEL_CONFIG_FILE
+	echo "Creating channel $channel_name using configuration file $CHANNELS_CONFIG_PATH/$channel_name/$channel_name.tx"
+	docker exec $CHAINCODE_UTIL_CONTAINER peer channel create -o $ORDERER_ADDRESS -c $channel_name -f $CHANNELS_CONFIG_PATH/$channel_name/$channel_name.tx --outputBlock $CHANNELS_CONFIG_PATH/$channel_name/$channel_name.block
 }
 
 join_channel() {
@@ -177,31 +178,33 @@ join_channel() {
 	local channel_name="$1"
 
 	echo "Joining channel $channel_name"
-    docker exec $CHAINCODE_UTIL_CONTAINER peer channel join -b $channel_name.block
+    docker exec $CHAINCODE_UTIL_CONTAINER peer channel join -b $CHANNELS_CONFIG_PATH/$channel_name/$channel_name.block
 }
 
 update_channel() {
-	if [ -z "$1" ]; then
-		echo "Missing channel_name"
+	if [ -z "$1" ] || [ -z "$2" ]; then
+		echo "The command should be in the format: ./run.sh update_channel [channel_name] [org]"
 		exit 1
 	fi
 
 	local channel_name="$1"
+    local org="$2"
 
-	echo "Updating anchors peers $channel_name using configuration file $CHANNEL_CONFIG_FILE"
-	docker exec $CHAINCODE_UTIL_CONTAINER peer channel update -o $ORDERER_ADDRESS -c $channel_name -f $ANCHORS_CONFIG_FILE
+	echo "Updating anchors peers $channel_name using configuration file $CHANNELS_CONFIG_PATH/$channel_name/${org}_anchors.tx"
+	docker exec $CHAINCODE_UTIL_CONTAINER peer channel update -o $ORDERER_ADDRESS -c $channel_name -f $CHANNELS_CONFIG_PATH/$channel_name/${org}_anchors.tx
 }
 
 install_chaincode() {
 	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
-		echo "The command should be in the format: ./run.sh install_chaincode chaincode_name 1.0 channel_name"
+		echo "The command should be in the format: ./run.sh install_chaincode chaincode_name 1.0 chaincode_path"
 		exit 1
 	fi
 
-	declare chaincode_name="$1"
+	local chaincode_name="$1"
 	local chaincode_version="$2"
-	local channel_name="$3"
-  docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode install -n $chaincode_name -v $chaincode_version -p $chaincode_name
+	local chaincode_path="$3"
+
+    docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode install -n $chaincode_name -v $chaincode_version -p $chaincode_path
 }
 
 instantiate_chaincode() {
@@ -214,7 +217,7 @@ instantiate_chaincode() {
 	local chaincode_version="$2"
 	local channel_name="$3"
 
-	docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode instantiate -n $chaincode_name -v $chaincode_version  -C $channel_name -c '{"Args":[]}'
+	docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode instantiate -n $chaincode_name -v $chaincode_version -C $channel_name -c '{"Args":[]}'
 }
 
 upgrade_chaincode() {

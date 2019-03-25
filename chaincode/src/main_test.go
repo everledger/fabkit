@@ -212,8 +212,6 @@ func (suite *ChaincodeTS) TestQuery() {
 	// Need to test with actual fabric setup
 	//
 	//assert.EqualValues(suite.T(), shim.OK, result.Status, "Query failed")
-	
-
 }
 
 

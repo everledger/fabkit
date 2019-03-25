@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/hyperledger/fabric/core/chaincode/shim"
 	pb "github.com/hyperledger/fabric/protos/peer"
@@ -16,6 +17,13 @@ type Chaincode struct {
 type KV struct {
 	Key   string
 	Value string
+}
+
+type KeyModification struct {
+	TxId      string
+	Value     string
+	Timestamp time.Time
+	IsDelete  bool
 }
 
 type CompositeKey struct {
@@ -50,9 +58,11 @@ func (c *Chaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		return c.query(stub, args)
 	} else if function == "delete" {
 		return c.delete(stub, args)
+	} else if function == "getHistoryForKey" {
+		return c.getHistoryForKey(stub, args)
 	}
 
-	return shim.Error("Invalid invoke function name. Expecting \"put\" \"get\" \"scan\" \"query\"")
+	return shim.Error("Invalid invoke function name.")
 }
 
 func (c *Chaincode) delete(stub shim.ChaincodeStubInterface, args []string) pb.Response {
@@ -346,6 +356,43 @@ func getQueryResultForQueryString(stub shim.ChaincodeStubInterface, queryString 
 	}
 
 	return buffer.Bytes(), nil
+}
+
+func (c *Chaincode) getHistoryForKey(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+	key := args[0]
+
+	fmt.Printf("Getting history for key='%s'\n", key)
+
+	resultsIterator, err := stub.GetHistoryForKey(key)
+	if err != nil {
+		fmt.Println("Error with GetHistoryForKey :", err)
+		return shim.Error(err.Error())
+	}
+	defer resultsIterator.Close()
+
+	arr := make([]KeyModification, 0)
+	for resultsIterator.HasNext() {
+		queryResponse, err := resultsIterator.Next()
+		if err != nil {
+			return shim.Error(err.Error())
+		}
+		arr = append(arr, KeyModification{
+			TxId:      queryResponse.GetTxId(),
+			Value:     string(queryResponse.GetValue()),
+			Timestamp: time.Unix(queryResponse.GetTimestamp().GetSeconds(), 0),
+			IsDelete:  queryResponse.GetIsDelete(),
+		})
+	}
+
+	buffer := new(bytes.Buffer)
+	encoder := json.NewEncoder(buffer)
+	err = encoder.Encode(arr)
+	if err != nil {
+		fmt.Println("Error encoding the data")
+		return shim.Error(err.Error())
+	}
+
+	return shim.Success(buffer.Bytes())
 }
 
 func main() {
