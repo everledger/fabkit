@@ -6,4 +6,4 @@ pipelines:
         name: Run chaincode unit tests
         script:
             - export CGO_ENABLED=0
-            - ./run.sh test_chaincode mychaincode
+            - bash -c "./run.sh test_chaincode mychaincode"
