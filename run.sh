@@ -6,8 +6,8 @@ source $(pwd)/.env
 
 export GO111MODULE=on
 
-hash docker || (echo "Please install docker first"; exit 1;)
-hash docker-compose || (echo "Please install docker-compose first"; exit 1;)
+type docker >/dev/null 2>&1 || (echo "Please install docker first"; exit 1;)
+type docker-compose >/dev/null 2>&1 || (echo "Please install docker-compose first"; exit 1;)
 
 help() {
   echoc "Usage: run.sh [command]" light cyan
