@@ -6,9 +6,6 @@ source $(pwd)/.env
 
 export GO111MODULE=on
 
-type docker >/dev/null 2>&1 || (echo "Please install docker first"; exit 1;)
-type docker-compose >/dev/null 2>&1 || (echo "Please install docker-compose first"; exit 1;)
-
 help() {
   echoc "Usage: run.sh [command]" light cyan
   echo
@@ -31,6 +28,11 @@ help() {
   echoc "create_channel [channel_name]                                               : generate channel configuration file" light cyan
   echoc "update_channel [channel_name] [org]                                         : update channel with anchor peers" light cyan
   echoc "join_channel [channel_name]                                                 : run by a peer to join a channel" light cyan
+}
+
+check_dependencies() {
+    type docker >/dev/null 2>&1 || (echo "Please install docker first"; exit 1;)
+    type docker-compose >/dev/null 2>&1 || (echo "Please install docker-compose first"; exit 1;)
 }
 
 # echoc: Prints the user specified string to the screen using the specified colour.
@@ -528,8 +530,10 @@ readonly func="$1"
 shift
 
 if [ "$func" == "install" ]; then
+    check_dependencies
     install
 elif [ "$func" == "start_network" ]; then
+    check_dependencies
     start_network
 elif [ "$func" == "stop_network" ]; then
     stop_network
