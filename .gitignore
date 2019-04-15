@@ -6,8 +6,9 @@ dist/
 logs/
 *.log*
 
-network/config/
-network/crypto-config/
+network/cryptos/
+network/channels/
+data/
 
 .DS_Store
 *.tar*

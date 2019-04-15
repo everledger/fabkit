@@ -29,6 +29,8 @@ Implicitly it will execute the following functions:
 test_chaincode
 build_chaincode
 generate_cryptos
+generate_genesis
+generate_channeltx
 create_channel
 join_channel
 update_channel
@@ -41,7 +43,7 @@ Run `./run.sh help` for the complete list of functionalities.
 ## Upgrade chaincode
 Run the following command in order to install and instantiate a new version of the chaincode:
 ```bash
-./run.sh upgrade_chaincode <chaincode_name> <chaincode_version> <channel_name>
+./run.sh upgrade_chaincode [chaincode_name] [chaincode_version] [channel_name]
 ```
 Be sure the `chaincode_version` is unique and never used before (otherwise an error will be prompted).
 
@@ -52,7 +54,7 @@ It is possible to use the CLI to run and test functionalities.
 
 ### Invoke
 ```bash
-./run.sh invoke <channel_name> <chaincode_name> <request>
+./run.sh invoke [channel_name] [chaincode_name] [request]
 
 # e.g.
 ./run.sh invoke mychannel mychaincode '{"Args":["put","key1","10"]}'
@@ -60,12 +62,11 @@ It is possible to use the CLI to run and test functionalities.
 
 ### Query
 ```bash
-./run.sh query <channel_name> <chaincode_name> <request>
+./run.sh query [channel_name] [chaincode_name] [request]
 
 # e.g.
 ./run.sh query mychannel mychaincode '{"Args":["get","key1"]}'
 ```
-
 
 ## Register and enroll users
 todo
