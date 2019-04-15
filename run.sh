@@ -548,9 +548,9 @@ elif [ "$func" == "query" ]; then
 elif [ "$func" == "invoke" ]; then
     invoke $@
 elif [ "$func" == "test_chaincode" ]; then
-    test_chaincode
+    test_chaincode $@
 elif [ "$func" == "build_chaincode" ]; then
-    build_chaincode
+    build_chaincode $@
 elif [ "$func" == "generate_cryptos" ]; then
     generate_cryptos $@
 elif [ "$func" == "generate_genesis" ]; then
