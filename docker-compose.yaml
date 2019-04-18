@@ -88,7 +88,7 @@ services:
       - basic
 
   channel-chaincode-util:
-    container_name: channel-chaincode-util
+    container_name: ${CHAINCODE_UTIL_CONTAINER}
     extends:
       file: network/base/base.yaml
       service: tools-base

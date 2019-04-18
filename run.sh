@@ -1,43 +1,51 @@
 #!/bin/sh
 
-set -o errexit
-
 source $(pwd)/.env
 
 export GO111MODULE=on
 
 help() {
-  echoc "Usage: run.sh [command]" light cyan
-  echo
-  echoc "commands:" light cyan
-  echo 
-  echoc "help                                                                        : this help" light cyan
-  echoc "start_network                                                               : start the blockchain network and initialize it" light cyan
-  echoc "stop_network                                                                : stop the blockchain network and remove all the docker containers" light cyan
-  echoc "install_chaincode [chaincode_name] [chaincode_version] [chaincode_path]     : install chaincode on a peer" light cyan
-  echoc "instantiate_chaincode [chaincode_name] [chaincode_version] [channel_name]   : instantiate chaincode on a peer for an assigned channel" light cyan
-  echoc "upgrade_chaincode [channel_name] [chaincode_name] [chaincode_version]       : upgrade chaincode with a new version" light cyan
-  echoc "query [channel_name] [chaincode_name] [data_in_json]                        : run query in the format '{\"Args\":\"queryFunction\",\"key\"]}'" light cyan
-  echoc "invoke [channel_name] [chaincode_name] [data_in_json]                       : run invoke in the format '{\"Args\":[\"invokeFunction\",\"key\",\"value\"]}'" light cyan
-  echoc "test_chaincode [chaincode_path]                                             : run unit tests" light cyan
-  echoc "build_chaincode [chaincode_path]                                            : run build and test against the binary file" light cyan
-  echoc "generate_cryptos [config_path] [cryptos_path]                               : generate all the crypto keys and certificates for the network" light cyan
-  echoc "generate_genesis [base_path] [config_path]                                  : generate the genesis block for the ordering service" light cyan
-  echoc "generate_channeltx [channel_name] [base_path] [config_path] [cryptos_path]" light cyan
-  echoc "                   [network_profile] [channel_profile] [org_msp]            : generate all the crypto keys and certificates for the network" light cyan
-  echoc "create_channel [channel_name]                                               : generate channel configuration file" light cyan
-  echoc "update_channel [channel_name] [org]                                         : update channel with anchor peers" light cyan
-  echoc "join_channel [channel_name]                                                 : run by a peer to join a channel" light cyan
+    local help="
+        Usage: run.sh [command]
+        commands:
+
+        help                                                                        : this help
+        install                                                                     : install all the dependencies and docker images
+        start                                                                       : start the blockchain network and initialize it
+        stop                                                                        : stop the blockchain network and remove all the docker containers
+
+        channel create [channel_name]                                               : generate channel configuration file
+        channel update [channel_name] [org]                                         : update channel with anchor peers
+        channel join [channel_name]                                                 : run by a peer to join a channel
+
+        generate cryptos [config_path] [cryptos_path]                               : generate all the crypto keys and certificates for the network
+        generate genesis [base_path] [config_path]                                  : generate the genesis block for the ordering service
+        generate channeltx [channel_name] [base_path] [config_path] [cryptos_path]  : generate channel configuration files
+                           [network_profile] [channel_profile] [org_msp]            
+
+        chaincode test [chaincode_path]                                             : run unit tests
+        chaincode build [chaincode_path]                                            : run build and test against the binary file
+        chaincode install [chaincode_name] [chaincode_version] [chaincode_path]     : install chaincode on a peer
+        chaincode instantiate [chaincode_name] [chaincode_version] [channel_name]   : instantiate chaincode on a peer for an assigned channel
+        chaincode upgrade [channel_name] [chaincode_name] [chaincode_version]       : upgrade chaincode with a new version
+        chaincode query [channel_name] [chaincode_name] [data_in_json]              : run query in the format '{\"Args\":\"queryFunction\",\"key\"]}'
+        chaincode invoke [channel_name] [chaincode_name] [data_in_json]             : run invoke in the format '{\"Args\":[\"invokeFunction\",\"key\",\"value\"]}'
+        "
+    echoc "$help" dark cyan
 }
 
 check_dependencies() {
-    type docker >/dev/null 2>&1 || (echo "Please install docker first"; exit 1;)
-    type docker-compose >/dev/null 2>&1 || (echo "Please install docker-compose first"; exit 1;)
+    if [ "${1}" == "deploy" ]; then
+        type dockersad >/dev/null 2>&1 || { echoc >&2 "docker required but it is not installed. Aborting." light red; exit 1; }
+        type docker-compose >/dev/null 2>&1 || { echoc >&2 "docker-compose required but it is not installed. Aborting." light red; exit 1; }
+    elif [ "${1}" == "test" ]; then
+        type go >/dev/null 2>&1 || { echoc >&2 "Go binary is missing in your PATH. Running the dockerised version..." light yellow; echo $?; }
+    fi
 }
 
 # echoc: Prints the user specified string to the screen using the specified colour.
 #
-# Parameters: ${1} - The string to print.
+# Parameters: ${1} - The string to print
 #             ${2} - The intensity of the colour.
 #             ${3} - The colour to use for printing the string.
 #
@@ -121,8 +129,8 @@ __docker_third_party_images_pull() {
 }
 
 start_network() {
-	build_chaincode mychaincode
-	test_chaincode mychaincode
+	build_chaincode $CHAINCODE_NAME
+    test_chaincode $CHAINCODE_NAME
     stop_network
 
     echoc "========================" dark cyan
@@ -131,12 +139,14 @@ start_network() {
     echo
 
 	generate_cryptos $CONFIG_PATH $CRYPTOS_PATH
-    generate_genesis $BASE_PATH $CONFIG_PATH $CRYPTOS_PATH OneOrgOrdererGenesis
-    generate_channeltx mychannel $BASE_PATH $CONFIG_PATH $CRYPTOS_PATH OneOrgOrdererGenesis OneOrgChannel Org1MSP
-	docker-compose -f docker-compose.yaml down
-    docker-compose -f docker-compose.yaml up -d
-	sleep 5
-	initialize_network
+    generate_genesis $BASE_PATH $CONFIG_PATH $CRYPTOS_PATH $CONFIGTX_PROFILE_NETWORK
+    generate_channeltx $CHANNEL_NAME $BASE_PATH $CONFIG_PATH $CRYPTOS_PATH $CONFIGTX_PROFILE_NETWORK $CONFIGTX_PROFILE_CHANNEL $ORG_MSP
+    
+    docker-compose -f ${ROOT}/docker-compose.yaml up -d
+	
+    sleep 5
+	
+    initialize_network
 }
 
 initialize_network() {
@@ -145,46 +155,53 @@ initialize_network() {
     echoc "============================" dark cyan
     echo
 
-	create_channel mychannel
-	join_channel mychannel
-	update_channel mychannel Org1MSP
-	install_chaincode mychaincode 1.0 ${CHAINCODE_REMOTE_PATH}/mychaincode
-	instantiate_chaincode mychaincode 1.0 mychannel
+	create_channel $CHANNEL_NAME
+	join_channel $CHANNEL_NAME
+	update_channel $CHANNEL_NAME $ORG_MSP
+	install_chaincode $CHAINCODE_NAME $CHAINCODE_VERSION ${CHAINCODE_REMOTE_PATH}/${CHAINCODE_NAME}
+	instantiate_chaincode $CHAINCODE_NAME $CHAINCODE_VERSION $CHANNEL_NAME
 }
 
 test_chaincode() {
     if [ -z "$1" ]; then
-		echoc "Chaincode path missing" dark red
+		echoc "Chaincode name missing" dark red
 		exit 1
 	fi
 
-    local chaincode_path="${1}"
+    local chaincode_name="${1}"
 
-	echoc "Running unit testing on chaincode" light cyan
-	(cd $CHAINCODE_PATH; go test ./${chaincode_path}/... -v)
-	# docker run --rm -v ${CHAINCODE_PATH}:/usr/src/myapp -w /usr/src/myapp everledgerio/golang sh -c "go clean -modcache; rm go.sum; go test ./${chaincode_path}/... -v)"
+    echoc "===================" dark cyan
+	echoc "Unit test chaincode" dakr cyan
+    echoc "===================" dark cyan
+
+    if [[ $(check_dependencies test) ]]; then
+        docker run --rm  -v ${CHAINCODE_PATH}:/usr/src/myapp -w /usr/src/myapp -e CGO_ENABLED=0 ${GOLANG_DOCKER_IMAGE}:${GOLANG_DOCKER_TAG} sh -c "go test ./${chaincode_name}/... -v"
+    else
+	    cd $CHAINCODE_PATH; CGO_ENABLED=0 go test ./${chaincode_name}/... -v
+    fi
+
+    echoc "Test passed!" light green
 }
 
 build_chaincode() {
     if [ -z "$1" ]; then
-		echoc "Chaincode path missing" dark red
+		echoc "Chaincode name" dark red
 		exit 1
 	fi
 
-    local chaincode_path="${1}"
+    local chaincode_name="${1}"
 
     echoc "==================" dark cyan
 	echoc "Building chaincode" dakr cyan
     echoc "==================" dark cyan
-	cd $CHAINCODE_PATH
-	CGO_ENABLED=0 go build -a -installsuffix nocgo -o binary ./${chaincode_path}/...
-	# docker run -v ${CHAINCODE_PATH}:/usr/src/myapp -w /usr/src/myapp -e CGO_ENABLED=0 everledgerio/golang sh -c "go clean -modcache; rm go.sum; go build -a -installsuffix nocgo -o binary ./${chaincode_path}/..."
-    echoc "Testing built chaincode" light cyan
-	go test -c -o binary_test ./...
+
+    if [[ $(check_dependencies test) ]]; then
+        docker run --rm -v ${CHAINCODE_PATH}:/usr/src/myapp -w /usr/src/myapp -e CGO_ENABLED=0 ${GOLANG_DOCKER_IMAGE}:${GOLANG_DOCKER_TAG} sh -c "go build -a -installsuffix nocgo -o binary ./${chaincode_name}/... && go test -c -o binary_test ./..."
+    else
+	    cd $CHAINCODE_PATH; CGO_ENABLED=0 go build -a -installsuffix nocgo -o binary ./${chaincode_name}/... && go test -c -o binary_test ./... && rm -rf binary binary_test
+    fi
+
     echoc "Test passed!" light green
-	# docker run -v {PCHAINCODE_PATH}:/usr/src/myapp -w /usr/src/myapp -e CGO_ENABLED=0 everledgerio/golang sh -c "go clean -modcache; rm go.sum; go test -c -o binary_test ./..."
-	rm -rf binary binary_test
-	cd $ROOT
 }
 
 stop_network() {
@@ -192,9 +209,11 @@ stop_network() {
 	echoc "Tearing Fabric network down" dark cyan
     echoc "===========================" dark cyan
 
-    docker rm -f -v $(docker ps -a | grep -E "peer|dev-|orderer|ca|cli" | awk '{print $1}') 2>/dev/null &&
-    docker rmi $(docker images -qf "dangling=true") 2>/dev/null &&
-    docker rmi $(docker images | grep "^<none>" | awk "{print $3}") 2>/dev/null
+    docker-compose -f ${ROOT}/docker-compose.yaml down
+
+    docker rm -f $(docker ps -a | awk '($2 ~ /fabric|dev-/) {print $1}') 2>/dev/null
+    docker rmi -f $(docker images -qf "dangling=true") 2>/dev/null
+    docker rmi -f $(docker images | awk '($1 ~ /^<none>|dev-/) {print $3}') 2>/dev/null
 
     data_path="$(pwd)/data"
     if [ -d "$data_path" ]; then
@@ -419,7 +438,7 @@ generate_cryptos() {
 
 create_channel() {
 	if [ -z "$1" ]; then
-		echoc "Missing channel_name" dark red
+		echoc "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" dark red
 		exit 1
 	fi
 
@@ -431,7 +450,7 @@ create_channel() {
 
 join_channel() {
  	if [ -z "$1" ]; then
-		echoc "Missing channel_name" dark red
+		echoc "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" dark red
 		exit 1
 	fi
 
@@ -443,7 +462,7 @@ join_channel() {
 
 update_channel() {
 	if [ -z "$1" ] || [ -z "$2" ]; then
-		echoc "The command should be in the format: ./run.sh update_channel [channel_name] [org]" dark red
+		echoc "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" dark red
 		exit 1
 	fi
 
@@ -456,7 +475,7 @@ update_channel() {
 
 install_chaincode() {
 	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
-		echoc "The command should be in the format: ./run.sh install_chaincode chaincode_name 1.0 chaincode_path" dark red
+		echoc "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" dark red
 		exit 1
 	fi
 
@@ -470,7 +489,7 @@ install_chaincode() {
 
 instantiate_chaincode() {
 	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
-		echoc "The command should be in the format: ./run.sh instantiate_chaincode chaincode_name 1.0 channel_name" dark red
+		echoc "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" dark red
 		exit 1
 	fi
 
@@ -484,7 +503,7 @@ instantiate_chaincode() {
 
 upgrade_chaincode() {
 	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
-		echo "The command should be in the format: ./run.sh upgrade_chaincode mychaincode 1.0 mychannel"
+		echoc "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" dark red
 		exit 1
 	fi
 
@@ -502,7 +521,7 @@ upgrade_chaincode() {
 
 invoke() {
 	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
-		echoc 'The command should be in the format: ./run.sh invoke channel_name chaincode_name '{"Args":["put","key1","10"]}'' dark red
+		echoc "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" dark red
 		exit 1
 	fi
 
@@ -515,7 +534,7 @@ invoke() {
 
 query() {
 	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
-		echoc 'The command should be in the format: ./run.sh query channel_name chaincode_name '{"Args":"get","key1"]}'' dark red
+		echoc "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" dark red
 		exit 1
 	fi
 
@@ -530,41 +549,51 @@ readonly func="$1"
 shift
 
 if [ "$func" == "install" ]; then
-    check_dependencies
+    check_dependencies deploy
     install
-elif [ "$func" == "start_network" ]; then
-    check_dependencies
+elif [ "$func" == "start" ]; then
+    check_dependencies deploy
     start_network
-elif [ "$func" == "stop_network" ]; then
+elif [ "$func" == "stop" ]; then
     stop_network
-elif [ "$func" == "install_chaincode" ]; then
-    install_chaincode $@
-elif [ "$func" == "instantiate_chaincode" ]; then
-    instantiate_chaincode $@
-elif [ "$func" == "upgrade_chaincode" ]; then
-    upgrade_chaincode $@
-elif [ "$func" == "query" ]; then
-    query $@
-elif [ "$func" == "invoke" ]; then
-    invoke $@
-elif [ "$func" == "test_chaincode" ]; then
-    test_chaincode $@
-elif [ "$func" == "build_chaincode" ]; then
-    build_chaincode $@
+elif [ "$func" == "chaincode" ]; then
+    readonly param="$1"
+    shift
+    if [ "$param" == "install" ]; then
+        install_chaincode $@
+    elif [ "$param" == "instantiate" ]; then
+        instantiate_chaincode $@
+    elif [ "$param" == "upgrade" ]; then
+        upgrade_chaincode $@
+    elif [ "$param" == "test" ]; then
+        test_chaincode $@
+    elif [ "$param" == "build" ]; then
+        build_chaincode $@
+    elif [ "$param" == "query" ]; then
+        query $@
+    elif [ "$param" == "invoke" ]; then
+        invoke $@
+    fi
 elif [ "$func" == "generate_cryptos" ]; then
-    generate_cryptos $@
-elif [ "$func" == "generate_genesis" ]; then
-    generate_genesis $@
-elif [ "$func" == "generate_channeltx" ]; then
-    generate_channeltx $@
-elif [ "$func" == "create_channel" ]; then
-    create_channel $@
-elif [ "$func" == "create_channel" ]; then
-    create_channel $@
-elif [ "$func" == "update_channel" ]; then
-    update_channel $@
-elif [ "$func" == "join_channel" ]; then
-    join_channel $@
+    readonly param="$1"
+    shift
+    if [ "$param" == "cryptos" ]; then
+        generate_cryptos $@
+    elif [ "$param" == "genesis" ]; then
+        generate_genesis $@
+    elif [ "$param" == "channeltx" ]; then
+        generate_channeltx $@
+    fi
+elif [ "$func" == "channel" ]; then
+    readonly param="$1"
+    shift
+    if [ "$param" == "create" ]; then
+        create_channel $@
+    elif [ "$param" == "update" ]; then
+        update_channel $@
+    elif [ "$param" == "join" ]; then
+        join_channel $@
+    fi
 else
     help
     exit 1

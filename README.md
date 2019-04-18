@@ -22,28 +22,27 @@ Install all the docker images needed:
 ## Run the blockchain network
 The following command will spin a Hyperledger Fabric network up, generating _channel_ and _crypto_ config at runtime:
 ```bash
-./run.sh start_network
+./run.sh start
 ```
-Implicitly it will execute the following functions:
-```bash
-test_chaincode
-build_chaincode
-generate_cryptos
-generate_genesis
-generate_channeltx
-create_channel
-join_channel
-update_channel
-install_chaincode
-instantiate_chaincode
-```
+It will execute the following functions:
+- Build and test the chaincode
+- Run unit tests
+- Generate crypto materials
+- Generate genesis block
+- Generate default channel configuration files
+- Add default peer to join the channel
+- Update the channel with anchor peers
+- Install the default chaincode into the default peer
+- Instantiate the chaincode on the default peer
+
+Afterwards, the network will be ready to accept `invoke` and `query` functions.
 
 Run `./run.sh help` for the complete list of functionalities.
 
 ## Upgrade chaincode
 Run the following command in order to install and instantiate a new version of the chaincode:
 ```bash
-./run.sh upgrade_chaincode [chaincode_name] [chaincode_version] [channel_name]
+./run.sh chaincode upgrade [chaincode_name] [chaincode_version] [channel_name]
 ```
 Be sure the `chaincode_version` is unique and never used before (otherwise an error will be prompted).
 
@@ -54,18 +53,18 @@ It is possible to use the CLI to run and test functionalities.
 
 ### Invoke
 ```bash
-./run.sh invoke [channel_name] [chaincode_name] [request]
+./run.sh chaincode invoke [channel_name] [chaincode_name] [request]
 
 # e.g.
-./run.sh invoke mychannel mychaincode '{"Args":["put","key1","10"]}'
+./run.sh chaincode invoke mychannel mychaincode '{"Args":["put","key1","10"]}'
 ```
 
 ### Query
 ```bash
-./run.sh query [channel_name] [chaincode_name] [request]
+./run.sh chaincode query [channel_name] [chaincode_name] [request]
 
 # e.g.
-./run.sh query mychannel mychaincode '{"Args":["get","key1"]}'
+./run.sh chaincode query mychannel mychaincode '{"Args":["get","key1"]}'
 ```
 
 ## Register and enroll users
@@ -73,7 +72,7 @@ todo
 
 ## Cleanup the environment
 ### Tear blockchain network down
-It will stop and remove all the blockchain network containers including the `dev-` tagged chaincode ones.
+It will stop and remove all the blockchain network containers including the `dev-peer*` tagged chaincode ones.
 ```bash
-./run.sh stop_network
+./run.sh stop
 ```

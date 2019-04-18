@@ -2,8 +2,12 @@ image: everledgerio/golang:1.11.5-alpine3.9-git
 
 pipelines:
   default: # run pipeline for all branches
-    - step:
-        name: Run chaincode unit tests
-        script:
-            - export CGO_ENABLED=0
-            - ./run.sh test_chaincode mychaincode
+  - parallel:
+     - step:
+         name: Run chaincode unit tests
+         script:
+           - ./run.sh chaincode test mychaincode
+     - step:
+         name: Run chaincode build
+         script:
+             - ./run.sh chaincode build mychaincode
