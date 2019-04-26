@@ -36,7 +36,7 @@ help() {
 
 check_dependencies() {
     if [ "${1}" == "deploy" ]; then
-        type dockersad >/dev/null 2>&1 || { echoc >&2 "docker required but it is not installed. Aborting." light red; exit 1; }
+        type docker >/dev/null 2>&1 || { echoc >&2 "docker required but it is not installed. Aborting." light red; exit 1; }
         type docker-compose >/dev/null 2>&1 || { echoc >&2 "docker-compose required but it is not installed. Aborting." light red; exit 1; }
     elif [ "${1}" == "test" ]; then
         type go >/dev/null 2>&1 || { echoc >&2 "Go binary is missing in your PATH. Running the dockerised version..." light yellow; echo $?; }
