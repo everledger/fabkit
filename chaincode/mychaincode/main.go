@@ -398,6 +398,6 @@ func (c *Chaincode) getHistoryForKey(stub shim.ChaincodeStubInterface, args []st
 func main() {
 	err := shim.Start(new(Chaincode))
 	if err != nil {
-		fmt.Printf("Error starting Procurement chaincode: %s", err)
+		fmt.Printf("Error starting chaincode: %s", err)
 	}
 }
