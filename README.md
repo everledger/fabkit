@@ -25,6 +25,7 @@ The following command will spin a Hyperledger Fabric network up, generating _cha
 ./run.sh start
 ```
 It will execute the following functions:
+
 - Build and test the chaincode
 - Run unit tests
 - Generate crypto materials
