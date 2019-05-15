@@ -175,9 +175,9 @@ test_chaincode() {
     echoc "===================" dark cyan
 
     if [[ $(check_dependencies test) ]]; then
-        docker run --rm  -v ${CHAINCODE_PATH}:/usr/src/myapp -w /usr/src/myapp -e CGO_ENABLED=0 ${GOLANG_DOCKER_IMAGE}:${GOLANG_DOCKER_TAG} sh -c "go test ./${chaincode_name}/... -v"
+        (docker run --rm  -v ${CHAINCODE_PATH}:/usr/src/myapp -w /usr/src/myapp -e CGO_ENABLED=0 ${GOLANG_DOCKER_IMAGE}:${GOLANG_DOCKER_TAG} sh -c "go test ./${chaincode_name}/... -v") || exit 1
     else
-	    cd $CHAINCODE_PATH; CGO_ENABLED=0 go test ./${chaincode_name}/... -v
+	    (cd $CHAINCODE_PATH && CGO_ENABLED=0 go test ./${chaincode_name}/... -v) || exit 1
     fi
 
     echoc "Test passed!" light green
@@ -196,9 +196,9 @@ build_chaincode() {
     echoc "==================" dark cyan
 
     if [[ $(check_dependencies test) ]]; then
-        docker run --rm -v ${CHAINCODE_PATH}:/usr/src/myapp -w /usr/src/myapp -e CGO_ENABLED=0 ${GOLANG_DOCKER_IMAGE}:${GOLANG_DOCKER_TAG} sh -c "go build -a -installsuffix nocgo -o binary ./${chaincode_name}/... && go test -c -o binary_test ./..."
+        (docker run --rm -v ${CHAINCODE_PATH}:/usr/src/myapp -w /usr/src/myapp -e CGO_ENABLED=0 ${GOLANG_DOCKER_IMAGE}:${GOLANG_DOCKER_TAG} sh -c "go build -a -installsuffix nocgo -o binary ./${chaincode_name}/...") || exit 1
     else
-	    cd $CHAINCODE_PATH; CGO_ENABLED=0 go build -a -installsuffix nocgo -o binary ./${chaincode_name}/... && go test -c -o binary_test ./... && rm -rf binary binary_test
+	    (cd $CHAINCODE_PATH && CGO_ENABLED=0 go build -a -installsuffix nocgo -o binary ./${chaincode_name}/...) || exit 1
     fi
 
     echoc "Test passed!" light green
@@ -215,7 +215,7 @@ stop_network() {
     docker rmi -f $(docker images -qf "dangling=true") 2>/dev/null
     docker rmi -f $(docker images | awk '($1 ~ /^<none>|dev-/) {print $3}') 2>/dev/null
 
-    data_path="$(pwd)/data"
+    data_path="${ROOT}/data"
     if [ -d "$data_path" ]; then
         echoc "!!!!! ATTENTION !!!!!" light red
         echoc "Found data directory: ${data_path}" light red
@@ -469,7 +469,7 @@ update_channel() {
 	local channel_name="$1"
     local org_msp="$2"
 
-	echoc "Updating anchors peers $channel_name using configuration file $CHANNELS_CONFIG_PATH/$channel_name/${org}_anchors.tx" light cyan
+	echoc "Updating anchors peers $channel_name using configuration file $CHANNELS_CONFIG_PATH/$channel_name/${org_msp}_anchors.tx" light cyan
 	docker exec $CHAINCODE_UTIL_CONTAINER peer channel update -o $ORDERER_ADDRESS -c $channel_name -f $CHANNELS_CONFIG_PATH/${channel_name}/${org_msp}_anchors_tx.pb
 }
 
