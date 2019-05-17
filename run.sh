@@ -196,12 +196,12 @@ build_chaincode() {
     echoc "==================" dark cyan
 
     if [[ $(check_dependencies test) ]]; then
-        (docker run --rm -v ${CHAINCODE_PATH}:/usr/src/myapp -w /usr/src/myapp -e CGO_ENABLED=0 ${GOLANG_DOCKER_IMAGE}:${GOLANG_DOCKER_TAG} sh -c "go build -a -installsuffix nocgo -o binary ./${chaincode_name}/...") || exit 1
+        (docker run --rm -v ${CHAINCODE_PATH}:/usr/src/myapp -w /usr/src/myapp/${chaincode_name} -e CGO_ENABLED=0 ${GOLANG_DOCKER_IMAGE}:${GOLANG_DOCKER_TAG} sh -c "go build -a -installsuffix nocgo ./... && rm -rf ./${chaincode_name} 2>/dev/null") || exit 1
     else
-	    (cd $CHAINCODE_PATH && CGO_ENABLED=0 go build -a -installsuffix nocgo -o binary ./${chaincode_name}/...) || exit 1
+	    (cd $CHAINCODE_PATH/${chaincode_name} && CGO_ENABLED=0 go build -a -installsuffix nocgo ./... && rm -rf ./${chaincode_name} 2>/dev/null) || exit 1
     fi
 
-    echoc "Test passed!" light green
+    echoc "Build passed!" light green
 }
 
 stop_network() {
@@ -211,6 +211,7 @@ stop_network() {
 
     docker-compose -f ${ROOT}/docker-compose.yaml down
 
+    echoc "Cleaning docker leftovers containers and images" light green
     docker rm -f $(docker ps -a | awk '($2 ~ /fabric|dev-/) {print $1}') 2>/dev/null
     docker rmi -f $(docker images -qf "dangling=true") 2>/dev/null
     docker rmi -f $(docker images | awk '($1 ~ /^<none>|dev-/) {print $3}') 2>/dev/null

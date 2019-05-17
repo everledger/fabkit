@@ -1,4 +1,4 @@
-image: everledgerio/golang:1.11.5-alpine3.9-git
+image: everledgerio/golang:1.11.5-alpine3.9
 
 pipelines:
   default: # run pipeline for all branches
