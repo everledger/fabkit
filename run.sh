@@ -549,8 +549,8 @@ query() {
 }
 
 __exec_jobs() {
-    jobs=$1
-    entries=$2
+    local jobs=$1
+    local entries=$2
 
     if [ -z "$jobs" ]; then
         echo "Provide a number of jobs to run in parallel"
@@ -566,14 +566,16 @@ __exec_jobs() {
     Entries: $entries
     " light cyan
 
-    time ( trap 'kill 0' EXIT;
+    time {
+        trap 'kill 0' EXIT
         for i in $(seq 1 $jobs); do
             __loader $entries & 
         done
 
-        for job in `jobs -p`; do
+        for job in $(jobs -p); do
             wait $job
-        done )
+        done 
+    }
 
     echoc "$(( jobs * entries )) entries added" light green
 }
