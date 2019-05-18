@@ -566,17 +566,14 @@ __exec_jobs() {
     Entries: $entries
     " light cyan
 
-    time (
-        trap 'kill 0' SIGINT 
+    time ( trap 'kill 0' EXIT;
         for i in $(seq 1 $jobs); do
             __loader $entries & 
         done
 
-        for job in `jobs -p`
-        do
-            wait $job || let "FAIL+=1"
-        done
-    )
+        for job in `jobs -p`; do
+            wait $job
+        done )
 
     echoc "$(( jobs * entries )) entries added" light green
 }
