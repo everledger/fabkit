@@ -566,18 +566,22 @@ __exec_jobs() {
     Entries: $entries
     " light cyan
 
-    time {
-        trap 'kill 0' EXIT
-        for i in $(seq 1 $jobs); do
-            __loader $entries & 
-        done
+    start_time="$(date -u +%s)"
+    
+    for i in $(seq 1 $jobs); do
+        __loader $entries & 
+    done
 
-        for job in $(jobs -p); do
-            wait $job
-        done 
-    }
+    for job in $(jobs -p); do
+        wait $job
+    done 
 
-    echoc "$(( jobs * entries )) entries added" light green
+    end_time="$(date -u +%s)"
+
+    elapsed="$(($end_time - $start_time))"
+    echoc "Total of $elapsed seconds elapsed for process" light yellow
+
+    echoc "$(( $jobs * $entries )) entries added" light green
 }
 
 __loader() {

@@ -107,3 +107,16 @@ The repository provides also a simple implementation of a bulk load function in 
 ```
 
 The example above will do a bulk load of 1000 entries times 5 parallel jobs, for a total of 5000 entries. At the completion of all the jobs it will be prompted on screen the elapsed time of the total task.
+
+**Note: Maintain the number of jobs not superior to your CPU cores in order to obtain the best results. This implementation does not provides a complete parallelisation.**
+
+To achieve the optimal result it is recommended to install [Gnu Parallel](https://www.gnu.org/software/parallel/) and use as it follows:
+
+```bash
+time (parallel ./benchmarks.sh {} ::: [entries])
+
+# e.g.
+time (parallel ./benchmarks.sh {} ::: 20)
+# 8.613 total against 29.893 total
+# ~4 times lower than running jobs with "&"
+```
