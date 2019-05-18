@@ -30,6 +30,8 @@ help() {
         chaincode upgrade [channel_name] [chaincode_name] [chaincode_version]       : upgrade chaincode with a new version
         chaincode query [channel_name] [chaincode_name] [data_in_json]              : run query in the format '{\"Args\":\"queryFunction\",\"key\"]}'
         chaincode invoke [channel_name] [chaincode_name] [data_in_json]             : run invoke in the format '{\"Args\":[\"invokeFunction\",\"key\",\"value\"]}'
+        
+        benchmark load [jobs] [entries]                                             : run benchmark bulk loading of [entries] per parallel [jobs] against a running network
         "
     echoc "$help" dark cyan
 }
@@ -546,6 +548,50 @@ query() {
 	docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode query -o $ORDERER_ADDRESS -C $channel_name -n $chaincode_name -c $request	
 }
 
+__exec_jobs() {
+    jobs=$1
+    entries=$2
+
+    if [ -z "$jobs" ]; then
+        echo "Provide a number of jobs to run in parallel"
+        exit 1
+    fi
+    if [ -z "$entries" ]; then
+        echo "Provide a number of entries per job"
+        exit 1
+    fi
+
+    echoc "Running in parallel:
+    Jobs: $jobs
+    Entries: $entries
+    " light cyan
+
+    time (
+        trap 'kill 0' SIGINT 
+        for i in $(seq 1 $jobs); do
+            __loader $entries & 
+        done
+
+        for job in `jobs -p`
+        do
+            wait $job || let "FAIL+=1"
+        done
+    )
+
+    echoc "$(( jobs * entries )) entries added" light green
+}
+
+__loader() {
+    export LC_CTYPE=C
+
+    for i in $(seq 1 $1); do 
+        key=$(cat /dev/urandom | tr -cd 'A-Z0-9' | fold -w 14 | head -n 1)
+        value="$i"
+
+        invoke mychannel mychaincode "{\"Args\":[\"put\",\"${key}\",\"${value}\"]}" &>/dev/null
+    done
+}
+
 readonly func="$1"
 shift
 
@@ -594,6 +640,13 @@ elif [ "$func" == "channel" ]; then
         update_channel $@
     elif [ "$param" == "join" ]; then
         join_channel $@
+    fi
+elif [ "$func" == "benchmark" ]; then
+    readonly param="$1"
+    shift
+    if [ "$param" == "load" ]; then
+        check_dependencies deploy
+        __exec_jobs $@
     fi
 else
     help
