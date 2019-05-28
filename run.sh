@@ -113,21 +113,21 @@ install() {
 }
 
 __docker_fabric_pull() {
-  for image in peer orderer ca ccenv tools; do
-      echoc "==> FABRIC IMAGE: $image" light cyan
-      echo
-      docker pull hyperledger/fabric-$image:${FABRIC_VERSION}
-      docker tag hyperledger/fabric-$image:${FABRIC_VERSION} hyperledger/fabric-$image:latest
-  done
+    for image in peer orderer ca ccenv tools; do
+        echoc "==> FABRIC IMAGE: $image" light cyan
+        echo
+        docker pull hyperledger/fabric-$image:${FABRIC_VERSION} || exit 1
+        docker tag hyperledger/fabric-$image:${FABRIC_VERSION} hyperledger/fabric-$image:latest
+    done
 }
 
 __docker_third_party_images_pull() {
-  for image in couchdb kafka zookeeper; do
-      echoc "==> THIRDPARTY DOCKER IMAGE: $image" light cyan
-      echo
-      docker pull hyperledger/fabric-$image:$FABRIC_THIRDPARTY_IMAGE_VERSION
-      docker tag hyperledger/fabric-$image:$FABRIC_THIRDPARTY_IMAGE_VERSION hyperledger/fabric-$image:latest
-  done
+    for image in couchdb kafka zookeeper; do
+        echoc "==> THIRDPARTY DOCKER IMAGE: $image" light cyan
+        echo
+        docker pull hyperledger/fabric-$image:$FABRIC_THIRDPARTY_IMAGE_VERSION || exit 1
+        docker tag hyperledger/fabric-$image:$FABRIC_THIRDPARTY_IMAGE_VERSION hyperledger/fabric-$image:latest
+    done
 }
 
 start_network() {
@@ -211,7 +211,7 @@ stop_network() {
 	echoc "Tearing Fabric network down" dark cyan
     echoc "===========================" dark cyan
 
-    docker-compose -f ${ROOT}/docker-compose.yaml down
+    docker-compose -f ${ROOT}/docker-compose.yaml down || exit 1
 
     echoc "Cleaning docker leftovers containers and images" light green
     docker rm -f $(docker ps -a | awk '($2 ~ /fabric|dev-/) {print $1}') 2>/dev/null
@@ -437,6 +437,19 @@ generate_cryptos() {
 		echoc "Failed to generate crypto material..." dark red
 		exit 1
 	fi
+
+    # copy cryptos into a shared folder available for client applications (sdk)
+    if [ -d "${CRYPTOS_SHARED_PATH}" ]; then
+        echoc "${CRYPTOS_SHARED_PATH} already exists" light yellow
+		read -p "Do you wish to copy the new crypto-config here? [yes/no] " yn
+		case $yn in
+			[YyEeSs]* ) ;;
+			* ) return 0
+    	esac
+        rm -rf ${CRYPTOS_SHARED_PATH}
+        mkdir -p ${CRYPTOS_SHARED_PATH}
+        cp -r ${cryptos_path} ${CRYPTOS_SHARED_PATH}
+    fi
 }
 
 create_channel() {
