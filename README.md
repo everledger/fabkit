@@ -179,6 +179,10 @@ replace (
 )
 ```
 
+In `bitbucket-pipelines.yml`
+
+- Replace `mychaincode` with the chaincode name you have in `.env` at the right of `CHAINCODE_NAME`
+
 - If you want, you can add a link to this repository in your `README`, like:
 
 ```markdown

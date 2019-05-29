@@ -1,4 +1,4 @@
-image: everledgerio/golang:1.11.5-alpine3.9
+image: everledgerio/golang:1.12.5-alpine3.9
 
 pipelines:
   default: # run pipeline for all branches
@@ -6,8 +6,12 @@ pipelines:
      - step:
          name: Run chaincode unit tests
          script:
+           # do this to make go module work with private repo (e.g. evl-lib)
+           - git config --global url."git@bitbucket.org:".insteadOf "https://bitbucket.org/"
            - ./run.sh chaincode test mychaincode
      - step:
          name: Run chaincode build
          script:
-             - ./run.sh chaincode build mychaincode
+           # do this to make go module work with private repo (e.g. evl-lib)
+           - git config --global url."git@bitbucket.org:".insteadOf "https://bitbucket.org/"
+           - ./run.sh chaincode build mychaincode
