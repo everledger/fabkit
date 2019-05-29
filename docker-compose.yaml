@@ -104,7 +104,7 @@ services:
       - CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
     volumes:
         - /var/run/:/host/var/run/
-        - ./chaincode:/opt/gopath/src/github.com/hyperledger/fabric/peer/chaincode
+        - ./chaincode:/opt/gopath/src/${CHAINCODE_REMOTE_PATH}
         - ./network/cryptos:/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto
         - ./network/channels:/opt/gopath/src/github.com/hyperledger/fabric/peer/channels
     depends_on:

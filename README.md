@@ -2,6 +2,8 @@
 
 A basic and simple boilerplate which contains utilities for efficiently writing chaincode and test it in a running network.
 
+#### Note: If this is a fork, follow the special paragraph contained in this README
+
 # Purpose
 
 The codebase of this repository is meant to serve the following scopes:
@@ -120,3 +122,67 @@ time (parallel ./benchmarks.sh {} ::: 20)
 # 8.613 total against 29.893 total
 # ~4 times lower than running jobs with "&"
 ```
+
+## Forks
+
+There are a few changes to make to your new forked repository in order to make it work properly.
+
+- Replace all the occurrences of `bitbucket.org/everledger/fabric-chaincode-boilerplate` with your current go package
+
+- Create a new directory under the `./chaincode` path. It has to match with the name of your final binary install.
+
+  - Run `GO111MODULE=on go mod init` inside this folder
+  - Fix all the external dependencies in import
+  - Run `GO111MODULE=on go mod vendor` in order to download all the packages the chaincode container would not be able to pull (such as private repositories)
+
+In `.env`:
+
+- Replace `CHAINCODE_REMOTE_PATH` with the correct package `GOPATH` and chaincode directory
+
+```bash
+# e.g.
+CHAINCODE_REMOTE_PATH="bitbucket.org/everledger/evl-prov-pfm-cc-wine/chaincode"
+```
+
+- Replace `CHAINCODE_NAME` with the correct directory name path of the chaincode you want to install
+
+```bash
+# e.g.
+CHAINCODE_NAME=wine
+```
+
+In the main `go.mod`:
+
+- Add the reference to the new chaincode path as follows
+
+```go
+// before
+require (
+    bitbucket.org/everledger/evl-prov-pfm-cc-wine/chaincode/mychaincode v0.0.0
+)
+
+replace (
+    bitbucket.org/everledger/evl-prov-pfm-cc-wine/chaincode/mychaincode v0.0.0 => ./chaincode/mychaincode
+)
+```
+
+```go
+// after
+require (
+    bitbucket.org/everledger/evl-prov-pfm-cc-wine/chaincode/mychaincode v0.0.0
+    bitbucket.org/everledger/evl-prov-pfm-cc-wine/chaincode/wine v0.0.0
+)
+
+replace (
+    bitbucket.org/everledger/evl-prov-pfm-cc-wine/chaincode/mychaincode v0.0.0 => ./chaincode/mychaincode
+    bitbucket.org/everledger/evl-prov-pfm-cc-wine/chaincode/wine v0.0.0 => ./chaincode/wine
+)
+```
+
+- If you want, you can add a link to this repository in your `README`, like:
+
+```markdown
+Forked from [fabric-chaincode-boilerplate](https://bitbucket.org/everledger/fabric-chaincode-boilerplate
+```
+
+Et voila'!
