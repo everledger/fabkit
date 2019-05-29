@@ -186,3 +186,15 @@ Forked from [fabric-chaincode-boilerplate](https://bitbucket.org/everledger/fabr
 ```
 
 Et voila'!
+
+## Sync up
+
+In order to sync your repository with the new changes coming from the `main` one, you can do the following:
+
+- Add the `main` repository to the list of your remotes with `git remote add main git@bitbucket.org:everledger/fabric-chaincode-boilerplate.git`
+
+- Check the repository has been added with `git remote -v`
+
+- Pull all the upcoming changes from `main` with `git pull main`
+
+- Merge (or rebase) these new changes into your current branch
