@@ -202,3 +202,24 @@ In order to sync your repository with the new changes coming from the `main` one
 - Pull all the upcoming changes from `main` with `git pull main`
 
 - Merge (or rebase) these new changes into your current branch
+
+```bash
+git merge main/master
+```
+
+Merge will result with **a single commit**.
+
+or
+
+```bash
+git rebase main/master
+# after fixing the conflicts, keep on using the next 2 commands to register the changes and continue with the next commit to attach
+git add .
+git rebase --continue
+# use the following only when there are no changes to apply
+git rebase --skip
+# use the following only if you want to abort the rebasing
+git rebase --abort
+```
+
+Rebase will result with **the list of all the previous commits** applied.
