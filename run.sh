@@ -447,9 +447,9 @@ generate_cryptos() {
 			* ) return 0
     	esac
         rm -rf ${CRYPTOS_SHARED_PATH}
-        mkdir -p ${CRYPTOS_SHARED_PATH}
-        cp -r ${cryptos_path} ${CRYPTOS_SHARED_PATH}
     fi
+    mkdir -p ${CRYPTOS_SHARED_PATH}
+    cp -r ${cryptos_path}/** ${CRYPTOS_SHARED_PATH}
 }
 
 create_channel() {
