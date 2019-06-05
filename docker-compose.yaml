@@ -1,7 +1,10 @@
 version: '2'
 
 networks:
-  basic:
+  default:
+    external:
+      # This value should be the same for fabric network and client
+      name: ${DOCKER_NETWORK}
 
 services:
   ca.example.com:
@@ -15,8 +18,6 @@ services:
       - ./network/cryptos/peerOrganizations/org1.example.com/ca/:/etc/hyperledger/fabric-ca-server-config
     ports:
       - 7054:7054
-    networks:
-      - basic
 
   orderer.example.com:
     container_name: orderer.example.com
@@ -30,8 +31,6 @@ services:
         - ./data/orderer.example.com:/var/hyperledger/production/orderer
     ports:
       - 7050:7050
-    networks:
-      - basic
 
   peer0.org1.example.com:
     container_name: peer0.org1.example.com
@@ -39,6 +38,8 @@ services:
       file: network/base/base.yaml
       service: peer-base
     environment:
+      # Change this value aligning with the defined docker network name
+      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=${DOCKER_NETWORK}
       - CORE_PEER_ID=peer0.org1.example.com
       - CORE_PEER_ADDRESS=peer0.org1.example.com:7051
       - CORE_PEER_LISTENADDRESS=0.0.0.0:7051
@@ -67,8 +68,6 @@ services:
       - 7051:7051
     depends_on:
       - peer0.org1.example.com-couchdb
-    networks:
-      - basic
 
   peer0.org1.example.com-couchdb:
     container_name: peer0.org1.example.com-couchdb
@@ -84,8 +83,6 @@ services:
       - ./data/peer0.org1.example.com-couchdb:/opt/couchdb/data
     ports:
       - 5984:5984
-    networks:
-      - basic
 
   channel-chaincode-util:
     container_name: ${CHAINCODE_UTIL_CONTAINER}
@@ -111,5 +108,3 @@ services:
       - ca.example.com
       - orderer.example.com
       - peer0.org1.example.com
-    networks:
-      - basic

@@ -144,6 +144,8 @@ start_network() {
     generate_genesis $BASE_PATH $CONFIG_PATH $CRYPTOS_PATH $CONFIGTX_PROFILE_NETWORK
     generate_channeltx $CHANNEL_NAME $BASE_PATH $CONFIG_PATH $CRYPTOS_PATH $CONFIGTX_PROFILE_NETWORK $CONFIGTX_PROFILE_CHANNEL $ORG_MSP
     
+    docker network create ${DOCKER_NETWORK} 2>/dev/null
+    
     docker-compose -f ${ROOT}/docker-compose.yaml up -d
 	
     sleep 5
