@@ -27,8 +27,8 @@ help() {
         chaincode build [chaincode_path]                                            : run build and test against the binary file
         chaincode install [chaincode_name] [chaincode_version] [chaincode_path]     : install chaincode on a peer
         chaincode instantiate [chaincode_name] [chaincode_version] [channel_name]   : instantiate chaincode on a peer for an assigned channel
-        chaincode upgrade [channel_name] [chaincode_name] [chaincode_version]       : upgrade chaincode with a new version
-        chaincode query [channel_name] [chaincode_name] [data_in_json]              : run query in the format '{\"Args\":\"queryFunction\",\"key\"]}'
+        chaincode upgrade [chaincode_name] [chaincode_version] [channel_name]       : upgrade chaincode with a new version
+        chaincode query [channel_name] [chaincode_name] [data_in_json]              : run query in the format '{\"Args\":[\"queryFunction\",\"key\"]}'
         chaincode invoke [channel_name] [chaincode_name] [data_in_json]             : run invoke in the format '{\"Args\":[\"invokeFunction\",\"key\",\"value\"]}'
         
         benchmark load [jobs] [entries]                                             : run benchmark bulk loading of [entries] per parallel [jobs] against a running network
@@ -179,9 +179,9 @@ test_chaincode() {
     echoc "===================" dark cyan
 
     if [[ $(check_dependencies test) ]]; then
-        (docker run --rm  -v ${CHAINCODE_PATH}:/usr/src/myapp -w /usr/src/myapp -e CGO_ENABLED=0 ${GOLANG_DOCKER_IMAGE}:${GOLANG_DOCKER_TAG} sh -c "go test ./${chaincode_name}/... -v") || exit 1
+        (docker run --rm  -v ${CHAINCODE_PATH}:/usr/src/myapp -w /usr/src/myapp -e CGO_ENABLED=0 -e CORE_CHAINCODE_LOGGING_LEVEL=debug ${GOLANG_DOCKER_IMAGE}:${GOLANG_DOCKER_TAG} sh -c "go test ./${chaincode_name}/... -v") || exit 1
     else
-	    (cd $CHAINCODE_PATH && CGO_ENABLED=0 go test ./${chaincode_name}/... -v) || exit 1
+	    (cd $CHAINCODE_PATH && CORE_CHAINCODE_LOGGING_LEVEL=debug CGO_ENABLED=0 go test ./${chaincode_name}/... -v) || exit 1
     fi
 
     echoc "Test passed!" light green
@@ -416,39 +416,43 @@ generate_cryptos() {
         echoc "crypto-config already exists" light yellow
 		read -p "Do you wish to re-generate crypto-config? [yes/no] " yn
 		case $yn in
-			[YyEeSs]* ) ;;
-			* ) return 0
+			[YyEeSs]* ) 
+
+            rm -rf $cryptos_path
+            mkdir -p $cryptos_path
+
+            echoc "==================" dark cyan
+            echoc "Generating cryptos" dark cyan
+            echoc "==================" dark cyan
+            echo
+            echoc "Config path: $config_path" light cyan
+            echoc "Cryptos path: $cryptos_path" light cyan
+
+            # generate crypto material
+            docker run --rm -v ${config_path}/crypto-config.yaml:/crypto-config.yaml \
+                            -v ${cryptos_path}:/crypto-config \
+                            hyperledger/fabric-tools:${FABRIC_VERSION} \
+                            cryptogen generate --config=/crypto-config.yaml --output=/crypto-config
+            if [ "$?" -ne 0 ]; then
+                echoc "Failed to generate crypto material..." dark red
+                exit 1
+            fi
+            
+            ;;
+			* ) ;;
     	esac
-        rm -rf $cryptos_path
-        mkdir -p $cryptos_path
     fi
-
-    echoc "==================" dark cyan
-    echoc "Generating cryptos" dark cyan
-    echoc "==================" dark cyan
-    echo
-	echoc "Config path: $config_path" light cyan
-	echoc "Cryptos path: $cryptos_path" light cyan
-
-	# generate crypto material
-	docker run --rm -v ${config_path}/crypto-config.yaml:/crypto-config.yaml \
-                    -v ${cryptos_path}:/crypto-config \
-                    hyperledger/fabric-tools:${FABRIC_VERSION} \
-                    cryptogen generate --config=/crypto-config.yaml --output=/crypto-config
-	if [ "$?" -ne 0 ]; then
-		echoc "Failed to generate crypto material..." dark red
-		exit 1
-	fi
-
+    
     # copy cryptos into a shared folder available for client applications (sdk)
     if [ -d "${CRYPTOS_SHARED_PATH}" ]; then
-        echoc "${CRYPTOS_SHARED_PATH} already exists" light yellow
+        echoc "Shared crypto-config directory ${CRYPTOS_SHARED_PATH} already exists" light yellow
 		read -p "Do you wish to copy the new crypto-config here? [yes/no] " yn
 		case $yn in
-			[YyEeSs]* ) ;;
+			[YyEeSs]* ) 
+                rm -rf ${CRYPTOS_SHARED_PATH}
+            ;;
 			* ) return 0
     	esac
-        rm -rf ${CRYPTOS_SHARED_PATH}
     fi
     mkdir -p ${CRYPTOS_SHARED_PATH}
     cp -r ${cryptos_path}/** ${CRYPTOS_SHARED_PATH}
@@ -501,7 +505,7 @@ install_chaincode() {
 	local chaincode_version="$2"
 	local chaincode_path="$3"
 
-    echoc "Installig chaincode $chaincode_name version $chaincode_version from path $chaincode_path" light cyan
+    echoc "Installing chaincode $chaincode_name version $chaincode_version from path $chaincode_path" light cyan
     docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode install -n $chaincode_name -v $chaincode_version -p $chaincode_path
 }
 
@@ -529,9 +533,9 @@ upgrade_chaincode() {
 	local chaincode_version="$2"
 	local channel_name="$3"
 
-	build_chaincode
-	test_chaincode
-	install_chaincode $chaincode_name $chaincode_version $channel_name
+	build_chaincode $chaincode_name
+	test_chaincode $chaincode_name
+	install_chaincode $chaincode_name $chaincode_version ${CHAINCODE_REMOTE_PATH}/${chaincode_name}
 
     echoc "Upgrading chaincode $chaincode_name to version $chaincode_version into channel $chainnel_name" light cyan
 	docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode upgrade -n $chaincode_name -v $chaincode_version -C $channel_name -c '{"Args":[]}'
