@@ -175,7 +175,7 @@ test_chaincode() {
     local chaincode_name="${1}"
 
     echoc "===================" dark cyan
-	echoc "Unit test chaincode" dakr cyan
+	echoc "Unit test chaincode" dark cyan
     echoc "===================" dark cyan
 
     if [[ $(check_dependencies test) ]]; then
@@ -537,7 +537,7 @@ upgrade_chaincode() {
 	test_chaincode $chaincode_name
 	install_chaincode $chaincode_name $chaincode_version ${CHAINCODE_REMOTE_PATH}/${chaincode_name}
 
-    echoc "Upgrading chaincode $chaincode_name to version $chaincode_version into channel $chainnel_name" light cyan
+    echoc "Upgrading chaincode $chaincode_name to version $chaincode_version into channel $channel_name" light cyan
 	docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode upgrade -n $chaincode_name -v $chaincode_version -C $channel_name -c '{"Args":[]}'
 }
 
