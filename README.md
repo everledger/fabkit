@@ -21,6 +21,7 @@ The codebase of this repository is meant to serve the following scopes:
 ## Install
 
 Install all the docker images needed:
+
 ```bash
 ./run.sh install
 ```
@@ -48,6 +49,14 @@ It will execute the following functions:
 Afterwards, the network will be ready to accept `invoke` and `query` functions.
 
 Run `./run.sh help` for the complete list of functionalities.
+
+## Restart a previously running network
+
+The following command will restart a Hyperledgre Fabric network only if a _data_ directory is found:
+
+```bash
+./run.sh restart
+```
 
 ## Upgrade chaincode
 

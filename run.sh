@@ -12,6 +12,7 @@ help() {
         help                                                                        : this help
         install                                                                     : install all the dependencies and docker images
         start                                                                       : start the blockchain network and initialize it
+        restart                                                                     : restart a previously running the blockchain network
         stop                                                                        : stop the blockchain network and remove all the docker containers
 
         channel create [channel_name]                                               : generate channel configuration file
@@ -131,14 +132,26 @@ __docker_third_party_images_pull() {
 }
 
 start_network() {
-	build_chaincode $CHAINCODE_NAME
-    test_chaincode $CHAINCODE_NAME
-    stop_network
-
     echoc "========================" dark cyan
 	echoc "Starting Fabric network" dark cyan
     echoc "========================" dark cyan
     echo
+
+	if [ -d "$DATA_PATH" ]; then
+        echoc "Found data directory: ${DATA_PATH}" light yellow
+		read -p "Do you wish to restart the network and reuse this data? [yes/no] " yn
+		case $yn in
+			[YyEeSs]* ) 
+                restart_network
+                return 0
+                ;;
+			* ) 
+                stop_network
+                build_chaincode $CHAINCODE_NAME
+                test_chaincode $CHAINCODE_NAME
+                ;;
+    	esac
+    fi
 
 	generate_cryptos $CONFIG_PATH $CRYPTOS_PATH
     generate_genesis $BASE_PATH $CONFIG_PATH $CRYPTOS_PATH $CONFIGTX_PROFILE_NETWORK
@@ -151,6 +164,45 @@ start_network() {
     sleep 5
 	
     initialize_network
+}
+
+restart_network() {
+    echoc "=========================" dark cyan
+	echoc "Restarting Fabric network" dark cyan
+    echoc "=========================" dark cyan
+    echo
+
+    if [ ! -d "$DATA_PATH" ]; then
+        echoc "Data directory not found in: ${DATA_PATH}. Run a normal start." light red
+        exit 1
+    fi
+    
+    docker-compose -f ${ROOT}/docker-compose.yaml up --force-recreate -d
+
+    echoc "The chaincode container will be instantiated automatically once the peer executes the first invoke or query" light yellow
+}
+
+stop_network() {
+    echoc "===========================" dark cyan
+	echoc "Tearing Fabric network down" dark cyan
+    echoc "===========================" dark cyan
+
+    docker-compose -f ${ROOT}/docker-compose.yaml down || exit 1
+
+    echoc "Cleaning docker leftovers containers and images" light green
+    docker rm -f $(docker ps -a | awk '($2 ~ /fabric|dev-/) {print $1}') 2>/dev/null
+    docker rmi -f $(docker images -qf "dangling=true") 2>/dev/null
+    docker rmi -f $(docker images | awk '($1 ~ /^<none>|dev-/) {print $3}') 2>/dev/null
+
+    if [ -d "$DATA_PATH" ]; then
+        echoc "!!!!! ATTENTION !!!!!" light red
+        echoc "Found data directory: ${DATA_PATH}" light red
+		read -p "Do you wish to remove this data? [yes/no] " yn
+		case $yn in
+			[YyEeSs]* ) rm -rf $DATA_PATH ;;
+			* ) return 0
+    	esac
+    fi
 }
 
 initialize_network() {
@@ -206,30 +258,6 @@ build_chaincode() {
     fi
 
     echoc "Build passed!" light green
-}
-
-stop_network() {
-    echoc "===========================" dark cyan
-	echoc "Tearing Fabric network down" dark cyan
-    echoc "===========================" dark cyan
-
-    docker-compose -f ${ROOT}/docker-compose.yaml down || exit 1
-
-    echoc "Cleaning docker leftovers containers and images" light green
-    docker rm -f $(docker ps -a | awk '($2 ~ /fabric|dev-/) {print $1}') 2>/dev/null
-    docker rmi -f $(docker images -qf "dangling=true") 2>/dev/null
-    docker rmi -f $(docker images | awk '($1 ~ /^<none>|dev-/) {print $3}') 2>/dev/null
-
-    data_path="${ROOT}/data"
-    if [ -d "$data_path" ]; then
-        echoc "!!!!! ATTENTION !!!!!" light red
-        echoc "Found data directory: ${data_path}" light red
-		read -p "Do you wish to remove this data? [yes/no] " yn
-		case $yn in
-			[YyEeSs]* ) rm -rf $data_path ;;
-			* ) return 0
-    	esac
-    fi
 }
 
 # generate genesis block
@@ -623,6 +651,9 @@ if [ "$func" == "install" ]; then
 elif [ "$func" == "start" ]; then
     check_dependencies deploy
     start_network
+elif [ "$func" == "restart" ]; then
+    check_dependencies deploy
+    restart_network
 elif [ "$func" == "stop" ]; then
     stop_network
 elif [ "$func" == "chaincode" ]; then
@@ -642,6 +673,9 @@ elif [ "$func" == "chaincode" ]; then
         query $@
     elif [ "$param" == "invoke" ]; then
         invoke $@
+    else
+        help
+        exit 1
     fi
 elif [ "$func" == "generate_cryptos" ]; then
     readonly param="$1"
@@ -652,6 +686,9 @@ elif [ "$func" == "generate_cryptos" ]; then
         generate_genesis $@
     elif [ "$param" == "channeltx" ]; then
         generate_channeltx $@
+    else
+        help
+        exit 1
     fi
 elif [ "$func" == "channel" ]; then
     readonly param="$1"
@@ -662,6 +699,9 @@ elif [ "$func" == "channel" ]; then
         update_channel $@
     elif [ "$param" == "join" ]; then
         join_channel $@
+    else
+        help
+        exit 1
     fi
 elif [ "$func" == "benchmark" ]; then
     readonly param="$1"
@@ -669,6 +709,9 @@ elif [ "$func" == "benchmark" ]; then
     if [ "$param" == "load" ]; then
         check_dependencies deploy
         __exec_jobs $@
+    else
+        help
+        exit 1
     fi
 else
     help

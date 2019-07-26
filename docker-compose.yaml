@@ -84,14 +84,14 @@ services:
     ports:
       - 5984:5984
 
-  channel-chaincode-util:
+  fabric-cli:
     container_name: ${CHAINCODE_UTIL_CONTAINER}
     extends:
       file: network/base/base.yaml
       service: tools-base
     tty: true
     environment:
-      - CORE_PEER_ID=cli
+      - CORE_PEER_ID=fabric-cli
       - CORE_PEER_ADDRESS=peer0.org1.example.com:7051
       - CORE_PEER_LOCALMSPID=Org1MSP
       - CORE_PEER_TLS_ENABLED=false
