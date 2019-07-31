@@ -60,10 +60,12 @@ services:
       - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=
       - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=
     volumes:
-        - /var/run/:/host/var/run/
-        - ./network/cryptos/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp:/etc/hyperledger/fabric/msp
-        - ./network/cryptos/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls:/etc/hyperledger/fabric/tls
-        - ./data/peer0.org1.example.com:/var/hyperledger/production
+        # trick: for security reasons some services such as Bitbucket Pipeline will not allow to mount volumes 
+        # which are sitting outside the cloned/project directory
+      - ./docker.sock/:/host/var/run/
+      - ./network/cryptos/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp:/etc/hyperledger/fabric/msp
+      - ./network/cryptos/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls:/etc/hyperledger/fabric/tls
+      - ./data/peer0.org1.example.com:/var/hyperledger/production
     ports:
       - 7051:7051
     depends_on:
@@ -100,10 +102,12 @@ services:
       - CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
       - CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
     volumes:
-        - /var/run/:/host/var/run/
-        - ./chaincode:/opt/gopath/src/${CHAINCODE_REMOTE_PATH}
-        - ./network/cryptos:/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto
-        - ./network/channels:/opt/gopath/src/github.com/hyperledger/fabric/peer/channels
+        # trick: for security reasons some services such as Bitbucket Pipeline will not allow to mount volumes 
+        # which are sitting outside the cloned/project directory
+      - ./docker.sock/:/host/var/run/
+      - ./chaincode:/opt/gopath/src/${CHAINCODE_REMOTE_PATH}
+      - ./network/cryptos:/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto
+      - ./network/channels:/opt/gopath/src/github.com/hyperledger/fabric/peer/channels
     depends_on:
       - ca.example.com
       - orderer.example.com

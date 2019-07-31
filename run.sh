@@ -137,20 +137,27 @@ start_network() {
     echoc "========================" dark cyan
     echo
 
-	if [ -d "$DATA_PATH" ]; then
-        echoc "Found data directory: ${DATA_PATH}" light yellow
-		read -p "Do you wish to restart the network and reuse this data? [yes/no] " yn
-		case $yn in
-			[YyEeSs]* ) 
-                restart_network
-                return 0
-                ;;
-			* ) 
-                stop_network
-                build_chaincode $CHAINCODE_NAME
-                test_chaincode $CHAINCODE_NAME
-                ;;
-    	esac
+    # Note: this trick may allow the network to work also in strict-security platform
+    rm -rf ./docker.sock 2>/dev/null && ln -sf /var/run ./docker.sock
+    ls -la ./docker.sock/
+
+    if [ ! "${1}" == "-ci" ]; then
+        if [ -d "$DATA_PATH" ]; then
+            echoc "Found data directory: ${DATA_PATH}" light yellow
+            read -p "Do you wish to restart the network and reuse this data? [yes/no] " yn
+            case $yn in
+                [YyEeSs]* ) 
+                    restart_network
+                    return 0
+                    ;;
+                * ) ;;
+            esac
+        fi
+
+        stop_network
+
+        build_chaincode $CHAINCODE_NAME
+        test_chaincode $CHAINCODE_NAME
     fi
 
 	generate_cryptos $CONFIG_PATH $CRYPTOS_PATH
@@ -159,7 +166,7 @@ start_network() {
     
     docker network create ${DOCKER_NETWORK} 2>/dev/null
     
-    docker-compose -f ${ROOT}/docker-compose.yaml up -d
+    docker-compose -f ${ROOT}/docker-compose.yaml up -d || exit 1
 	
     sleep 5
 	
@@ -177,7 +184,7 @@ restart_network() {
         exit 1
     fi
     
-    docker-compose -f ${ROOT}/docker-compose.yaml up --force-recreate -d
+    docker-compose -f ${ROOT}/docker-compose.yaml up --force-recreate -d || exit 1
 
     echoc "The chaincode container will be instantiated automatically once the peer executes the first invoke or query" light yellow
 }
@@ -440,35 +447,34 @@ generate_cryptos() {
     local config_path="$1"
     local cryptos_path="$2"
 
+    echoc "==================" dark cyan
+    echoc "Generating cryptos" dark cyan
+    echoc "==================" dark cyan
+    echo
+    echoc "Config path: $config_path" light cyan
+    echoc "Cryptos path: $cryptos_path" light cyan
+
     if [ -d "$cryptos_path" ]; then
         echoc "crypto-config already exists" light yellow
-		read -p "Do you wish to re-generate crypto-config? [yes/no] " yn
+		read -p "Do you wish to remove crypto-config? [yes/no] " yn
 		case $yn in
-			[YyEeSs]* ) 
-
-            rm -rf $cryptos_path
-            mkdir -p $cryptos_path
-
-            echoc "==================" dark cyan
-            echoc "Generating cryptos" dark cyan
-            echoc "==================" dark cyan
-            echo
-            echoc "Config path: $config_path" light cyan
-            echoc "Cryptos path: $cryptos_path" light cyan
-
-            # generate crypto material
-            docker run --rm -v ${config_path}/crypto-config.yaml:/crypto-config.yaml \
-                            -v ${cryptos_path}:/crypto-config \
-                            hyperledger/fabric-tools:${FABRIC_VERSION} \
-                            cryptogen generate --config=/crypto-config.yaml --output=/crypto-config
-            if [ "$?" -ne 0 ]; then
-                echoc "Failed to generate crypto material..." dark red
-                exit 1
-            fi
-            
-            ;;
+			[YyEeSs]* ) rm -rf $cryptos_path ;;
 			* ) ;;
     	esac
+    fi
+
+    if [ ! -d "$cryptos_path" ]; then
+        mkdir -p $cryptos_path
+
+        # generate crypto material
+        docker run --rm -v ${config_path}/crypto-config.yaml:/crypto-config.yaml \
+                        -v ${cryptos_path}:/crypto-config \
+                        hyperledger/fabric-tools:${FABRIC_VERSION} \
+                        cryptogen generate --config=/crypto-config.yaml --output=/crypto-config
+        if [ "$?" -ne 0 ]; then
+            echoc "Failed to generate crypto material..." dark red
+            exit 1
+        fi
     fi
     
     # copy cryptos into a shared folder available for client applications (sdk)
@@ -650,7 +656,7 @@ if [ "$func" == "install" ]; then
     install
 elif [ "$func" == "start" ]; then
     check_dependencies deploy
-    start_network
+    start_network $@
 elif [ "$func" == "restart" ]; then
     check_dependencies deploy
     restart_network

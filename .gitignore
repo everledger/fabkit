@@ -9,6 +9,7 @@ logs/
 network/cryptos/
 network/channels/
 data/
+docker.sock
 
 .DS_Store
 *.tar*
