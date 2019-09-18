@@ -31,7 +31,6 @@ func (suite *ChaincodeTS) TestInit() {
 }
 
 func (suite *ChaincodeTS) TestPut() {
-
 	testKey := "key1"
 	testValue := "value1"
 	// call put
@@ -51,11 +50,11 @@ func (suite *ChaincodeTS) TestPut() {
 // to run just this test
 // go test -v -run TestProcurementSuite/TestBulkPut
 func (suite *ChaincodeTS) TestBulkPut() {
-
-	kvList := make([]KV, 0)
-	kvList = append(kvList, KV{Key: "key1", Value: "value1"})
-	kvList = append(kvList, KV{Key: "key2", Value: "value2"})
-	kvList = append(kvList, KV{Key: "key3", Value: "value3"})
+	kvList := []KV{
+		KV{Key: "key1", Value: "value1"},
+		KV{Key: "key2", Value: "value2"},
+		KV{Key: "key3", Value: "value3"},
+	}
 
 	kvListJson, _ := json.Marshal(&kvList)
 	fmt.Println("json list of KV ", string(kvListJson))
@@ -70,6 +69,32 @@ func (suite *ChaincodeTS) TestBulkPut() {
 	for _, kv := range kvList {
 		val, _ := suite.stub.GetState(kv.Key)
 		assert.Equal(suite.T(), kv.Value, string(val), "Value is not correctly put")
+	}
+}
+
+func (suite *ChaincodeTS) TestPutAll() {
+	kvList := []string{
+		"key1", "value1", "key2", "value2", "key3", "value3",
+	}
+
+	// call putAll
+	result := suite.stub.MockInvoke("1", [][]byte{
+		[]byte("putAll"),
+		[]byte(kvList[0]),
+		[]byte(kvList[1]),
+		[]byte(kvList[2]),
+		[]byte(kvList[3]),
+		[]byte(kvList[4]),
+		[]byte(kvList[5])})
+
+	assert.EqualValues(suite.T(), shim.OK, result.Status, "putAll failed")
+
+	// get the underlying state value to verify
+	for i := 0; i < len(kvList); i=i+2 {
+		if i <= len(kvList)-2 {
+			val, _ := suite.stub.GetState(kvList[i])
+			assert.Equal(suite.T(), kvList[i+1], string(val), "Value is not correctly put")
+		}
 	}
 }
 
