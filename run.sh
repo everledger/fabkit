@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 source $(pwd)/.env
 
@@ -237,9 +237,9 @@ test_chaincode() {
     echoc "===================" dark cyan
 
     if [[ $(check_dependencies test) ]]; then
-        (docker run --rm  -v ${CHAINCODE_PATH}:/usr/src/myapp -w /usr/src/myapp -e CGO_ENABLED=0 -e CORE_CHAINCODE_LOGGING_LEVEL=debug -e GO111MODULE=off ${GOLANG_DOCKER_IMAGE}:${GOLANG_DOCKER_TAG} sh -c "go test ./${chaincode_name}/... -v") || exit 1
+        (docker run --rm  -v ${CHAINCODE_PATH}:/usr/src/myapp -w /usr/src/myapp/${chaincode_name} -e CGO_ENABLED=0 -e CORE_CHAINCODE_LOGGING_LEVEL=debug ${GOLANG_DOCKER_IMAGE}:${GOLANG_DOCKER_TAG} sh -c "go test ./... -v") || exit 1
     else
-	    (cd $CHAINCODE_PATH && CORE_CHAINCODE_LOGGING_LEVEL=debug CGO_ENABLED=0 GO111MODULE=off go test ./${chaincode_name}/... -v) || exit 1
+	    (cd ${CHAINCODE_PATH}/${chaincode_name} && CORE_CHAINCODE_LOGGING_LEVEL=debug CGO_ENABLED=0 go test ./... -v) || exit 1
     fi
 
     echoc "Test passed!" light green
