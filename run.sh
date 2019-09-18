@@ -139,7 +139,6 @@ start_network() {
 
     # Note: this trick may allow the network to work also in strict-security platform
     rm -rf ./docker.sock 2>/dev/null && ln -sf /var/run ./docker.sock
-    ls -la ./docker.sock/
 
     if [ ! "${1}" == "-ci" ]; then
         if [ -d "$DATA_PATH" ]; then
@@ -238,9 +237,9 @@ test_chaincode() {
     echoc "===================" dark cyan
 
     if [[ $(check_dependencies test) ]]; then
-        (docker run --rm  -v ${CHAINCODE_PATH}:/usr/src/myapp -w /usr/src/myapp -e CGO_ENABLED=0 -e CORE_CHAINCODE_LOGGING_LEVEL=debug ${GOLANG_DOCKER_IMAGE}:${GOLANG_DOCKER_TAG} sh -c "go test ./${chaincode_name}/... -v") || exit 1
+        (docker run --rm  -v ${CHAINCODE_PATH}:/usr/src/myapp -w /usr/src/myapp/${chaincode_name} -e CGO_ENABLED=0 -e CORE_CHAINCODE_LOGGING_LEVEL=debug ${GOLANG_DOCKER_IMAGE}:${GOLANG_DOCKER_TAG} sh -c "go test ./... -v") || exit 1
     else
-	    (cd $CHAINCODE_PATH && CORE_CHAINCODE_LOGGING_LEVEL=debug CGO_ENABLED=0 go test ./${chaincode_name}/... -v) || exit 1
+	    (cd ${CHAINCODE_PATH}/${chaincode_name} && CORE_CHAINCODE_LOGGING_LEVEL=debug CGO_ENABLED=0 go test ./... -v) || exit 1
     fi
 
     echoc "Test passed!" light green
@@ -585,7 +584,7 @@ invoke() {
 	local chaincode_name="$2"
 	local request="$3"
 
-	docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode invoke -o $ORDERER_ADDRESS -C $channel_name -n $chaincode_name -c $request
+	docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode invoke -o $ORDERER_ADDRESS -C $channel_name -n $chaincode_name -c "$request"
 }
 
 query() {
@@ -598,7 +597,7 @@ query() {
 	local chaincode_name="$2"
 	local request="$3"
 
-	docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode query -o $ORDERER_ADDRESS -C $channel_name -n $chaincode_name -c $request	
+	docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode query -o $ORDERER_ADDRESS -C $channel_name -n $chaincode_name -c "$request"
 }
 
 __exec_jobs() {
@@ -656,7 +655,7 @@ if [ "$func" == "install" ]; then
     install
 elif [ "$func" == "start" ]; then
     check_dependencies deploy
-    start_network $@
+    start_network "$@"
 elif [ "$func" == "restart" ]; then
     check_dependencies deploy
     restart_network
@@ -666,19 +665,19 @@ elif [ "$func" == "chaincode" ]; then
     readonly param="$1"
     shift
     if [ "$param" == "install" ]; then
-        install_chaincode $@
+        install_chaincode "$@"
     elif [ "$param" == "instantiate" ]; then
-        instantiate_chaincode $@
+        instantiate_chaincode "$@"
     elif [ "$param" == "upgrade" ]; then
-        upgrade_chaincode $@
+        upgrade_chaincode "$@"
     elif [ "$param" == "test" ]; then
-        test_chaincode $@
+        test_chaincode "$@"
     elif [ "$param" == "build" ]; then
-        build_chaincode $@
+        build_chaincode "$@"
     elif [ "$param" == "query" ]; then
-        query $@
+        query "$@"
     elif [ "$param" == "invoke" ]; then
-        invoke $@
+        invoke "$@"
     else
         help
         exit 1
@@ -687,11 +686,11 @@ elif [ "$func" == "generate_cryptos" ]; then
     readonly param="$1"
     shift
     if [ "$param" == "cryptos" ]; then
-        generate_cryptos $@
+        generate_cryptos "$@"
     elif [ "$param" == "genesis" ]; then
-        generate_genesis $@
+        generate_genesis "$@"
     elif [ "$param" == "channeltx" ]; then
-        generate_channeltx $@
+        generate_channeltx "$@"
     else
         help
         exit 1
@@ -700,11 +699,11 @@ elif [ "$func" == "channel" ]; then
     readonly param="$1"
     shift
     if [ "$param" == "create" ]; then
-        create_channel $@
+        create_channel "$@"
     elif [ "$param" == "update" ]; then
-        update_channel $@
+        update_channel "$@"
     elif [ "$param" == "join" ]; then
-        join_channel $@
+        join_channel "$@"
     else
         help
         exit 1
@@ -714,7 +713,7 @@ elif [ "$func" == "benchmark" ]; then
     shift
     if [ "$param" == "load" ]; then
         check_dependencies deploy
-        __exec_jobs $@
+        __exec_jobs "$@"
     else
         help
         exit 1

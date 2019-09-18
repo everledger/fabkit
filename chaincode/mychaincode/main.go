@@ -44,6 +44,8 @@ func (c *Chaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		return c.put(stub, args)
 	} else if function == "bulkPut" {
 		return c.bulkPut(stub, args)
+	} else if function == "putAll" {
+		return c.putAll(stub, args)
 	} else if function == "bulkCreateCompositeKey" {
 		return c.bulkCreateCompositeKey(stub, args)
 	} else if function == "get" {
@@ -113,6 +115,24 @@ func (c *Chaincode) bulkPut(stub shim.ChaincodeStubInterface, args []string) pb.
 	if isError {
 		return shim.Error("There was one or more errors occurred when putting keys")
 	}
+	return shim.Success(nil)
+}
+
+func (c *Chaincode) putAll(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+	// throw an error in case the array does not have an even number of elements (key-value)
+	if len(args)%2 != 0 {
+		return shim.Error("Array should have even length")
+	}
+
+	for i := 0; i < len(args); i++ {
+		// avoiding array out-of-bound error
+		if i <= len(args)-2 {
+			if err := stub.PutState(args[i], []byte(args[i+1])); err != nil {
+				return shim.Error("There was one or more errors occurred when putting keys")
+			}
+		}
+	}
+
 	return shim.Success(nil)
 }
 

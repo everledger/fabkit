@@ -24,6 +24,5 @@ require (
 	go.uber.org/zap v1.10.0 // indirect
 	golang.org/x/net v0.0.0-20190514140710-3ec191127204 // indirect
 	golang.org/x/text v0.3.2 // indirect
-	google.golang.org/genproto v0.0.0-20180831171423-11092d34479b // indirect
 	gopkg.in/jcmturner/goidentity.v3 v3.0.0 // indirect
 )
