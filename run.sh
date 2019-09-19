@@ -10,10 +10,13 @@ help() {
         commands:
 
         help                                                                        : this help
+        
         install                                                                     : install all the dependencies and docker images
         start                                                                       : start the blockchain network and initialize it
         restart                                                                     : restart a previously running the blockchain network
         stop                                                                        : stop the blockchain network and remove all the docker containers
+
+        explore                                                                     : run the blockchain explorer user-interface
 
         channel create [channel_name]                                               : generate channel configuration file
         channel update [channel_name] [org]                                         : update channel with anchor peers
@@ -195,6 +198,10 @@ stop_network() {
 
     docker-compose -f ${ROOT}/docker-compose.yaml down || exit 1
 
+    if [[ $(docker ps | grep "hyperledger/explorer") ]]; then
+        stop_explorer
+    fi
+
     echoc "Cleaning docker leftovers containers and images" light green
     docker rm -f $(docker ps -a | awk '($2 ~ /fabric|dev-/) {print $1}') 2>/dev/null
     docker rmi -f $(docker images -qf "dangling=true") 2>/dev/null
@@ -222,6 +229,32 @@ initialize_network() {
 	update_channel $CHANNEL_NAME $ORG_MSP
 	install_chaincode $CHAINCODE_NAME $CHAINCODE_VERSION ${CHAINCODE_REMOTE_PATH}/${CHAINCODE_NAME}
 	instantiate_chaincode $CHAINCODE_NAME $CHAINCODE_VERSION $CHANNEL_NAME
+}
+
+start_explorer() {
+    echoc "============================" dark cyan
+	echoc "Starting Blockchain Explorer" dark cyan
+    echoc "============================" dark cyan
+    echo
+
+    if [[ ! $(docker ps | grep fabric) ]]; then
+        echoc "No Fabric networks running. First launch ./run.sh start" dark red
+		exit 1
+    fi
+
+    docker-compose -f ${EXPLORER_PATH}/docker-compose.yaml up -d || exit 1
+
+    echoc "Blockchain Explorer default user is admin/adminpw" light yellow
+    echoc "Grafana default user is admin/admin" light yellow
+}
+
+stop_explorer() {
+    echoc "================================" dark cyan
+	echoc "Tearing Blockchain Explorer down" dark cyan
+    echoc "================================" dark cyan
+    echo
+
+    docker-compose -f ${EXPLORER_PATH}/docker-compose.yaml down || exit 1
 }
 
 test_chaincode() {
@@ -661,6 +694,9 @@ elif [ "$func" == "restart" ]; then
     restart_network
 elif [ "$func" == "stop" ]; then
     stop_network
+elif [ "$func" == "explore" ]; then
+    check_dependencies deploy
+    start_explorer
 elif [ "$func" == "chaincode" ]; then
     readonly param="$1"
     shift
