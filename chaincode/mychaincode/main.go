@@ -124,9 +124,11 @@ func (c *Chaincode) putAll(stub shim.ChaincodeStubInterface, args []string) pb.R
 		return shim.Error("Array should have even length")
 	}
 
-	for i := 0; i < len(args); i++ {
+	for i := 0; i < len(args); i = i + 2 {
 		// avoiding array out-of-bound error
 		if i <= len(args)-2 {
+			fmt.Println("key", args[i])
+			fmt.Println("value", args[i+1])
 			if err := stub.PutState(args[i], []byte(args[i+1])); err != nil {
 				return shim.Error("There was one or more errors occurred when putting keys")
 			}
