@@ -22,10 +22,8 @@ func (suite *ChaincodeTS) checkValueExists(key string, value string) {
 
 func (suite *ChaincodeTS) checkValuesExist(kvList []string) {
 	// get the underlying state value to verify
-	for i := 0; i < len(kvList); i = i + 2 {
-		if i <= len(kvList)-2 {
-			suite.checkValueExists(kvList[i], kvList[i+1])
-		}
+	for i := 0; i < len(kvList)-1; i = i + 2 {
+		suite.checkValueExists(kvList[i], kvList[i+1])
 	}
 }
 
@@ -36,10 +34,8 @@ func (suite *ChaincodeTS) checkValueNotExist(key string) {
 
 func (suite *ChaincodeTS) checkValuesNotExist(kvList []string) {
 	// get the underlying state value to verify
-	for i := 0; i < len(kvList); i = i + 2 {
-		if i <= len(kvList)-2 {
-			suite.checkValueNotExist(kvList[i])
-		}
+	for i := 0; i < len(kvList)-1; i = i + 2 {
+		suite.checkValueNotExist(kvList[i])
 	}
 }
 
@@ -287,7 +283,7 @@ func (suite *ChaincodeTS) TestDeleteAll() {
 		[]byte(kvList[3]),
 		[]byte(kvList[4]),
 		[]byte(kvList[5])})
-	
+
 	// delete key
 	result := suite.stub.MockInvoke("1", [][]byte{
 		[]byte("deleteAll"),
@@ -298,7 +294,7 @@ func (suite *ChaincodeTS) TestDeleteAll() {
 		[]byte(kvList[4]),
 		[]byte(kvList[5])})
 	assert.EqualValues(suite.T(), shim.OK, result.Status, "Values are not correctly deleted")
-	
+
 	// get the underlying state value to verify
 	suite.checkValuesNotExist(kvList)
 }
