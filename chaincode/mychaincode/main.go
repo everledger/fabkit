@@ -60,23 +60,13 @@ func (c *Chaincode) Invoke(stub shim.ChaincodeStubInterface) pb.Response {
 		return c.query(stub, args)
 	} else if function == "delete" {
 		return c.delete(stub, args)
+	} else if function == "deleteAll" {
+		return c.deleteAll(stub, args)
 	} else if function == "getHistoryForKey" {
 		return c.getHistoryForKey(stub, args)
 	}
 
 	return shim.Error("Invalid invoke function name.")
-}
-
-func (c *Chaincode) delete(stub shim.ChaincodeStubInterface, args []string) pb.Response {
-	key := args[0]
-	fmt.Printf("Deleting key='%s'\n", key)
-
-	err := stub.DelState(key)
-	if err != nil {
-		return shim.Error(err.Error())
-	}
-
-	return shim.Success(nil)
 }
 
 func (c *Chaincode) put(stub shim.ChaincodeStubInterface, args []string) pb.Response {
@@ -99,8 +89,7 @@ func (c *Chaincode) bulkPut(stub shim.ChaincodeStubInterface, args []string) pb.
 
 	err := json.Unmarshal([]byte(kvListJsonString), &kvList)
 	if err != nil {
-		fmt.Println("Error unmarshalling the kv list")
-		return shim.Error(err.Error())
+		return shim.Error("Error unmarshalling the kv list. " + err.Error())
 	}
 	isError := false
 	for _, kv := range kvList {
@@ -124,14 +113,12 @@ func (c *Chaincode) putAll(stub shim.ChaincodeStubInterface, args []string) pb.R
 		return shim.Error("Array should have even length")
 	}
 
-	for i := 0; i < len(args); i = i + 2 {
+	for i := 0; i < len(args)-1; i = i + 2 {
 		// avoiding array out-of-bound error
-		if i <= len(args)-2 {
-			fmt.Println("key", args[i])
-			fmt.Println("value", args[i+1])
-			if err := stub.PutState(args[i], []byte(args[i+1])); err != nil {
-				return shim.Error("There was one or more errors occurred when putting keys")
-			}
+		fmt.Println("key", args[i])
+		fmt.Println("value", args[i+1])
+		if err := stub.PutState(args[i], []byte(args[i+1])); err != nil {
+			return shim.Error("There was one or more errors occurred when putting keys")
 		}
 	}
 
@@ -415,6 +402,29 @@ func (c *Chaincode) getHistoryForKey(stub shim.ChaincodeStubInterface, args []st
 	}
 
 	return shim.Success(buffer.Bytes())
+}
+
+func (c *Chaincode) delete(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+	key := args[0]
+	fmt.Printf("Deleting key='%s'\n", key)
+
+	err := stub.DelState(key)
+	if err != nil {
+		return shim.Error(err.Error())
+	}
+
+	return shim.Success(nil)
+}
+
+func (c *Chaincode) deleteAll(stub shim.ChaincodeStubInterface, args []string) pb.Response {
+	for _, key := range args {
+		fmt.Printf("Deleting key='%s'\n", key)
+		if err := stub.DelState(key); err != nil {
+			fmt.Println("Error deleting key: ", key, err.Error())
+		}
+	}
+
+	return shim.Success(nil)
 }
 
 func main() {

@@ -15,6 +15,30 @@ type ChaincodeTS struct {
 	stub *shim.MockStub
 }
 
+func (suite *ChaincodeTS) checkValueExists(key string, value string) {
+	val, _ := suite.stub.GetState(key)
+	assert.Equal(suite.T(), value, string(val), "Value is not correctly put")
+}
+
+func (suite *ChaincodeTS) checkValuesExist(kvList []string) {
+	// get the underlying state value to verify
+	for i := 0; i < len(kvList)-1; i = i + 2 {
+		suite.checkValueExists(kvList[i], kvList[i+1])
+	}
+}
+
+func (suite *ChaincodeTS) checkValueNotExist(key string) {
+	val, _ := suite.stub.GetState(key)
+	assert.Nil(suite.T(), val, "Value has not been deleted")
+}
+
+func (suite *ChaincodeTS) checkValuesNotExist(kvList []string) {
+	// get the underlying state value to verify
+	for i := 0; i < len(kvList)-1; i = i + 2 {
+		suite.checkValueNotExist(kvList[i])
+	}
+}
+
 // setup will be run for all tests in the suite
 func (suite *ChaincodeTS) SetupTest() {
 	suite.stub = shim.NewMockStub("mockStub", new(Chaincode))
@@ -42,9 +66,7 @@ func (suite *ChaincodeTS) TestPut() {
 	assert.EqualValues(suite.T(), shim.OK, result.Status, "Put failed")
 
 	// get the underlying state value to verify
-	val, _ := suite.stub.GetState(testKey)
-	assert.Equal(suite.T(), testValue, string(val), "Value is not correctly put")
-
+	suite.checkValueExists(testKey, testValue)
 }
 
 // to run just this test
@@ -89,13 +111,7 @@ func (suite *ChaincodeTS) TestPutAll() {
 
 	assert.EqualValues(suite.T(), shim.OK, result.Status, "putAll failed")
 
-	// get the underlying state value to verify
-	for i := 0; i < len(kvList); i=i+2 {
-		if i <= len(kvList)-2 {
-			val, _ := suite.stub.GetState(kvList[i])
-			assert.Equal(suite.T(), kvList[i+1], string(val), "Value is not correctly put")
-		}
-	}
+	suite.checkValuesExist(kvList)
 }
 
 func (suite *ChaincodeTS) TestBulkCreateCompositeKey() {
@@ -224,14 +240,63 @@ func (suite *ChaincodeTS) TestQuery() {
 
 	// call query
 	queryString := "{\"selector\":{\"docID\":\"3\"}}"
-	result := suite.stub.MockInvoke("1", [][]byte{
+	suite.stub.MockInvoke("1", [][]byte{
 		[]byte("query"),
 		[]byte(queryString)})
-	_ = result
 	// NOTE: those mocks for unit tests do no implement these queries;
 	// Need to test with actual fabric setup
 	//
 	//assert.EqualValues(suite.T(), shim.OK, result.Status, "Query failed")
+}
+
+func (suite *ChaincodeTS) TestDelete() {
+	testKey := "delete1"
+	testValue := "anyValue"
+
+	// call put
+	suite.stub.MockInvoke("1", [][]byte{
+		[]byte("put"),
+		[]byte(testKey),
+		[]byte(testValue)})
+
+	// delete key
+	result := suite.stub.MockInvoke("1", [][]byte{
+		[]byte("delete"),
+		[]byte(testKey)})
+	assert.EqualValues(suite.T(), shim.OK, result.Status, "Value is not correctly deleted")
+
+	// get the underlying state value to verify
+	suite.checkValueNotExist(testKey)
+}
+
+func (suite *ChaincodeTS) TestDeleteAll() {
+	kvList := []string{
+		"key1", "value1", "key2", "value2", "key3", "value3",
+	}
+
+	// call putAll
+	suite.stub.MockInvoke("1", [][]byte{
+		[]byte("putAll"),
+		[]byte(kvList[0]),
+		[]byte(kvList[1]),
+		[]byte(kvList[2]),
+		[]byte(kvList[3]),
+		[]byte(kvList[4]),
+		[]byte(kvList[5])})
+
+	// delete key
+	result := suite.stub.MockInvoke("1", [][]byte{
+		[]byte("deleteAll"),
+		[]byte(kvList[0]),
+		[]byte(kvList[1]),
+		[]byte(kvList[2]),
+		[]byte(kvList[3]),
+		[]byte(kvList[4]),
+		[]byte(kvList[5])})
+	assert.EqualValues(suite.T(), shim.OK, result.Status, "Values are not correctly deleted")
+
+	// get the underlying state value to verify
+	suite.checkValuesNotExist(kvList)
 }
 
 func TestSuite(t *testing.T) {
