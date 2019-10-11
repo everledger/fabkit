@@ -92,6 +92,28 @@ It is possible to use the CLI to run and test functionalities.
 ./run.sh chaincode query mychannel mychaincode '{"Args":["get","key1"]}'
 ```
 
+## Explore
+
+This code is provided with a graphical blockchain explorer powered by [Hyperledger Explorer](https://github.com/hyperledger/blockchain-explorer) and other useful tools, such as [Grafana](https://grafana.com/) and [Prometheus](https://prometheus.io/), in order to have full control over the data stored in your ledger.
+
+**Note: Before running the following command be sure the connection profile contains the right information related to your running network. Pay particularly attention to the private key of the admin user that should reflect the one in your crypto path.**
+
+```json
+organizations": {
+		"Org1MSP": {
+			"mspid": "Org1MSP",
+			"fullpath": true,
+			"adminPrivateKey": {
+				"path": "/tmp/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/keystore/0dff7b7853afac8b81bcc97d52ce165930288878e041b8def8af80e981d81502_sk"
+			},
+```
+
+Once the configuration is ready, you can run the explorer (and all the connected tools) with a simple command:
+
+```bash
+./run.sh explore
+```
+
 ## Register and enroll users
 
 todo
