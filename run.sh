@@ -3,6 +3,7 @@
 source $(pwd)/.env
 
 export GO111MODULE=on
+export OPRIVATE=bitbucket.org/everledger/*
 
 help() {
     local help="
@@ -272,7 +273,7 @@ dep_install() {
 
     cd ${CHAINCODE_PATH}/${chaincode_name}
     rm -rf vendor 2>/dev/null
-    GO111MODULE=on go mod vendor
+    go mod vendor
 }
 
 dep_update() {
@@ -289,7 +290,6 @@ dep_update() {
     echo
 
     cd ${CHAINCODE_PATH}/${chaincode_name}
-    GO111MODULE=on
     go get -u=patch ./...
     go mod tidy
     
