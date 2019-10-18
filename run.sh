@@ -3,7 +3,7 @@
 source $(pwd)/.env
 
 export GO111MODULE=on
-export OPRIVATE=bitbucket.org/everledger/*
+export GOPRIVATE=bitbucket.org/everledger/*
 
 help() {
     local help="
