@@ -104,7 +104,7 @@ echoc() {
     echo "${message}" | awk '{print "\033['${intensity}';'${colour_code}'m" $0 "\033[1;0m"}'
 }
 
-install() {
+install_network() {
     echoc "========================" dark cyan
 	echoc "Installing dependencies" dark cyan
     echoc "========================" dark cyan
@@ -255,6 +255,45 @@ stop_explorer() {
     echo
 
     docker-compose -f ${EXPLORER_PATH}/docker-compose.yaml down || exit 1
+}
+
+dep_install() {
+    if [ -z "$1" ]; then
+		echoc "Chaincode name missing" dark red
+		exit 1
+	fi
+
+    local chaincode_name="${1}"
+
+    echoc "=======================" dark cyan
+    echoc "Installing dependencies" dark cyan
+    echoc "=======================" dark cyan
+    echo
+
+    cd ${CHAINCODE_PATH}/${chaincode_name}
+    rm -rf vendor 2>/dev/null
+    GO111MODULE=on go mod vendor
+}
+
+dep_update() {
+    if [ -z "$1" ]; then
+		echoc "Chaincode name missing" dark red
+		exit 1
+	fi
+
+    local chaincode_name="${1}"
+
+    echoc "===================" dark cyan
+    echoc "Update dependencies" dark cyan
+    echoc "===================" dark cyan
+    echo
+
+    cd ${CHAINCODE_PATH}/${chaincode_name}
+    GO111MODULE=on
+    go get -u=patch ./...
+    go mod tidy
+    
+    dep_install ${chaincode_name}
 }
 
 test_chaincode() {
@@ -685,7 +724,7 @@ shift
 
 if [ "$func" == "install" ]; then
     check_dependencies deploy
-    install
+    install_network
 elif [ "$func" == "start" ]; then
     check_dependencies deploy
     start_network "$@"
@@ -697,6 +736,17 @@ elif [ "$func" == "stop" ]; then
 elif [ "$func" == "explore" ]; then
     check_dependencies deploy
     start_explorer
+elif [ "$func" == "dep" ]; then
+    readonly param="$1"
+    shift
+    if [ "$param" == "install" ]; then
+        dep_install "$@"
+    elif [ "$param" == "update" ]; then
+        dep_update "$@"
+    else
+        help
+        exit 1
+    fi
 elif [ "$func" == "chaincode" ]; then
     readonly param="$1"
     shift
