@@ -1,8 +1,9 @@
 module bitbucket.org/everledger/fabric-chaincode-boilerplate/chaincode/mychaincode
 
-go 1.13
+go 1.12
 
 require (
+	github.com/DataDog/zstd v1.3.8 // indirect
 	github.com/Knetic/govaluate v3.0.0+incompatible // indirect
 	github.com/Shopify/sarama v1.23.1 // indirect
 	github.com/fsouza/go-dockerclient v1.4.4 // indirect
@@ -26,9 +27,11 @@ require (
 	go.uber.org/zap v1.10.0 // indirect
 	golang.org/x/net v0.0.0-20190514140710-3ec191127204 // indirect
 	golang.org/x/text v0.3.2 // indirect
+	google.golang.org/appengine v1.4.0 // indirect
 	google.golang.org/genproto v0.0.0-20190327125643-d831d65fe17d // indirect
 	google.golang.org/grpc v1.23.1 // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	gopkg.in/jcmturner/goidentity.v3 v3.0.0 // indirect
+	gopkg.in/jcmturner/gokrb5.v7 v7.2.4 // indirect
 	gopkg.in/yaml.v2 v2.2.4 // indirect
 )

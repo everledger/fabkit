@@ -11,13 +11,15 @@ help() {
         commands:
 
         help                                                                        : this help
-        
-        install                                                                     : install all the dependencies and docker images
-        start                                                                       : start the blockchain network and initialize it
-        restart                                                                     : restart a previously running the blockchain network
-        stop                                                                        : stop the blockchain network and remove all the docker containers
 
-        explore                                                                     : run the blockchain explorer user-interface
+        dep install [chaincode_name]                                                : install all go modules as vendor and init go.mod if does not exist yet
+        dep update [chaincode_name]                                                 : update all go modules and rerun install
+        
+        network install                                                             : install all the dependencies and docker images
+        network start                                                               : start the blockchain network and initialize it
+        network restart                                                             : restart a previously running the blockchain network
+        network stop                                                                : stop the blockchain network and remove all the docker containers
+        network explore                                                             : run the blockchain explorer user-interface
 
         channel create [channel_name]                                               : generate channel configuration file
         channel update [channel_name] [org]                                         : update channel with anchor peers
@@ -271,9 +273,8 @@ dep_install() {
     echoc "=======================" dark cyan
     echo
 
-    cd ${CHAINCODE_PATH}/${chaincode_name}
-    rm -rf vendor 2>/dev/null
-    go mod vendor
+    cd ${CHAINCODE_PATH}/${chaincode_name} || exit 1
+    __init_go_mod install
 }
 
 dep_update() {
@@ -289,11 +290,25 @@ dep_update() {
     echoc "===================" dark cyan
     echo
 
-    cd ${CHAINCODE_PATH}/${chaincode_name}
-    go get -u=patch ./...
-    go mod tidy
+    cd ${CHAINCODE_PATH}/${chaincode_name} || exit 1
+    __init_go_mod update
+}
+
+__init_go_mod() {
+    if [ ! -f "./go.mod" ]; then
+        go mod init
+    fi
+
+    rm -rf vendor 2>/dev/null
+
+    if [ "${1}" == "install" ]; then
+        go get ./...
+    elif [ "${1}" == "update" ]; then
+        go get -u=patch ./...
+    fi
     
-    dep_install ${chaincode_name}
+    go mod tidy
+    go mod vendor
 }
 
 test_chaincode() {
@@ -722,20 +737,27 @@ __loader() {
 readonly func="$1"
 shift
 
-if [ "$func" == "install" ]; then
-    check_dependencies deploy
-    install_network
-elif [ "$func" == "start" ]; then
-    check_dependencies deploy
-    start_network "$@"
-elif [ "$func" == "restart" ]; then
-    check_dependencies deploy
-    restart_network
-elif [ "$func" == "stop" ]; then
-    stop_network
-elif [ "$func" == "explore" ]; then
-    check_dependencies deploy
-    start_explorer
+if [ "$func" == "network" ]; then
+    readonly param="$1"
+    shift
+    if [ "$param" == "install" ]; then
+        check_dependencies deploy
+        install_network
+    elif [ "$param" == "start" ]; then
+        check_dependencies deploy
+        start_network "$@"
+    elif [ "$param" == "restart" ]; then
+        check_dependencies deploy
+        restart_network
+    elif [ "$param" == "stop" ]; then
+        stop_network
+    elif [ "$param" == "explore" ]; then
+        check_dependencies deploy
+        start_explorer
+    else
+        help
+        exit 1
+    fi
 elif [ "$func" == "dep" ]; then
     readonly param="$1"
     shift

@@ -23,7 +23,7 @@ The codebase of this repository is meant to serve the following scopes:
 Install all the docker images needed:
 
 ```bash
-./run.sh install
+./run.sh network install
 ```
 
 ## Run the blockchain network
@@ -31,7 +31,7 @@ Install all the docker images needed:
 The following command will spin a Hyperledger Fabric network up, generating _channel_ and _crypto_ config at runtime:
 
 ```bash
-./run.sh start
+./run.sh network start
 ```
 
 It will execute the following functions:
@@ -55,7 +55,7 @@ Run `./run.sh help` for the complete list of functionalities.
 The following command will restart a Hyperledgre Fabric network only if a _data_ directory is found:
 
 ```bash
-./run.sh restart
+./run.sh network restart
 ```
 
 ## Upgrade chaincode
@@ -111,8 +111,20 @@ organizations": {
 Once the configuration is ready, you can run the explorer (and all the connected tools) with a simple command:
 
 ```bash
-./run.sh explore
+./run.sh network explore
 ```
+
+### Blockchain Explorer
+
+- Username: `admin` | Password: `adminpw`
+
+- Host: `http://localhost:8090`
+
+### Grafana
+
+- Username: `admin` | Password: `admin`
+
+- Host: `http://localhost:3000`
 
 ## Register and enroll users
 
@@ -125,7 +137,7 @@ todo
 It will stop and remove all the blockchain network containers including the `dev-peer*` tagged chaincode ones.
 
 ```bash
-./run.sh stop
+./run.sh network stop
 ```
 
 ## Benchmarks
@@ -162,9 +174,7 @@ There are a few changes to make to your new forked repository in order to make i
 
 - Create a new directory under the `./chaincode` path. It has to match with the name of your final binary install.
 
-  - Run `GO111MODULE=on go mod init` inside this folder
-  - Fix all the external dependencies in import
-  - Run `GO111MODULE=on go mod vendor` in order to download all the packages the chaincode container would not be able to pull (such as private repositories)
+- Run `./run.sh dep install [chaincode_path]` from your main project directory
 
 In `.env`:
 
