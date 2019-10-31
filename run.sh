@@ -352,7 +352,7 @@ pack_chaincode() {
     fi
 
     local timestamp=$(date -u +%s)
-    zip -rq ${DIST_PATH}/${chaincode_name}.${timestamp}.zip $CHAINCODE_PATH/${chaincode_name} || { echoc >&2 "Error creating chaincode archive." light red; exit 1; }
+    zip -rq ${DIST_PATH}/${chaincode_name}.${timestamp}.zip . || { echoc >&2 "Error creating chaincode archive." light red; exit 1; }
 
     echoc "Chaincode archive created in: ${DIST_PATH}/${chaincode_name}.${timestamp}.zip" light green
 }
