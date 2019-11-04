@@ -68,6 +68,16 @@ Run the following command in order to install and instantiate a new version of t
 
 Be sure the `chaincode_version` is unique and never used before (otherwise an error will be prompted).
 
+## Pack chaincode for deployment
+
+Run the following command in order to create an archive for the selected chaincode including all the required dependencies:
+
+```bash
+./run.sh chaincode pack [chaincode_name]
+```
+
+Follow the output message in console to see where the archive has been created.
+
 ## Invoke and query
 
 It is possible to use the CLI to run and test functionalities.
@@ -98,7 +108,7 @@ This code is provided with a graphical blockchain explorer powered by [Hyperledg
 
 **Note: Before running the following command be sure the connection profile contains the right information related to your running network. Pay particularly attention to the private key of the admin user that should reflect the one in your crypto path.**
 
-```json
+```text
 organizations": {
 		"Org1MSP": {
 			"mspid": "Org1MSP",

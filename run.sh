@@ -32,6 +32,7 @@ help() {
 
         chaincode test [chaincode_path]                                             : run unit tests
         chaincode build [chaincode_path]                                            : run build and test against the binary file
+        chaincode pack [chaincode_path]                                             : create an archive ready for deployment containing chaincode and vendors
         chaincode install [chaincode_name] [chaincode_version] [chaincode_path]     : install chaincode on a peer
         chaincode instantiate [chaincode_name] [chaincode_version] [channel_name]   : instantiate chaincode on a peer for an assigned channel
         chaincode upgrade [chaincode_name] [chaincode_version] [channel_name]       : upgrade chaincode with a new version
@@ -261,11 +262,7 @@ stop_explorer() {
 }
 
 dep_install() {
-    if [ -z "$1" ]; then
-		echoc "Chaincode name missing" dark red
-		exit 1
-	fi
-
+    __check_chaincode $1
     local chaincode_name="${1}"
 
     echoc "=======================" dark cyan
@@ -278,11 +275,7 @@ dep_install() {
 }
 
 dep_update() {
-    if [ -z "$1" ]; then
-		echoc "Chaincode name missing" dark red
-		exit 1
-	fi
-
+    __check_chaincode $1
     local chaincode_name="${1}"
 
     echoc "===================" dark cyan
@@ -312,11 +305,7 @@ __init_go_mod() {
 }
 
 test_chaincode() {
-    if [ -z "$1" ]; then
-		echoc "Chaincode name missing" dark red
-		exit 1
-	fi
-
+    __check_chaincode $1
     local chaincode_name="${1}"
 
     echoc "===================" dark cyan
@@ -333,11 +322,7 @@ test_chaincode() {
 }
 
 build_chaincode() {
-    if [ -z "$1" ]; then
-		echoc "Chaincode name" dark red
-		exit 1
-	fi
-
+    __check_chaincode $1
     local chaincode_name="${1}"
 
     echoc "==================" dark cyan
@@ -351,6 +336,32 @@ build_chaincode() {
     fi
 
     echoc "Build passed!" light green
+}
+
+pack_chaincode() {
+    type zip >/dev/null 2>&1 || { echoc >&2 "zip required but it is not installed. Aborting." light red; exit 1; }
+
+    __check_chaincode $1
+    local chaincode_name="${1}"
+
+    cd $CHAINCODE_PATH/${chaincode_name} >/dev/null 2>&1 || { echoc >&2 "$CHAINCODE_PATH/${chaincode_name} path does not exist" light red; exit 1; }
+    __init_go_mod install
+
+    if [ ! -d "${DIST_PATH}" ]; then
+        mkdir -p ${DIST_PATH}
+    fi
+
+    local timestamp=$(date -u +%s)
+    zip -rq ${DIST_PATH}/${chaincode_name}.${timestamp}.zip . || { echoc >&2 "Error creating chaincode archive." light red; exit 1; }
+
+    echoc "Chaincode archive created in: ${DIST_PATH}/${chaincode_name}.${timestamp}.zip" light green
+}
+
+__check_chaincode() {
+    if [ -z "$1" ]; then
+		echoc "Chaincode name missing" dark red
+		exit 1
+	fi
 }
 
 # generate genesis block
@@ -626,7 +637,7 @@ install_chaincode() {
 	local chaincode_path="$3"
 
     echoc "Installing chaincode $chaincode_name version $chaincode_version from path $chaincode_path" light cyan
-    docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode install -n $chaincode_name -v $chaincode_version -p $chaincode_path
+    docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode install -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -p $chaincode_path
 }
 
 instantiate_chaincode() {
@@ -640,7 +651,7 @@ instantiate_chaincode() {
 	local channel_name="$3"
 
     echoc "Instantiating chaincode $chaincode_name version $chaincode_version into channel $channel_name" light cyan
-	docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode instantiate -n $chaincode_name -v $chaincode_version -C $channel_name -c '{"Args":[]}'
+	docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode instantiate -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -C $channel_name -c '{"Args":[]}'
 }
 
 upgrade_chaincode() {
@@ -782,6 +793,8 @@ elif [ "$func" == "chaincode" ]; then
         test_chaincode "$@"
     elif [ "$param" == "build" ]; then
         build_chaincode "$@"
+    elif [ "$param" == "pack" ]; then
+        pack_chaincode "$@"
     elif [ "$param" == "query" ]; then
         query "$@"
     elif [ "$param" == "invoke" ]; then
