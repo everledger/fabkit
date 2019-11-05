@@ -2,12 +2,6 @@
 # SPDX-License-Identifier: Apache-2.0
 version: '2.1'
 
-volumes:
-  pgdata:
-  walletstore:
-  grafana-storage:
-  prometheus-storage:
-
 networks:
   default:
     external:
@@ -15,7 +9,6 @@ networks:
       name: ${DOCKER_NETWORK}
 
 services:
-
   explorerdb.mynetwork.com:
     image: hyperledger/explorer-db:${EXPLORER_VERSION}
     container_name: explorerdb.mynetwork.com
@@ -26,7 +19,7 @@ services:
       - DATABASE_PASSWORD=password
     volumes:
       - ./db/createdb.sh:/docker-entrypoint-initdb.d/createdb.sh
-      - pgdata:/var/lib/postgresql/data
+      - ../data/explorerdb:/var/lib/postgresql/data
 
   explorer.mynetwork.com:
     image: hyperledger/explorer:${EXPLORER_VERSION}
@@ -41,8 +34,8 @@ services:
       - ./config.json:/opt/explorer/app/platform/fabric/config.json
       - ./connection-profile:/opt/explorer/app/platform/fabric/connection-profile
       - ./../network/cryptos:/tmp/crypto
-      - walletstore:/opt/wallet
-    command: sh -c "sleep 16 && node /opt/explorer/main.js && tail -f /dev/null"
+      - ../data/walletstore:/opt/wallet
+    command: sh -c "sleep 30 && node /opt/explorer/main.js && tail -f /dev/null"
     ports:
       - 8090:8080
 
@@ -51,7 +44,7 @@ services:
     image: prom/prometheus:${PROMETHEUS_VERSION}
     volumes:
       - ./artifacts/operations/balance-transfer/prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus-storage:/prometheus
+      - ../data/prometheus:/prometheus
     ports:
       - 9090:9090
 
@@ -61,6 +54,6 @@ services:
     volumes:
       - ./artifacts/operations/balance-transfer/balance-transfer-grafana-dashboard.json:/var/lib/grafana/dashboards/mydashboard.json
       - ./artifacts/operations/grafana_conf/provisioning:/etc/grafana/provisioning
-      - grafana-storage:/var/lib/grafana
+      - ../data/grafana:/var/lib/grafana
     ports:
       - 3000:3000

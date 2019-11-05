@@ -102,21 +102,9 @@ It is possible to use the CLI to run and test functionalities.
 ./run.sh chaincode query mychannel mychaincode '{"Args":["get","key1"]}'
 ```
 
-## Explore
+## Blockchain Explorer
 
 This code is provided with a graphical blockchain explorer powered by [Hyperledger Explorer](https://github.com/hyperledger/blockchain-explorer) and other useful tools, such as [Grafana](https://grafana.com/) and [Prometheus](https://prometheus.io/), in order to have full control over the data stored in your ledger.
-
-**Note: Before running the following command be sure the connection profile contains the right information related to your running network. Pay particularly attention to the private key of the admin user that should reflect the one in your crypto path.**
-
-```text
-organizations": {
-		"Org1MSP": {
-			"mspid": "Org1MSP",
-			"fullpath": true,
-			"adminPrivateKey": {
-				"path": "/tmp/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/keystore/0dff7b7853afac8b81bcc97d52ce165930288878e041b8def8af80e981d81502_sk"
-			},
-```
 
 Once the configuration is ready, you can run the explorer (and all the connected tools) with a simple command:
 
@@ -124,17 +112,17 @@ Once the configuration is ready, you can run the explorer (and all the connected
 ./run.sh network explore
 ```
 
-### Blockchain Explorer
+### UI Explorer
 
 - Username: `admin` | Password: `adminpw`
 
-- Host: `http://localhost:8090`
+- Host: [http://localhost:8090](http://localhost:8090)
 
 ### Grafana
 
 - Username: `admin` | Password: `admin`
 
-- Host: `http://localhost:3000`
+- Host: [http://localhost:3000](http://localhost:3000)
 
 ## Register and enroll users
 
@@ -192,7 +180,7 @@ In `.env`:
 
 ```bash
 # e.g.
-CHAINCODE_REMOTE_PATH="bitbucket.org/everledger/evl-prov-pfm-cc-wine/chaincode"
+CHAINCODE_REMOTE_PATH="bitbucket.org/everledger/evl-prov-pfm-wine-cc/chaincode"
 ```
 
 - Replace `CHAINCODE_NAME` with the correct directory name path of the chaincode you want to install
@@ -200,34 +188,6 @@ CHAINCODE_REMOTE_PATH="bitbucket.org/everledger/evl-prov-pfm-cc-wine/chaincode"
 ```bash
 # e.g.
 CHAINCODE_NAME=wine
-```
-
-In the main `go.mod`:
-
-- Add the reference to the new chaincode path as follows
-
-```go
-// before
-require (
-    bitbucket.org/everledger/evl-prov-pfm-cc-wine/chaincode/mychaincode v0.0.0
-)
-
-replace (
-    bitbucket.org/everledger/evl-prov-pfm-cc-wine/chaincode/mychaincode v0.0.0 => ./chaincode/mychaincode
-)
-```
-
-```go
-// after
-require (
-    bitbucket.org/everledger/evl-prov-pfm-cc-wine/chaincode/mychaincode v0.0.0
-    bitbucket.org/everledger/evl-prov-pfm-cc-wine/chaincode/wine v0.0.0
-)
-
-replace (
-    bitbucket.org/everledger/evl-prov-pfm-cc-wine/chaincode/mychaincode v0.0.0 => ./chaincode/mychaincode
-    bitbucket.org/everledger/evl-prov-pfm-cc-wine/chaincode/wine v0.0.0 => ./chaincode/wine
-)
 ```
 
 In `bitbucket-pipelines.yml`

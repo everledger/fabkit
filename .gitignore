@@ -18,3 +18,4 @@ binary
 binary_test
 
 go.sum
+explorer/connection-profile/first-network.json

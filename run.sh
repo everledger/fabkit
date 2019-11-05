@@ -139,11 +139,6 @@ __docker_third_party_images_pull() {
 }
 
 start_network() {
-    echoc "========================" dark cyan
-	echoc "Starting Fabric network" dark cyan
-    echoc "========================" dark cyan
-    echo
-
     # Note: this trick may allow the network to work also in strict-security platform
     rm -rf ./docker.sock 2>/dev/null && ln -sf /var/run ./docker.sock
 
@@ -165,6 +160,11 @@ start_network() {
         build_chaincode $CHAINCODE_NAME
         test_chaincode $CHAINCODE_NAME
     fi
+
+    echoc "========================" dark cyan
+	echoc "Starting Fabric network" dark cyan
+    echoc "========================" dark cyan
+    echo
 
 	generate_cryptos $CONFIG_PATH $CRYPTOS_PATH
     generate_genesis $BASE_PATH $CONFIG_PATH $CRYPTOS_PATH $CONFIGTX_PROFILE_NETWORK
@@ -245,6 +245,17 @@ start_explorer() {
         echoc "No Fabric networks running. First launch ./run.sh start" dark red
 		exit 1
     fi
+
+    if [ ! -d "$CRYPTOS_PATH" ]; then
+        echoc "Cryptos path ${CRYPTOS_PATH} does not exist." dark red
+    fi
+
+    # replacing private key path in connection profile
+    type jq >/dev/null 2>&1 || { echoc >&2 "jq required but it is not installed. Aborting." light red; exit 1; }
+    config=$(ls -d ${EXPLORER_PATH}/connection-profile/*)
+    admin_key_path="peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/keystore"
+    private_key="/tmp/crypto/${admin_key_path}/$(ls ${CRYPTOS_PATH}/${admin_key_path})"
+    cat $config | jq -r --arg private_key "$private_key" '.organizations.Org1MSP.adminPrivateKey.path = $private_key' > tmp && mv tmp $config
 
     docker-compose -f ${EXPLORER_PATH}/docker-compose.yaml up -d || exit 1
 
