@@ -104,6 +104,10 @@ It is possible to use the CLI to run and test functionalities.
 
 ## Blockchain Explorer
 
+![Hyperledger Explorer: Dashboard](./_imgs/explorer1.jpg)
+
+![Hyperledger Explorer: Transaction Details](./_imgs/explorer2.jpg)
+
 This code is provided with a graphical blockchain explorer powered by [Hyperledger Explorer](https://github.com/hyperledger/blockchain-explorer) and other useful tools, such as [Grafana](https://grafana.com/) and [Prometheus](https://prometheus.io/), in order to have full control over the data stored in your ledger.
 
 Once the configuration is ready, you can run the explorer (and all the connected tools) with a simple command:

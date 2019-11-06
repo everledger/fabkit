@@ -167,8 +167,8 @@ start_network() {
     echo
 
 	generate_cryptos $CONFIG_PATH $CRYPTOS_PATH
-    generate_genesis $BASE_PATH $CONFIG_PATH $CRYPTOS_PATH $CONFIGTX_PROFILE_NETWORK
-    generate_channeltx $CHANNEL_NAME $BASE_PATH $CONFIG_PATH $CRYPTOS_PATH $CONFIGTX_PROFILE_NETWORK $CONFIGTX_PROFILE_CHANNEL $ORG_MSP
+    generate_genesis $NETWORK_PATH $CONFIG_PATH $CRYPTOS_PATH $CONFIGTX_PROFILE_NETWORK
+    generate_channeltx $CHANNEL_NAME $NETWORK_PATH $CONFIG_PATH $CRYPTOS_PATH $CONFIGTX_PROFILE_NETWORK $CONFIGTX_PROFILE_CHANNEL $ORG_MSP
     
     docker network create ${DOCKER_NETWORK} 2>/dev/null
     
@@ -189,6 +189,8 @@ restart_network() {
         echoc "Data directory not found in: ${DATA_PATH}. Run a normal start." light red
         exit 1
     fi
+
+    __delete_shared
     
     docker-compose -f ${ROOT}/docker-compose.yaml up --force-recreate -d || exit 1
 
@@ -201,6 +203,8 @@ stop_network() {
     echoc "===========================" dark cyan
 
     docker-compose -f ${ROOT}/docker-compose.yaml down || exit 1
+
+    __delete_shared
 
     if [[ $(docker ps | grep "hyperledger/explorer") ]]; then
         stop_explorer
@@ -220,6 +224,11 @@ stop_network() {
 			* ) return 0
     	esac
     fi
+}
+
+__delete_shared() {
+    # always remove shared directory
+    rm -rf ${DATA_SHARED_PATH} 2>/dev/null
 }
 
 initialize_network() {
@@ -256,6 +265,8 @@ start_explorer() {
     admin_key_path="peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/keystore"
     private_key="/tmp/crypto/${admin_key_path}/$(ls ${CRYPTOS_PATH}/${admin_key_path})"
     cat $config | jq -r --arg private_key "$private_key" '.organizations.Org1MSP.adminPrivateKey.path = $private_key' > tmp && mv tmp $config
+
+    __delete_shared
 
     docker-compose -f ${EXPLORER_PATH}/docker-compose.yaml up -d || exit 1
 

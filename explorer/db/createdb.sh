@@ -41,4 +41,6 @@ ${PSQL} -v dbname=$DATABASE -v user=$USER -v passwd=$PASSWD -f ./explorerpg.sql 
 ${PSQL} -v dbname=$DATABASE -v user=$USER -v passwd=$PASSWD -f ./updatepg.sql ;;
 esac
 
-
+# notify explorer ui that db is ready
+rm -rf /var/shared/explorerdb_done 2>/dev/null
+touch /var/shared/explorerdb_done
