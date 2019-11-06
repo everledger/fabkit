@@ -231,7 +231,7 @@ initialize_network() {
 	create_channel $CHANNEL_NAME
 	join_channel $CHANNEL_NAME
 	update_channel $CHANNEL_NAME $ORG_MSP
-	install_chaincode $CHAINCODE_NAME $CHAINCODE_VERSION ${CHAINCODE_REMOTE_PATH}/${CHAINCODE_NAME}
+	install_chaincode $CHAINCODE_NAME $CHAINCODE_VERSION ${CHAINCODE_NAME}
 	instantiate_chaincode $CHAINCODE_NAME $CHAINCODE_VERSION $CHANNEL_NAME
 }
 
@@ -637,7 +637,7 @@ install_chaincode() {
 	local chaincode_path="$3"
 
     echoc "Installing chaincode $chaincode_name version $chaincode_version from path $chaincode_path" light cyan
-    docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode install -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -p $chaincode_path
+    docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode install -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -p ${CHAINCODE_REMOTE_PATH}/${chaincode_path}
 }
 
 instantiate_chaincode() {
@@ -696,6 +696,126 @@ query() {
 	local request="$3"
 
 	docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode query -o $ORDERER_ADDRESS -C $channel_name -n $chaincode_name -c "$request"
+}
+
+enroll_admin() {
+    if [ -z "$1" ] || [ -z "$2" ]; then
+        echo "Please provide username and password in the format: ./run.sh ca enroll [user] [password]"
+        exit 1
+    fi
+
+    # type fabric-ca-client >/dev/null 2>&1 || { echo >&2 "I require fabric-ca-client but it is not installed.  Aborting."; exit 1; }
+
+    local admin_user="$1"
+    local admin_password="$2"
+
+    if [ ! -d $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR/$FABRIC_ORG/users/$admin_user/msp ]; then
+        mkdir -p $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR/$FABRIC_ORG/users/$admin_user/msp
+    fi
+    if [ ! -d $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR/$FABRIC_ORG/$FABRIC_CA_DIR ]; then
+        mkdir -p $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR/$FABRIC_ORG/$FABRIC_CA_DIR
+        mv $(pwd)/$FABRIC_CA_CERT $FABRIC_CRYPTO_CONFIG_DIR/$FABRIC_ORG/$FABRIC_CA_DIR
+    fi
+
+    docker run --rm --env-file uat.env \
+    -v $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR:/$FABRIC_CRYPTO_CONFIG_DIR \
+    $FABRIC_CA_IMAGE:$FABRIC_CA_IMAGE_TAG \
+    sh -c " \
+    fabric-ca-client enroll \
+        --home /$FABRIC_CRYPTO_CONFIG_DIR \
+        --mspdir $FABRIC_ORG/users/$admin_user \
+        --url https://$admin_user:$admin_password@$CA_HOST:$CA_PORT \
+        --tls.certfiles $FABRIC_ORG/$FABRIC_CA_DIR/$FABRIC_CA_CERT
+      "
+
+    # fabric-ca-client enroll \
+    #     --home $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR \
+    #     --mspdir $FABRIC_ORG/users/$admin_user \
+    #     --url https://$admin_user:$admin_password@$CA_HOST:$CA_PORT \
+    #     --tls.certfiles $FABRIC_ORG/$FABRIC_CA_DIR/$FABRIC_CA_CERT
+}
+
+register_user() {
+    # type fabric-ca-client >/dev/null 2>&1 || { echo >&2 "I require fabric-ca-client but it is not installed.  Aborting."; exit 1; }
+    if [ -z "$1" ] || [ -z "$2" ]; then
+        echo "Please provide username and password in the format: register_user [username] [password]"
+        exit 1
+    fi
+
+    local user="$1"
+    local password="$2"
+
+    if [ ! -d $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR/$FABRIC_ORG/users/$user/msp ]; then
+        mkdir -p $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR/$FABRIC_ORG/users/$user/msp
+    fi
+    if [ ! -d $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR/$FABRIC_ORG/$FABRIC_CA_DIR ]; then
+        mkdir -p $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR/$FABRIC_ORG/$FABRIC_CA_DIR
+        mv $(pwd)/$FABRIC_CA_CERT $FABRIC_CRYPTO_CONFIG_DIR/$FABRIC_ORG/$FABRIC_CA_DIR
+    fi
+
+    docker run --rm --env-file uat.env \
+    -v $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR:/$FABRIC_CRYPTO_CONFIG_DIR \
+    $FABRIC_CA_IMAGE:$FABRIC_CA_IMAGE_TAG \
+    sh -c " \
+        fabric-ca-client register \
+            --home /$FABRIC_CRYPTO_CONFIG_DIR \
+            --mspdir $FABRIC_ORG/users/$user_DIR \
+            --url https://$CA_HOST:$CA_PORT \
+            --tls.certfiles $FABRIC_ORG/$FABRIC_CA_DIR/$FABRIC_CA_CERT \
+            --id.name $user \
+            --id.secret $password  \
+            --id.affiliation $FABRIC_MEMBER_MSPID \
+            --id.attrs $user_ATTRS --id.type user
+         "
+
+    # fabric-ca-client register \
+    #     --home $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR \
+    #     --mspdir $FABRIC_ORG/users/$admin_user/msp \
+    #     --url https://$CA_HOST:$CA_PORT \
+    #     --tls.certfiles $FABRIC_CA_CERT \
+    #     --id.name $user \
+    #     --id.secret $password  \
+    #     --id.affiliation $FABRIC_MEMBER_MSPID \
+    #     --id.attrs $user_ATTRS --id.type client
+}
+
+enroll_user() {
+    type fabric-ca-client >/dev/null 2>&1 || { echo >&2 "I require fabric-ca-client but it is not installed.  Aborting."; exit 1; }
+
+    user="$1"
+    password="$2"
+
+    if [ -z "$user" ] || [ -z "$user" ]; then
+        echo "Please provide username and password in the format: enroll_user [username] [password]"
+        exit 1
+    fi
+
+    if [ ! -d $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR/$FABRIC_ORG/users/$user/msp ]; then
+        mkdir -p $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR/$FABRIC_ORG/users/$user/msp
+    fi
+    if [ ! -d $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR/$FABRIC_ORG/$FABRIC_CA_DIR ]; then
+        mkdir -p $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR/$FABRIC_ORG/$FABRIC_CA_DIR
+        mv $(pwd)/$FABRIC_CA_CERT $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR/$FABRIC_ORG/$FABRIC_CA_DIR
+    fi
+
+    #docker run --rm --env-file uat.env \
+    #    -v $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR:/$FABRIC_CRYPTO_CONFIG_DIR \
+    #    $FABRIC_CA_IMAGE:$FABRIC_CA_IMAGE_TAG \
+    #    sh -c " \
+    #    fabric-ca-client enroll \
+    #        --home /$FABRIC_CRYPTO_CONFIG_DIR/$user_DIR \
+    #        --url https://$user:$password@$CA_HOST:$CA_PORT \
+    #        --tls.certfiles $FABRIC_ORG/$FABRIC_CA_DIR/$FABRIC_CA_CERT
+    #      "\
+
+    fabric-ca-client enroll \
+        --home $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR \
+        --mspdir $FABRIC_ORG/users/$user/msp \
+        --url https://$user:$password@$CA_HOST:$CA_PORT \
+        --tls.certfiles $FABRIC_ORG/$FABRIC_CA_DIR/$FABRIC_CA_CERT
+
+    echo "Renaming user cert file"
+    mv $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR/$FABRIC_ORG/users/$user/signcerts/*.pem $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR/$FABRIC_ORG/users/$user/signcerts/$user@$FABRIC_ORG-cert.pem
 }
 
 __exec_jobs() {
@@ -803,7 +923,7 @@ elif [ "$func" == "chaincode" ]; then
         help
         exit 1
     fi
-elif [ "$func" == "generate_cryptos" ]; then
+elif [ "$func" == "generate" ]; then
     readonly param="$1"
     shift
     if [ "$param" == "cryptos" ]; then
@@ -812,6 +932,17 @@ elif [ "$func" == "generate_cryptos" ]; then
         generate_genesis "$@"
     elif [ "$param" == "channeltx" ]; then
         generate_channeltx "$@"
+    else
+        help
+        exit 1
+    fi
+elif [ "$func" == "ca" ]; then
+    readonly param="$1"
+    shift
+    if [ "$param" == "register" ]; then
+        register_user "$@"
+    elif [ "$param" == "enroll" ]; then
+        enroll_user "$@"
     else
         help
         exit 1
