@@ -145,9 +145,9 @@ start_network() {
     if [ ! "${1}" == "-ci" ]; then
         if [ -d "$DATA_PATH" ]; then
             echoc "Found data directory: ${DATA_PATH}" light yellow
-            read -p "Do you wish to restart the network and reuse this data? [yes/no] " yn
+            read -p "Do you wish to restart the network and reuse this data? [yes/no=default] " yn
             case $yn in
-                [YyEeSs]* ) 
+                [Yy]* ) 
                     restart_network
                     return 0
                     ;;
@@ -218,9 +218,9 @@ stop_network() {
     if [ -d "$DATA_PATH" ]; then
         echoc "!!!!! ATTENTION !!!!!" light red
         echoc "Found data directory: ${DATA_PATH}" light red
-		read -p "Do you wish to remove this data? [yes/no] " yn
+		read -p "Do you wish to remove this data? [yes/no=default] " yn
 		case $yn in
-			[YyEeSs]* ) rm -rf $DATA_PATH ;;
+			[Yy]* ) __delete_path $DATA_PATH ;;
 			* ) return 0
     	esac
     fi
@@ -228,7 +228,27 @@ stop_network() {
 
 __delete_shared() {
     # always remove shared directory
-    rm -rf ${DATA_SHARED_PATH} 2>/dev/null
+    __delete_path ${SHARED_DATA_PATH}
+}
+
+# delete path recursively and asks for root permissions if needed
+__delete_path() {
+    if [ ! -d "${1}" ]; then 
+        echoc "Directory \"${1}\" does not exist. Skipping delete. All good :)" light yellow
+        return
+    fi
+
+    if [ -w "${1}" ]; then
+        rm -rf ${1}
+    else 
+        echoc "!!!!! ATTENTION !!!!!" light red
+        echoc "Directory \"${1}\" requires superuser permissions" light red
+        read -p "Do you wish to continue? [yes/no=default] " yn
+        case $yn in
+            [Yy]* ) sudo rm -rf ${1} ;;
+            * ) return 0
+        esac
+    fi
 }
 
 initialize_network() {
@@ -245,6 +265,8 @@ initialize_network() {
 }
 
 start_explorer() {
+    stop_explorer
+    
     echoc "============================" dark cyan
 	echoc "Starting Blockchain Explorer" dark cyan
     echoc "============================" dark cyan
@@ -268,7 +290,18 @@ start_explorer() {
 
     __delete_shared
 
-    docker-compose -f ${EXPLORER_PATH}/docker-compose.yaml up -d || exit 1
+    docker-compose -f ${EXPLORER_PATH}/docker-compose.yaml up --force-recreate -d || exit 1
+
+    # for linux machines
+    if [ ! -w "${SHARED_DATA_PATH}" ]; then
+        echoc "!!!!! ATTENTION !!!!!" light red
+        echoc "Directory \"${SHARED_DATA_PATH}\" requires superuser permissions" light red
+        read -p "Do you wish to continue? [yes/no=default] " yn
+        case $yn in
+            [Yy]* ) sudo chmod 777 -R ${SHARED_DATA_PATH} ;;
+            * ) ;;
+        esac
+    fi
 
     echoc "Blockchain Explorer default user is admin/adminpw" light yellow
     echoc "Grafana default user is admin/admin" light yellow
@@ -314,7 +347,7 @@ __init_go_mod() {
         go mod init
     fi
 
-    rm -rf vendor 2>/dev/null
+    __delete_path vendor 2>/dev/null
 
     if [ "${1}" == "install" ]; then
         go get ./...
@@ -417,12 +450,12 @@ generate_genesis() {
 
     if [ -d "$channel_dir" ]; then
         echoc "Channel directory ${channel_dir} already exists" light yellow
-		read -p "Do you wish to re-generate channel config? [yes/no] " yn
+		read -p "Do you wish to re-generate channel config? [yes/no=default] " yn
 		case $yn in
-			[YyEeSs]* ) ;;
+			[Yy]* ) ;;
 			* ) return 0
     	esac
-        rm -rf $channel_dir
+        __delete_path $channel_dir
         mkdir -p $channel_dir
     fi
 
@@ -500,12 +533,12 @@ generate_channeltx() {
 
     if [ -d "$channel_dir" ]; then
         echoc "Channel directory ${channel_dir} already exists" light yellow
-		read -p "Do you wish to re-generate channel config? [yes/no] " yn
+		read -p "Do you wish to re-generate channel config? [yes/no=default] " yn
 		case $yn in
-			[YyEeSs]* ) ;;
+			[Yy]* ) ;;
 			* ) return 0
     	esac
-        rm -rf $channel_dir
+        __delete_path $channel_dir
         mkdir -p $channel_dir
     fi 
 
@@ -575,9 +608,9 @@ generate_cryptos() {
 
     if [ -d "$cryptos_path" ]; then
         echoc "crypto-config already exists" light yellow
-		read -p "Do you wish to remove crypto-config? [yes/no] " yn
+		read -p "Do you wish to remove crypto-config? [yes/no=default] " yn
 		case $yn in
-			[YyEeSs]* ) rm -rf $cryptos_path ;;
+			[Yy]* ) __delete_path $cryptos_path ;;
 			* ) ;;
     	esac
     fi
@@ -599,10 +632,10 @@ generate_cryptos() {
     # copy cryptos into a shared folder available for client applications (sdk)
     if [ -d "${CRYPTOS_SHARED_PATH}" ]; then
         echoc "Shared crypto-config directory ${CRYPTOS_SHARED_PATH} already exists" light yellow
-		read -p "Do you wish to copy the new crypto-config here? [yes/no] " yn
+		read -p "Do you wish to copy the new crypto-config here? [yes/no=default] " yn
 		case $yn in
-			[YyEeSs]* ) 
-                rm -rf ${CRYPTOS_SHARED_PATH}
+			[Yy]* ) 
+                __delete_path ${CRYPTOS_SHARED_PATH}
             ;;
 			* ) return 0
     	esac
