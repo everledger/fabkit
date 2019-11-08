@@ -180,13 +180,6 @@ There are a few changes to make to your new forked repository in order to make i
 
 In `.env`:
 
-- Replace `CHAINCODE_REMOTE_PATH` with the correct package `GOPATH` and chaincode directory
-
-```bash
-# e.g.
-CHAINCODE_REMOTE_PATH="bitbucket.org/everledger/evl-prov-pfm-wine-cc/chaincode"
-```
-
 - Replace `CHAINCODE_NAME` with the correct directory name path of the chaincode you want to install
 
 ```bash
