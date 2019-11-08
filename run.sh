@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 source $(pwd)/.env
 
@@ -139,20 +139,15 @@ __docker_third_party_images_pull() {
 }
 
 start_network() {
-    echoc "========================" dark cyan
-	echoc "Starting Fabric network" dark cyan
-    echoc "========================" dark cyan
-    echo
-
     # Note: this trick may allow the network to work also in strict-security platform
     rm -rf ./docker.sock 2>/dev/null && ln -sf /var/run ./docker.sock
 
     if [ ! "${1}" == "-ci" ]; then
         if [ -d "$DATA_PATH" ]; then
             echoc "Found data directory: ${DATA_PATH}" light yellow
-            read -p "Do you wish to restart the network and reuse this data? [yes/no] " yn
+            read -p "Do you wish to restart the network and reuse this data? [yes/no=default] " yn
             case $yn in
-                [YyEeSs]* ) 
+                [Yy]* ) 
                     restart_network
                     return 0
                     ;;
@@ -166,9 +161,14 @@ start_network() {
         test_chaincode $CHAINCODE_NAME
     fi
 
+    echoc "========================" dark cyan
+	echoc "Starting Fabric network" dark cyan
+    echoc "========================" dark cyan
+    echo
+
 	generate_cryptos $CONFIG_PATH $CRYPTOS_PATH
-    generate_genesis $BASE_PATH $CONFIG_PATH $CRYPTOS_PATH $CONFIGTX_PROFILE_NETWORK
-    generate_channeltx $CHANNEL_NAME $BASE_PATH $CONFIG_PATH $CRYPTOS_PATH $CONFIGTX_PROFILE_NETWORK $CONFIGTX_PROFILE_CHANNEL $ORG_MSP
+    generate_genesis $NETWORK_PATH $CONFIG_PATH $CRYPTOS_PATH $CONFIGTX_PROFILE_NETWORK
+    generate_channeltx $CHANNEL_NAME $NETWORK_PATH $CONFIG_PATH $CRYPTOS_PATH $CONFIGTX_PROFILE_NETWORK $CONFIGTX_PROFILE_CHANNEL $ORG_MSP
     
     docker network create ${DOCKER_NETWORK} 2>/dev/null
     
@@ -189,6 +189,8 @@ restart_network() {
         echoc "Data directory not found in: ${DATA_PATH}. Run a normal start." light red
         exit 1
     fi
+
+    __delete_shared
     
     docker-compose -f ${ROOT}/docker-compose.yaml up --force-recreate -d || exit 1
 
@@ -202,6 +204,8 @@ stop_network() {
 
     docker-compose -f ${ROOT}/docker-compose.yaml down || exit 1
 
+    __delete_shared
+
     if [[ $(docker ps | grep "hyperledger/explorer") ]]; then
         stop_explorer
     fi
@@ -214,11 +218,36 @@ stop_network() {
     if [ -d "$DATA_PATH" ]; then
         echoc "!!!!! ATTENTION !!!!!" light red
         echoc "Found data directory: ${DATA_PATH}" light red
-		read -p "Do you wish to remove this data? [yes/no] " yn
+		read -p "Do you wish to remove this data? [yes/no=default] " yn
 		case $yn in
-			[YyEeSs]* ) rm -rf $DATA_PATH ;;
+			[Yy]* ) __delete_path $DATA_PATH ;;
 			* ) return 0
     	esac
+    fi
+}
+
+__delete_shared() {
+    # always remove shared directory
+    __delete_path ${SHARED_DATA_PATH}
+}
+
+# delete path recursively and asks for root permissions if needed
+__delete_path() {
+    if [ ! -d "${1}" ]; then 
+        echoc "Directory \"${1}\" does not exist. Skipping delete. All good :)" light yellow
+        return
+    fi
+
+    if [ -w "${1}" ]; then
+        rm -rf ${1}
+    else 
+        echoc "!!!!! ATTENTION !!!!!" light red
+        echoc "Directory \"${1}\" requires superuser permissions" light red
+        read -p "Do you wish to continue? [yes/no=default] " yn
+        case $yn in
+            [Yy]* ) sudo rm -rf ${1} ;;
+            * ) return 0
+        esac
     fi
 }
 
@@ -236,6 +265,8 @@ initialize_network() {
 }
 
 start_explorer() {
+    stop_explorer
+    
     echoc "============================" dark cyan
 	echoc "Starting Blockchain Explorer" dark cyan
     echoc "============================" dark cyan
@@ -246,7 +277,20 @@ start_explorer() {
 		exit 1
     fi
 
-    docker-compose -f ${EXPLORER_PATH}/docker-compose.yaml up -d || exit 1
+    if [ ! -d "$CRYPTOS_PATH" ]; then
+        echoc "Cryptos path ${CRYPTOS_PATH} does not exist." dark red
+    fi
+
+    # replacing private key path in connection profile
+    type jq >/dev/null 2>&1 || { echoc >&2 "jq required but it is not installed. Aborting." light red; exit 1; }
+    config=$(ls -d ${EXPLORER_PATH}/connection-profile/*)
+    admin_key_path="peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/keystore"
+    private_key="/tmp/crypto/${admin_key_path}/$(ls ${CRYPTOS_PATH}/${admin_key_path})"
+    cat $config | jq -r --arg private_key "$private_key" '.organizations.Org1MSP.adminPrivateKey.path = $private_key' > tmp && mv tmp $config
+
+    __delete_shared
+
+    docker-compose -f ${EXPLORER_PATH}/docker-compose.yaml up --force-recreate -d || exit 1
 
     echoc "Blockchain Explorer default user is admin/adminpw" light yellow
     echoc "Grafana default user is admin/admin" light yellow
@@ -292,7 +336,7 @@ __init_go_mod() {
         go mod init
     fi
 
-    rm -rf vendor 2>/dev/null
+    __delete_path vendor 2>/dev/null
 
     if [ "${1}" == "install" ]; then
         go get ./...
@@ -395,12 +439,12 @@ generate_genesis() {
 
     if [ -d "$channel_dir" ]; then
         echoc "Channel directory ${channel_dir} already exists" light yellow
-		read -p "Do you wish to re-generate channel config? [yes/no] " yn
+		read -p "Do you wish to re-generate channel config? [yes/no=default] " yn
 		case $yn in
-			[YyEeSs]* ) ;;
+			[Yy]* ) ;;
 			* ) return 0
     	esac
-        rm -rf $channel_dir
+        __delete_path $channel_dir
         mkdir -p $channel_dir
     fi
 
@@ -478,12 +522,12 @@ generate_channeltx() {
 
     if [ -d "$channel_dir" ]; then
         echoc "Channel directory ${channel_dir} already exists" light yellow
-		read -p "Do you wish to re-generate channel config? [yes/no] " yn
+		read -p "Do you wish to re-generate channel config? [yes/no=default] " yn
 		case $yn in
-			[YyEeSs]* ) ;;
+			[Yy]* ) ;;
 			* ) return 0
     	esac
-        rm -rf $channel_dir
+        __delete_path $channel_dir
         mkdir -p $channel_dir
     fi 
 
@@ -553,9 +597,9 @@ generate_cryptos() {
 
     if [ -d "$cryptos_path" ]; then
         echoc "crypto-config already exists" light yellow
-		read -p "Do you wish to remove crypto-config? [yes/no] " yn
+		read -p "Do you wish to remove crypto-config? [yes/no=default] " yn
 		case $yn in
-			[YyEeSs]* ) rm -rf $cryptos_path ;;
+			[Yy]* ) __delete_path $cryptos_path ;;
 			* ) ;;
     	esac
     fi
@@ -577,10 +621,10 @@ generate_cryptos() {
     # copy cryptos into a shared folder available for client applications (sdk)
     if [ -d "${CRYPTOS_SHARED_PATH}" ]; then
         echoc "Shared crypto-config directory ${CRYPTOS_SHARED_PATH} already exists" light yellow
-		read -p "Do you wish to copy the new crypto-config here? [yes/no] " yn
+		read -p "Do you wish to copy the new crypto-config here? [yes/no=default] " yn
 		case $yn in
-			[YyEeSs]* ) 
-                rm -rf ${CRYPTOS_SHARED_PATH}
+			[Yy]* ) 
+                __delete_path ${CRYPTOS_SHARED_PATH}
             ;;
 			* ) return 0
     	esac
