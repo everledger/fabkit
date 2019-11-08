@@ -42,4 +42,6 @@ ${PSQL} -v dbname=$DATABASE -v user=$USER -v passwd=$PASSWD -f ./updatepg.sql ;;
 esac
 
 # notify explorer ui that db is ready
-touch /var/shared/explorerdb_done
+if [ -w "/var/shared/" ]; then
+    touch /var/shared/explorerdb_done
+fi

@@ -19,6 +19,7 @@ services:
       - DATABASE_PASSWORD=password
     volumes:
       - ./db/createdb.sh:/docker-entrypoint-initdb.d/createdb.sh
+      - ../data/explorerdb:/var/lib/postgresql/data
       - ../data/shared:/var/shared
 
   explorer.mynetwork.com:
@@ -36,7 +37,18 @@ services:
       - ./../network/cryptos:/tmp/crypto
       - ../data/walletstore:/opt/wallet
       - ../data/shared:/var/shared
-    command: sh -c "sleep 5 && while [ ! -f /var/shared/explorerdb_done ]; do echo Waiting for explorerdb to complete; sleep 5; done; node /opt/explorer/main.js && tail -f /dev/null"
+    command:
+      - sh
+      - -c
+      - |
+        countdown=60
+        while [ ! -f /var/shared/explorerdb_done ] && [ "$${countdown}" != 0 ]; do
+          echo Waiting for explorerdb to complete. Waiting for max $${countdown}s
+          sleep 5
+          countdown=$$((countdown - 5))
+        done
+
+        node /opt/explorer/main.js && tail -f /dev/null
     ports:
       - 8090:8080
 

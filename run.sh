@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 source $(pwd)/.env
 
@@ -291,17 +291,6 @@ start_explorer() {
     __delete_shared
 
     docker-compose -f ${EXPLORER_PATH}/docker-compose.yaml up --force-recreate -d || exit 1
-
-    # for linux machines
-    if [ ! -w "${SHARED_DATA_PATH}" ]; then
-        echoc "!!!!! ATTENTION !!!!!" light red
-        echoc "Directory \"${SHARED_DATA_PATH}\" requires superuser permissions" light red
-        read -p "Do you wish to continue? [yes/no=default] " yn
-        case $yn in
-            [Yy]* ) sudo chmod 777 -R ${SHARED_DATA_PATH} ;;
-            * ) ;;
-        esac
-    fi
 
     echoc "Blockchain Explorer default user is admin/adminpw" light yellow
     echoc "Grafana default user is admin/admin" light yellow
