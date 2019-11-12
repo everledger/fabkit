@@ -125,16 +125,16 @@ __docker_fabric_pull() {
         echoc "==> FABRIC IMAGE: $image" light cyan
         echo
         docker pull hyperledger/fabric-$image:${FABRIC_VERSION} || exit 1
-        docker tag hyperledger/fabric-$image:${FABRIC_VERSION} hyperledger/fabric-$image:latest
+        # docker tag hyperledger/fabric-$image:${FABRIC_VERSION} hyperledger/fabric-$image:latest
     done
 }
 
 __docker_third_party_images_pull() {
-    for image in couchdb kafka zookeeper; do
+    for image in couchdb; do
         echoc "==> THIRDPARTY DOCKER IMAGE: $image" light cyan
         echo
         docker pull hyperledger/fabric-$image:$FABRIC_THIRDPARTY_IMAGE_VERSION || exit 1
-        docker tag hyperledger/fabric-$image:$FABRIC_THIRDPARTY_IMAGE_VERSION hyperledger/fabric-$image:latest
+        # docker tag hyperledger/fabric-$image:$FABRIC_THIRDPARTY_IMAGE_VERSION hyperledger/fabric-$image:latest
     done
 }
 
@@ -160,11 +160,6 @@ start_network() {
         build_chaincode $CHAINCODE_NAME
         test_chaincode $CHAINCODE_NAME
     fi
-
-    echoc "========================" dark cyan
-	echoc "Starting Fabric network" dark cyan
-    echoc "========================" dark cyan
-    echo
 
 	generate_cryptos $CONFIG_PATH $CRYPTOS_PATH
     generate_genesis $NETWORK_PATH $CONFIG_PATH $CRYPTOS_PATH $CONFIGTX_PROFILE_NETWORK
@@ -260,7 +255,7 @@ initialize_network() {
 	create_channel $CHANNEL_NAME
 	join_channel $CHANNEL_NAME
 	update_channel $CHANNEL_NAME $ORG_MSP
-	install_chaincode $CHAINCODE_NAME $CHAINCODE_VERSION ${CHAINCODE_NAME}
+	install_chaincode $CHAINCODE_NAME $CHAINCODE_VERSION $CHAINCODE_NAME
 	instantiate_chaincode $CHAINCODE_NAME $CHAINCODE_VERSION $CHANNEL_NAME
 }
 
@@ -710,7 +705,7 @@ upgrade_chaincode() {
 
 	build_chaincode $chaincode_name
 	test_chaincode $chaincode_name
-	install_chaincode $chaincode_name $chaincode_version ${CHAINCODE_REMOTE_PATH}/${chaincode_name}
+	install_chaincode $chaincode_name $chaincode_version $chaincode_name
 
     echoc "Upgrading chaincode $chaincode_name to version $chaincode_version into channel $channel_name" light cyan
 	docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode upgrade -n $chaincode_name -v $chaincode_version -C $channel_name -c '{"Args":[]}'
