@@ -15,11 +15,16 @@ help() {
         dep install [chaincode_name]                                                : install all go modules as vendor and init go.mod if does not exist yet
         dep update [chaincode_name]                                                 : update all go modules and rerun install
         
+        ca register                                                                 : register a new user via Fabric CA
+        ca enroll                                                                   : enroll a previously registered user via Fabric CA
+        
         network install                                                             : install all the dependencies and docker images
         network start                                                               : start the blockchain network and initialize it
         network restart                                                             : restart a previously running the blockchain network
         network stop                                                                : stop the blockchain network and remove all the docker containers
-        network explore                                                             : run the blockchain explorer user-interface
+        
+        explorer start                                                              : run the blockchain explorer user-interface and analytics
+        explorer stop                                                               : stop the blockchain explorer user-interface and analytics
 
         channel create [channel_name]                                               : generate channel configuration file
         channel update [channel_name] [org]                                         : update channel with anchor peers
@@ -109,9 +114,9 @@ echoc() {
 }
 
 install_network() {
-    echoc "========================" dark cyan
-	echoc "Installing dependencies" dark cyan
-    echoc "========================" dark cyan
+    echoc "================" dark cyan
+	echoc "Network: install" dark cyan
+    echoc "================" dark cyan
     echo
 	echoc "Pulling Go docker image" light cyan
 	docker pull ${GOLANG_DOCKER_IMAGE}:${GOLANG_DOCKER_TAG}
@@ -125,7 +130,7 @@ __docker_fabric_pull() {
         echoc "==> FABRIC IMAGE: $image" light cyan
         echo
         docker pull hyperledger/fabric-$image:${FABRIC_VERSION} || exit 1
-        # docker tag hyperledger/fabric-$image:${FABRIC_VERSION} hyperledger/fabric-$image:latest
+        docker tag hyperledger/fabric-$image:${FABRIC_VERSION} hyperledger/fabric-$image:latest
     done
 }
 
@@ -134,7 +139,7 @@ __docker_third_party_images_pull() {
         echoc "==> THIRDPARTY DOCKER IMAGE: $image" light cyan
         echo
         docker pull hyperledger/fabric-$image:$FABRIC_THIRDPARTY_IMAGE_VERSION || exit 1
-        # docker tag hyperledger/fabric-$image:$FABRIC_THIRDPARTY_IMAGE_VERSION hyperledger/fabric-$image:latest
+        docker tag hyperledger/fabric-$image:$FABRIC_THIRDPARTY_IMAGE_VERSION hyperledger/fabric-$image:latest
     done
 }
 
@@ -161,6 +166,11 @@ start_network() {
         test_chaincode $CHAINCODE_NAME
     fi
 
+    echoc "==============" dark cyan
+    echoc "Network: start" dark cyan
+    echoc "==============" dark cyan
+    echo
+
 	generate_cryptos $CONFIG_PATH $CRYPTOS_PATH
     generate_genesis $NETWORK_PATH $CONFIG_PATH $CRYPTOS_PATH $CONFIGTX_PROFILE_NETWORK
     generate_channeltx $CHANNEL_NAME $NETWORK_PATH $CONFIG_PATH $CRYPTOS_PATH $CONFIGTX_PROFILE_NETWORK $CONFIGTX_PROFILE_CHANNEL $ORG_MSP
@@ -175,9 +185,9 @@ start_network() {
 }
 
 restart_network() {
-    echoc "=========================" dark cyan
-	echoc "Restarting Fabric network" dark cyan
-    echoc "=========================" dark cyan
+    echoc "================" dark cyan
+	echoc "Network: restart" dark cyan
+    echoc "================" dark cyan
     echo
 
     if [ ! -d "$DATA_PATH" ]; then
@@ -193,9 +203,9 @@ restart_network() {
 }
 
 stop_network() {
-    echoc "===========================" dark cyan
-	echoc "Tearing Fabric network down" dark cyan
-    echoc "===========================" dark cyan
+    echoc "=============" dark cyan
+	echoc "Network: stop" dark cyan
+    echoc "=============" dark cyan
 
     docker-compose -f ${ROOT}/docker-compose.yaml down || exit 1
 
@@ -247,9 +257,9 @@ __delete_path() {
 }
 
 initialize_network() {
-    echoc "============================" dark cyan
-	echoc "Initializing Fabric network" dark cyan
-    echoc "============================" dark cyan
+    echoc "=============" dark cyan
+	echoc "Network: init" dark cyan
+    echoc "=============" dark cyan
     echo
 
 	create_channel $CHANNEL_NAME
@@ -262,9 +272,9 @@ initialize_network() {
 start_explorer() {
     stop_explorer
     
-    echoc "============================" dark cyan
-	echoc "Starting Blockchain Explorer" dark cyan
-    echoc "============================" dark cyan
+    echoc "===============" dark cyan
+	echoc "Explorer: start" dark cyan
+    echoc "===============" dark cyan
     echo
 
     if [[ ! $(docker ps | grep fabric) ]]; then
@@ -272,7 +282,7 @@ start_explorer() {
 		exit 1
     fi
 
-    if [ ! -d "$CRYPTOS_PATH" ]; then
+    if [ ! -d "${CRYPTOS_PATH}" ]; then
         echoc "Cryptos path ${CRYPTOS_PATH} does not exist." dark red
     fi
 
@@ -292,9 +302,9 @@ start_explorer() {
 }
 
 stop_explorer() {
-    echoc "================================" dark cyan
-	echoc "Tearing Blockchain Explorer down" dark cyan
-    echoc "================================" dark cyan
+    echoc "==============" dark cyan
+	echoc "Explorer: stop" dark cyan
+    echoc "==============" dark cyan
     echo
 
     docker-compose -f ${EXPLORER_PATH}/docker-compose.yaml down || exit 1
@@ -304,9 +314,9 @@ dep_install() {
     __check_chaincode $1
     local chaincode_name="${1}"
 
-    echoc "=======================" dark cyan
-    echoc "Installing dependencies" dark cyan
-    echoc "=======================" dark cyan
+    echoc "=====================" dark cyan
+    echoc "Dependencies: install" dark cyan
+    echoc "=====================" dark cyan
     echo
 
     cd ${CHAINCODE_PATH}/${chaincode_name} || exit 1
@@ -317,9 +327,9 @@ dep_update() {
     __check_chaincode $1
     local chaincode_name="${1}"
 
-    echoc "===================" dark cyan
-    echoc "Update dependencies" dark cyan
-    echoc "===================" dark cyan
+    echoc "====================" dark cyan
+    echoc "Dependencies: update" dark cyan
+    echoc "====================" dark cyan
     echo
 
     cd ${CHAINCODE_PATH}/${chaincode_name} || exit 1
@@ -347,9 +357,10 @@ test_chaincode() {
     __check_chaincode $1
     local chaincode_name="${1}"
 
-    echoc "===================" dark cyan
-	echoc "Unit test chaincode" dark cyan
-    echoc "===================" dark cyan
+    echoc "===============" dark cyan
+	echoc "Chaincode: test" dark cyan
+    echoc "===============" dark cyan
+    echo
 
     if [[ $(check_dependencies test) ]]; then
         (docker run --rm  -v ${CHAINCODE_PATH}:/usr/src/myapp -w /usr/src/myapp/${chaincode_name} -e CGO_ENABLED=0 -e CORE_CHAINCODE_LOGGING_LEVEL=debug ${GOLANG_DOCKER_IMAGE}:${GOLANG_DOCKER_TAG} sh -c "go test ./... -v") || exit 1
@@ -364,9 +375,10 @@ build_chaincode() {
     __check_chaincode $1
     local chaincode_name="${1}"
 
-    echoc "==================" dark cyan
-	echoc "Building chaincode" dakr cyan
-    echoc "==================" dark cyan
+    echoc "================" dark cyan
+	echoc "Chaincode: build" dakr cyan
+    echoc "================" dark cyan
+    echo
 
     if [[ $(check_dependencies test) ]]; then
         (docker run --rm -v ${CHAINCODE_PATH}:/usr/src/myapp -w /usr/src/myapp/${chaincode_name} -e CGO_ENABLED=0 ${GOLANG_DOCKER_IMAGE}:${GOLANG_DOCKER_TAG} sh -c "go build -a -installsuffix nocgo ./... && rm -rf ./${chaincode_name} 2>/dev/null") || exit 1
@@ -379,6 +391,11 @@ build_chaincode() {
 
 pack_chaincode() {
     type zip >/dev/null 2>&1 || { echoc >&2 "zip required but it is not installed. Aborting." light red; exit 1; }
+
+    echoc "===============" dark cyan
+    echoc "Chaincode: pack" dark cyan
+    echoc "===============" dark cyan
+    echo
 
     __check_chaincode $1
     local chaincode_name="${1}"
@@ -590,17 +607,17 @@ generate_cryptos() {
     echoc "Config path: $config_path" light cyan
     echoc "Cryptos path: $cryptos_path" light cyan
 
-    if [ -d "$cryptos_path" ]; then
+    if [ -d "${cryptos_path}" ]; then
         echoc "crypto-config already exists" light yellow
 		read -p "Do you wish to remove crypto-config? [yes/no=default] " yn
 		case $yn in
-			[Yy]* ) __delete_path $cryptos_path ;;
+			[Yy]* ) __delete_path ${cryptos_path} ;;
 			* ) ;;
     	esac
     fi
 
-    if [ ! -d "$cryptos_path" ]; then
-        mkdir -p $cryptos_path
+    if [ ! -d "${cryptos_path}" ]; then
+        mkdir -p ${cryptos_path}
 
         # generate crypto material
         docker run --rm -v ${config_path}/crypto-config.yaml:/crypto-config.yaml \
@@ -616,7 +633,7 @@ generate_cryptos() {
     # copy cryptos into a shared folder available for client applications (sdk)
     if [ -d "${CRYPTOS_SHARED_PATH}" ]; then
         echoc "Shared crypto-config directory ${CRYPTOS_SHARED_PATH} already exists" light yellow
-		read -p "Do you wish to copy the new crypto-config here? [yes/no=default] " yn
+		read -p "Do you want to overwrite this shared data with your local crypto-config directory? [yes/no=default] " yn
 		case $yn in
 			[Yy]* ) 
                 __delete_path ${CRYPTOS_SHARED_PATH}
@@ -634,6 +651,11 @@ create_channel() {
 		exit 1
 	fi
 
+    echoc "===============" dark cyan
+    echoc "Channel: create" dark cyan
+    echoc "===============" dark cyan
+    echo
+
 	local channel_name="$1"
 
 	echoc "Creating channel $channel_name using configuration file $CHANNELS_CONFIG_PATH/$channel_name/${channel_name}_tx.pb" light cyan
@@ -645,6 +667,11 @@ join_channel() {
 		echoc "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" dark red
 		exit 1
 	fi
+
+    echoc "=============" dark cyan
+    echoc "Channel: join" dark cyan
+    echoc "=============" dark cyan
+    echo
 
 	local channel_name="$1"
 
@@ -658,6 +685,11 @@ update_channel() {
 		exit 1
 	fi
 
+    echoc "===============" dark cyan
+    echoc "Channel: update" dark cyan
+    echoc "===============" dark cyan
+    echo
+
 	local channel_name="$1"
     local org_msp="$2"
 
@@ -670,6 +702,13 @@ install_chaincode() {
 		echoc "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" dark red
 		exit 1
 	fi
+
+    echoc "==================" dark cyan
+    echoc "Chaincode: install" dark cyan
+    echoc "==================" dark cyan
+    echo
+
+    __init_go_mod install
 
 	local chaincode_name="$1"
 	local chaincode_version="$2"
@@ -685,6 +724,11 @@ instantiate_chaincode() {
 		exit 1
 	fi
 
+    echoc "======================" dark cyan
+    echoc "Chaincode: instantiate" dark cyan
+    echoc "======================" dark cyan
+    echo
+
 	local chaincode_name="$1"
 	local chaincode_version="$2"
 	local channel_name="$3"
@@ -698,6 +742,11 @@ upgrade_chaincode() {
 		echoc "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" dark red
 		exit 1
 	fi
+
+    echoc "==================" dark cyan
+    echoc "Chaincode: upgrade" dark cyan
+    echoc "==================" dark cyan
+    echo
 
 	local chaincode_name="$1"
 	local chaincode_version="$2"
@@ -717,6 +766,11 @@ invoke() {
 		exit 1
 	fi
 
+    echoc "==================" dark cyan
+    echoc "Chaincode: invoke" dark cyan
+    echoc "==================" dark cyan
+    echo
+
 	local channel_name="$1"
 	local chaincode_name="$2"
 	local request="$3"
@@ -730,6 +784,11 @@ query() {
 		exit 1
 	fi
 
+    echoc "==================" dark cyan
+    echoc "Chaincode: query" dark cyan
+    echoc "==================" dark cyan
+    echo
+
 	local channel_name="$1"
 	local chaincode_name="$2"
 	local request="$3"
@@ -737,124 +796,145 @@ query() {
 	docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode query -o $ORDERER_ADDRESS -C $channel_name -n $chaincode_name -c "$request"
 }
 
-enroll_admin() {
-    if [ -z "$1" ] || [ -z "$2" ]; then
-        echo "Please provide username and password in the format: ./run.sh ca enroll [user] [password]"
-        exit 1
-    fi
-
-    # type fabric-ca-client >/dev/null 2>&1 || { echo >&2 "I require fabric-ca-client but it is not installed.  Aborting."; exit 1; }
-
-    local admin_user="$1"
-    local admin_password="$2"
-
-    if [ ! -d $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR/$FABRIC_ORG/users/$admin_user/msp ]; then
-        mkdir -p $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR/$FABRIC_ORG/users/$admin_user/msp
-    fi
-    if [ ! -d $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR/$FABRIC_ORG/$FABRIC_CA_DIR ]; then
-        mkdir -p $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR/$FABRIC_ORG/$FABRIC_CA_DIR
-        mv $(pwd)/$FABRIC_CA_CERT $FABRIC_CRYPTO_CONFIG_DIR/$FABRIC_ORG/$FABRIC_CA_DIR
-    fi
-
-    docker run --rm --env-file uat.env \
-    -v $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR:/$FABRIC_CRYPTO_CONFIG_DIR \
-    $FABRIC_CA_IMAGE:$FABRIC_CA_IMAGE_TAG \
-    sh -c " \
-    fabric-ca-client enroll \
-        --home /$FABRIC_CRYPTO_CONFIG_DIR \
-        --mspdir $FABRIC_ORG/users/$admin_user \
-        --url https://$admin_user:$admin_password@$CA_HOST:$CA_PORT \
-        --tls.certfiles $FABRIC_ORG/$FABRIC_CA_DIR/$FABRIC_CA_CERT
-      "
-
-    # fabric-ca-client enroll \
-    #     --home $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR \
-    #     --mspdir $FABRIC_ORG/users/$admin_user \
-    #     --url https://$admin_user:$admin_password@$CA_HOST:$CA_PORT \
-    #     --tls.certfiles $FABRIC_ORG/$FABRIC_CA_DIR/$FABRIC_CA_CERT
-}
-
 register_user() {
-    # type fabric-ca-client >/dev/null 2>&1 || { echo >&2 "I require fabric-ca-client but it is not installed.  Aborting."; exit 1; }
-    if [ -z "$1" ] || [ -z "$2" ]; then
-        echo "Please provide username and password in the format: register_user [username] [password]"
-        exit 1
-    fi
+    echoc "=================" dark cyan
+    echoc "CA User: register" dark cyan
+    echoc "=================" dark cyan
+    echo
 
-    local user="$1"
-    local password="$2"
+    __ca_setup register
 
-    if [ ! -d $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR/$FABRIC_ORG/users/$user/msp ]; then
-        mkdir -p $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR/$FABRIC_ORG/users/$user/msp
-    fi
-    if [ ! -d $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR/$FABRIC_ORG/$FABRIC_CA_DIR ]; then
-        mkdir -p $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR/$FABRIC_ORG/$FABRIC_CA_DIR
-        mv $(pwd)/$FABRIC_CA_CERT $FABRIC_CRYPTO_CONFIG_DIR/$FABRIC_ORG/$FABRIC_CA_DIR
-    fi
-
-    docker run --rm --env-file uat.env \
-    -v $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR:/$FABRIC_CRYPTO_CONFIG_DIR \
-    $FABRIC_CA_IMAGE:$FABRIC_CA_IMAGE_TAG \
-    sh -c " \
-        fabric-ca-client register \
-            --home /$FABRIC_CRYPTO_CONFIG_DIR \
-            --mspdir $FABRIC_ORG/users/$user_DIR \
-            --url https://$CA_HOST:$CA_PORT \
-            --tls.certfiles $FABRIC_ORG/$FABRIC_CA_DIR/$FABRIC_CA_CERT \
-            --id.name $user \
+    docker run --rm \
+        -v ${CRYPTOS_PATH}:/crypto-config \
+        --network="${DOCKER_NETWORK}" \
+        hyperledger/fabric-ca:${FABRIC_VERSION} \
+        sh -c " \
+        fabric-ca-client register -d \
+            --home /crypto-config \
+            --mspdir ${org}/users/admin \
+            --url ${ca_protocol}${ca_url} \
+            --tls.certfiles ${ca_cert} \
+            --id.name $username \
             --id.secret $password  \
-            --id.affiliation $FABRIC_MEMBER_MSPID \
-            --id.attrs $user_ATTRS --id.type user
+            --id.affiliation $user_affiliation \
+            --id.attrs $user_attributes \
+            --id.type $user_type
          "
 
-    # fabric-ca-client register \
-    #     --home $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR \
-    #     --mspdir $FABRIC_ORG/users/$admin_user/msp \
-    #     --url https://$CA_HOST:$CA_PORT \
-    #     --tls.certfiles $FABRIC_CA_CERT \
-    #     --id.name $user \
-    #     --id.secret $password  \
-    #     --id.affiliation $FABRIC_MEMBER_MSPID \
-    #     --id.attrs $user_ATTRS --id.type client
+    echoc "!! IMPORTANT: Note down these lines containing the information of the registered user" light green
 }
 
 enroll_user() {
-    type fabric-ca-client >/dev/null 2>&1 || { echo >&2 "I require fabric-ca-client but it is not installed.  Aborting."; exit 1; }
+    echoc "===============" dark cyan
+    echoc "CA User: enroll" dark cyan
+    echoc "===============" dark cyan
+    echo
 
-    user="$1"
-    password="$2"
+    __ca_setup enroll
 
-    if [ -z "$user" ] || [ -z "$user" ]; then
-        echo "Please provide username and password in the format: enroll_user [username] [password]"
-        exit 1
-    fi
+    docker run --rm \
+        -v ${CRYPTOS_PATH}:/crypto-config \
+        --network="${DOCKER_NETWORK}" \
+        hyperledger/fabric-ca:${FABRIC_VERSION} \
+        sh -c " \
+        fabric-ca-client enroll -d \
+            --home /crypto-config \
+            --mspdir ${org}/users/${username} \
+            --url ${ca_protocol}${username}:${password}@${ca_url} \
+            --tls.certfiles $ca_cert \
+            --enrollment.attrs $user_attributes
+        "
 
-    if [ ! -d $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR/$FABRIC_ORG/users/$user/msp ]; then
-        mkdir -p $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR/$FABRIC_ORG/users/$user/msp
-    fi
-    if [ ! -d $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR/$FABRIC_ORG/$FABRIC_CA_DIR ]; then
-        mkdir -p $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR/$FABRIC_ORG/$FABRIC_CA_DIR
-        mv $(pwd)/$FABRIC_CA_CERT $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR/$FABRIC_ORG/$FABRIC_CA_DIR
-    fi
+    # IMPORTANT: the CA requires this folder in case of the user is an admin
+    cp -r ${CRYPTOS_PATH}/${org}/users/${username}/signcerts ${CRYPTOS_PATH}/${org}/users/${username}/admincerts
+}
 
-    #docker run --rm --env-file uat.env \
-    #    -v $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR:/$FABRIC_CRYPTO_CONFIG_DIR \
-    #    $FABRIC_CA_IMAGE:$FABRIC_CA_IMAGE_TAG \
-    #    sh -c " \
-    #    fabric-ca-client enroll \
-    #        --home /$FABRIC_CRYPTO_CONFIG_DIR/$user_DIR \
-    #        --url https://$user:$password@$CA_HOST:$CA_PORT \
-    #        --tls.certfiles $FABRIC_ORG/$FABRIC_CA_DIR/$FABRIC_CA_CERT
-    #      "\
+__ca_setup() {
+    echoc "Insert the username of the user to register/enroll" light blue
+    username_default="user_"$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 5; echo)
+    read -p "Username: [${username_default}] " username
+    export username=${username:-${username_default}}
+    echoc $username light green
+    echo
 
-    fabric-ca-client enroll \
-        --home $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR \
-        --mspdir $FABRIC_ORG/users/$user/msp \
-        --url https://$user:$password@$CA_HOST:$CA_PORT \
-        --tls.certfiles $FABRIC_ORG/$FABRIC_CA_DIR/$FABRIC_CA_CERT
+    echoc "Insert password of the user. It will be used by the CA as secret to generate the user certificate and key" light blue
+    password_default=$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 5; echo)
+    read -p "Password: [${password_default}] " password
+    export password=${password:-${password_default}}
+    echoc $password light green
+    echoc "!! IMPORTANT: Take note of this password before continuing. If you loose this password you will not be able to manage the credentials of this user any longer." light yellow
+    echo
 
-    echo "Renaming user cert file"
-    mv $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR/$FABRIC_ORG/users/$user/signcerts/*.pem $(pwd)/$FABRIC_CRYPTO_CONFIG_DIR/$FABRIC_ORG/users/$user/signcerts/$user@$FABRIC_ORG-cert.pem
+    echoc "Insert the organization name of the user to register/enroll" light blue
+    while [ -z "$org" ]; do
+        read -p "Organization: [] " org
+    done
+    export $org
+    echoc $org light green
+    echo
+
+    echoc "CA secure connection (https)" light blue
+    read -p "Using TLS secure connection? (if your CA address starts with https)? [yes/no=default] " yn
+    case $yn in
+        [Yy]* ) 
+            export ca_protocol="https://"
+            echoc "Secure TLS connection: enabled" light green
+            ;;
+        * ) 
+            export ca_protocol="http://" 
+            echoc "Secure TLS connection: disabled" light green
+            ;;
+    esac
+    echo
+
+    echoc "Set CA TLS certificate path" light blue
+    ca_cert_default=$(find ./network -name "tlsca*.pem" | head -n 1)
+    read -p "CA cert: [${ca_cert_default}] " ca_cert
+    ca_cert=${ca_cert:-${ca_cert_default}}
+    echoc $ca_cert light green
+    # copy the CA certificate to the main cryptos directory
+    cp $ca_cert ${CRYPTOS_PATH}/cert.pem
+    export ca_cert=$(basename ${CRYPTOS_PATH}/cert.pem)
+    echo
+
+    echoc "Insert CA hostname and port only (e.g. ca.example.com:7054)" light blue
+    ca_url_default="ca.example.com:7054"
+    read -p "CA hostname and port: [${ca_url_default}] " ca_url
+    export ca_url=${ca_url:-${ca_url_default}}
+    echoc ${ca_url} light green
+    echo
+
+    echoc "Insert user attributes (e.g. admin=false:ecert)" light blue
+    echoc "Wiki: https://hyperledger-fabric-ca.readthedocs.io/en/latest/users-guide.html#registering-a-new-identity" light blue
+    echo
+    echoc "A few examples:" light blue
+    echoc "If enrolling an admin: 'hf.Registrar.Roles,hf.Registrar.Attributes,hf.AffiliationMgr'" light yellow
+    echoc "If registering a user: 'admin=false:ecert,email=provapi@everledger.io:ecert,application=provapi'" light yellow
+    echoc "If enrolling a user: 'admin:opt,email:opt,application:opt'" light yellow
+    read -p "User attributes: [admin=false:ecert] " user_attributes
+    export user_attributes=${user_attributes:-"admin=false:ecert"}
+    echoc $user_attributes light green
+    echo
+
+    # registering a user requires additional information
+    if [ "$1" == "register" ]; then
+        if [ ! -d "${CRYPTOS_PATH}/${org}/users/admin" ]; then
+            echoc "Admin directory not found in: ${CRYPTOS_PATH}/${org}/users/. Please enroll the admin user first." light red
+            exit 1
+        fi
+
+        echoc "Insert user type (e.g. client, peer, orderer)" light blue
+        read -p "User type: [client] " user_type
+        export user_type=${user_type:-client}
+        echoc $user_type light green
+        echo
+
+        echoc "Insert user affiliation (e.g. admin=false:ecert)" light blue
+        read -p "User affiliation: [admin=false:ecert] " user_affiliation
+        export user_affiliation=${user_affiliation:-"admin=false:ecert"}
+        echoc $user_affiliation light green
+        echo
+        fi
 }
 
 __exec_jobs() {
@@ -869,6 +949,11 @@ __exec_jobs() {
         echo "Provide a number of entries per job"
         exit 1
     fi
+
+    echoc "==================" dark cyan
+    echoc "Network: benchmark" dark cyan
+    echoc "==================" dark cyan
+    echo
 
     echoc "Running in parallel:
     Jobs: $jobs
@@ -894,10 +979,8 @@ __exec_jobs() {
 }
 
 __loader() {
-    export LC_CTYPE=C
-
     for i in $(seq 1 $1); do 
-        key=$(cat /dev/urandom | tr -cd 'A-Z0-9' | fold -w 14 | head -n 1)
+        key=$(LC_CTYPE=C cat /dev/urandom | tr -cd 'A-Z0-9' | fold -w 14 | head -n 1)
         value="$i"
 
         invoke mychannel mychaincode "{\"Args\":[\"put\",\"${key}\",\"${value}\"]}" &>/dev/null
@@ -921,9 +1004,16 @@ if [ "$func" == "network" ]; then
         restart_network
     elif [ "$param" == "stop" ]; then
         stop_network
-    elif [ "$param" == "explore" ]; then
-        check_dependencies deploy
+        help
+        exit 1
+    fi
+elif [ "$func" == "explorer" ]; then
+    readonly param="$1"
+    shift
+    if [ "$param" == "start" ]; then
         start_explorer
+    elif [ "$param" == "stop" ]; then
+        stop_explorer
     else
         help
         exit 1
