@@ -147,10 +147,10 @@ It will stop and remove all the blockchain network containers including the `dev
 The repository provides also a simple implementation of a bulk load function in order to benchmark the general speed of the network in terms of tps (transactions-per-second).
 
 ```bash
-./run.sh benchmark [jobs] [entries]
+./run.sh benchmark load [jobs] [entries]
 
 # e.g.
-./run.sh benchmark 5 1000
+./run.sh benchmark load 5 1000
 ```
 
 The example above will do a bulk load of 1000 entries times 5 parallel jobs, for a total of 5000 entries. At the completion of all the jobs it will be prompted on screen the elapsed time of the total task.
