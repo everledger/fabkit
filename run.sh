@@ -605,6 +605,7 @@ generate_cryptos() {
         # generate crypto material
         docker run --rm -v ${config_path}/crypto-config.yaml:/crypto-config.yaml \
                         -v ${cryptos_path}:/crypto-config \
+                        -u 1000:1000 \
                         hyperledger/fabric-tools:${FABRIC_VERSION} \
                         cryptogen generate --config=/crypto-config.yaml --output=/crypto-config
         if [ "$?" -ne 0 ]; then
