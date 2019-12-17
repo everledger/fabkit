@@ -452,20 +452,26 @@ generate_genesis() {
 	echoc "Cryptos path: $cryptos_path" light cyan
 	echoc "Network profile: $network_profile" light cyan
 
-    # generate genesis block for orderer
-	docker run --rm -v ${config_path}/configtx.yaml:/configtx.yaml \
+    if [ ! -d "$channel_dir" ]; then
+        mkdir -p $channel_dir
+    fi
+
+   
+# generate genesis block for orderer
+    docker run --rm -v ${config_path}/configtx.yaml:/configtx.yaml \
                     -v ${channel_dir}:/channels/orderer-system-channel \
                     -v ${cryptos_path}:/crypto-config \
+                    -u $(id -u):$(id -g) \
                     -e FABRIC_CFG_PATH=/ \
                     hyperledger/fabric-tools:${FABRIC_VERSION} \
                     bash -c " \
                         configtxgen -profile $network_profile -channelID orderer-system-channel -outputBlock /channels/orderer-system-channel/genesis_block.pb /configtx.yaml;
                         configtxgen -inspectBlock /channels/orderer-system-channel/genesis_block.pb
                     "
-	if [ "$?" -ne 0 ]; then
-		echoc "Failed to generate orderer genesis block..." dark red
-		exit 1
-	fi
+    if [ "$?" -ne 0 ]; then
+        echoc "Failed to generate orderer genesis block..." dark red
+        exit 1
+    fi
 }
 
 # generate channel config
@@ -539,25 +545,32 @@ generate_channeltx() {
 	echoc "Channel profile: $channel_profile" light cyan
 	echoc "Org MSP: $org_msp" light cyan
 
-	# generate channel configuration transaction
-	docker run --rm -v ${config_path}/configtx.yaml:/configtx.yaml \
+	if [ ! -d "$channel_dir" ]; then
+        mkdir -p $channel_dir
+    fi
+    
+# generate channel configuration transaction
+    docker run --rm -v ${config_path}/configtx.yaml:/configtx.yaml \
                     -v ${channel_dir}:/channels/${channel_name} \
                     -v ${cryptos_path}:/crypto-config \
+                    -u $(id -u):$(id -g) \
                     -e FABRIC_CFG_PATH=/ \
                     hyperledger/fabric-tools:${FABRIC_VERSION} \
                     bash -c " \
                         configtxgen -profile $channel_profile -outputCreateChannelTx /channels/${channel_name}/${channel_name}_tx.pb -channelID $channel_name /configtx.yaml;
                         configtxgen -inspectChannelCreateTx /channels/${channel_name}/${channel_name}_tx.pb
                     "
-	if [ "$?" -ne 0 ]; then
-		echoc "Failed to generate channel configuration transaction..." dark red
-		exit 1
-	fi
+    if [ "$?" -ne 0 ]; then
+        echoc "Failed to generate channel configuration transaction..." dark red
+        exit 1
+    fi
+    
 
 	# generate anchor peer transaction
 	docker run --rm -v ${config_path}/configtx.yaml:/configtx.yaml \
                     -v ${channel_dir}:/channels/${channel_name} \
                     -v ${cryptos_path}:/crypto-config \
+                    -u $(id -u):$(id -g) \
                     -e FABRIC_CFG_PATH=/ \
                     hyperledger/fabric-tools:${FABRIC_VERSION} \
                     configtxgen -profile $channel_profile -outputAnchorPeersUpdate /channels/${channel_name}/${org_msp}_anchors_tx.pb -channelID $channel_name -asOrg $org_msp /configtx.yaml
@@ -605,7 +618,7 @@ generate_cryptos() {
         # generate crypto material
         docker run --rm -v ${config_path}/crypto-config.yaml:/crypto-config.yaml \
                         -v ${cryptos_path}:/crypto-config \
-                        -u 1000:1000 \
+                        -u $(id -u):$(id -g) \
                         hyperledger/fabric-tools:${FABRIC_VERSION} \
                         cryptogen generate --config=/crypto-config.yaml --output=/crypto-config
         if [ "$?" -ne 0 ]; then
