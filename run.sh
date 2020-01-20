@@ -15,8 +15,10 @@ help() {
         dep install [chaincode_name]                                                : install all go modules as vendor and init go.mod if does not exist yet
         dep update [chaincode_name]                                                 : update all go modules and rerun install
         
-        ca register                                                                 : register a new user via Fabric CA
-        ca enroll                                                                   : enroll a previously registered user via Fabric CA
+        ca register                                                                 : register a new user
+        ca enroll                                                                   : enroll a previously registered user    
+        ca reenroll                                                                 : reenroll a user if its certificate expired
+        ca revoke                                                                   : revoke a user's key/certificate providing a reason
         
         network install                                                             : install all the dependencies and docker images
         network start                                                               : start the blockchain network and initialize it
@@ -807,7 +809,7 @@ register_user() {
     docker run --rm \
         -v ${CRYPTOS_PATH}:/crypto-config \
         --network="${DOCKER_NETWORK}" \
-        hyperledger/fabric-ca:${FABRIC_VERSION} \
+        hyperledger/fabric-ca:${fabric_version} \
         sh -c " \
         fabric-ca-client register -d \
             --home /crypto-config \
@@ -835,7 +837,7 @@ enroll_user() {
     docker run --rm \
         -v ${CRYPTOS_PATH}:/crypto-config \
         --network="${DOCKER_NETWORK}" \
-        hyperledger/fabric-ca:${FABRIC_VERSION} \
+        hyperledger/fabric-ca:${fabric_version} \
         sh -c " \
         fabric-ca-client enroll -d \
             --home /crypto-config \
@@ -849,7 +851,96 @@ enroll_user() {
     cp -r ${CRYPTOS_PATH}/${org}/users/${username}/signcerts ${CRYPTOS_PATH}/${org}/users/${username}/admincerts
 }
 
+reenroll_user() {
+    echoc "=================" dark cyan
+    echoc "CA User: reenroll" dark cyan
+    echoc "=================" dark cyan
+    echo
+
+    __ca_setup enroll
+
+    docker run --rm \
+        -v ${CRYPTOS_PATH}:/crypto-config \
+        --network="${DOCKER_NETWORK}" \
+        hyperledger/fabric-ca:${fabric_version} \
+        sh -c " \
+        fabric-ca-client reenroll -d \
+            --home /crypto-config \
+            --mspdir ${org}/users/${username} \
+            --url ${ca_protocol}${username}:${password}@${ca_url} \
+            --tls.certfiles $ca_cert \
+            --enrollment.attrs $user_attributes
+        "
+
+    # IMPORTANT: the CA requires this folder in case of the user is an admin
+    cp -r ${CRYPTOS_PATH}/${org}/users/${username}/signcerts ${CRYPTOS_PATH}/${org}/users/${username}/admincerts
+}
+
+revoke_user() {
+    echoc "===============" dark cyan
+    echoc "CA User: revoke" dark cyan
+    echoc "===============" dark cyan
+    echo
+
+    __ca_setup revoke
+
+    # reason for the revoke
+    reason_list=" 
+    1: unspecified
+    2: keycompromise
+    3: cacompromise
+    4: affiliationchange
+    5: superseded
+    6: cessationofoperation
+    7: certificatehold
+    8: removefromcrl
+    9: privilegewithdrawn
+    10: aacompromise"
+
+    while [ -z "$reason" ]; do
+        echoc "Select one of the reason for the revoke from this list: " light blue
+        echoc "${reason_list}" light blue
+        read -p "Select a number from the list above: [1] " reason
+        case $reason in 
+            1) reason="unspecified" ;;
+            2) reason="keycompromise" ;;
+            3) reason="cacompromise" ;;
+            4) reason="affiliationchange" ;;
+            5) reason="superseded" ;;
+            6) reason="cessationofoperation" ;;
+            7) reason="certificatehold" ;;
+            8) reason="removefromcrl" ;;
+            9) reason="privilegewithdrawn" ;;
+            10) reason="aacompromise" ;;
+            *) echoc "Please select any of the reason from the list by typying in the corresponding number" light yellow;;
+        esac
+    done
+    echoc ${reason} light green
+    echo
+
+    docker run --rm \
+        -v ${CRYPTOS_PATH}:/crypto-config \
+        --network="${DOCKER_NETWORK}" \
+        hyperledger/fabric-ca:${fabric_version} \
+        sh -c " \
+        fabric-ca-client revoke -d \
+            --home /crypto-config \
+            --mspdir ${org}/users/admin \
+            --url ${ca_protocol}${ca_url} \
+            --tls.certfiles $ca_cert \
+            --revoke.name $username \
+            --revoke.reason $reason
+        "
+}
+
 __ca_setup() {
+    echoc "Insert the correct Hyperledger Fabric CA version to use (read Troubleshooting section)" light blue
+    echoc "This should be the same used by your CA server (i.e. at the time of writing, IBPv1 is using 1.1.0)" light blue
+    read -p "CA Version: [${FABRIC_VERSION}] " fabric_version
+    export fabric_version=${fabric_version:-${FABRIC_VERSION}}
+    echoc $fabric_version light green
+    echo
+
     echoc "Insert the username of the user to register/enroll" light blue
     username_default="user_"$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 5; echo)
     read -p "Username: [${username_default}] " username
@@ -858,7 +949,7 @@ __ca_setup() {
     echo
 
     echoc "Insert password of the user. It will be used by the CA as secret to generate the user certificate and key" light blue
-    password_default=$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 5; echo)
+    password_default=$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 20; echo)
     read -p "Password: [${password_default}] " password
     export password=${password:-${password_default}}
     echoc $password light green
@@ -869,7 +960,7 @@ __ca_setup() {
     while [ -z "$org" ]; do
         read -p "Organization: [] " org
     done
-    export $org
+    export org
     echoc $org light green
     echo
 
@@ -904,17 +995,19 @@ __ca_setup() {
     echoc ${ca_url} light green
     echo
 
-    echoc "Insert user attributes (e.g. admin=false:ecert)" light blue
-    echoc "Wiki: https://hyperledger-fabric-ca.readthedocs.io/en/latest/users-guide.html#registering-a-new-identity" light blue
-    echo
-    echoc "A few examples:" light blue
-    echoc "If enrolling an admin: 'hf.Registrar.Roles,hf.Registrar.Attributes,hf.AffiliationMgr'" light yellow
-    echoc "If registering a user: 'admin=false:ecert,email=provapi@everledger.io:ecert,application=provapi'" light yellow
-    echoc "If enrolling a user: 'admin:opt,email:opt,application:opt'" light yellow
-    read -p "User attributes: [admin=false:ecert] " user_attributes
-    export user_attributes=${user_attributes:-"admin=false:ecert"}
-    echoc $user_attributes light green
-    echo
+    if [ "$1" == "register" ] || [ "$1" == "enroll" ]; then
+        echoc "Insert user attributes (e.g. admin=false:ecert)" light blue
+        echoc "Wiki: https://hyperledger-fabric-ca.readthedocs.io/en/latest/users-guide.html#registering-a-new-identity" light blue
+        echo
+        echoc "A few examples:" light blue
+        echoc "If enrolling an admin: 'hf.Registrar.Roles,hf.Registrar.Attributes,hf.AffiliationMgr'" light yellow
+        echoc "If registering a user: 'admin=false:ecert,email=provapi@everledger.io:ecert,application=provapi'" light yellow
+        echoc "If enrolling a user: 'admin:opt,email:opt,application:opt'" light yellow
+        read -p "User attributes: [admin=false:ecert] " user_attributes
+        export user_attributes=${user_attributes:-"admin=false:ecert"}
+        echoc $user_attributes light green
+        echo
+    fi
 
     # registering a user requires additional information
     if [ "$1" == "register" ]; then
@@ -929,12 +1022,12 @@ __ca_setup() {
         echoc $user_type light green
         echo
 
-        echoc "Insert user affiliation (e.g. admin=false:ecert)" light blue
-        read -p "User affiliation: [admin=false:ecert] " user_affiliation
-        export user_affiliation=${user_affiliation:-"admin=false:ecert"}
+        echoc "Insert user affiliation (default value is usually enough)" light blue
+        read -p "User affiliation: [${org}] " user_affiliation
+        export user_affiliation=${user_affiliation:-${org}}
         echoc $user_affiliation light green
         echo
-        fi
+    fi
 }
 
 __exec_jobs() {
@@ -1072,6 +1165,10 @@ elif [ "$func" == "ca" ]; then
         register_user "$@"
     elif [ "$param" == "enroll" ]; then
         enroll_user "$@"
+    elif [ "$param" == "reenroll" ]; then
+        reenroll_user "$@"
+    elif [ "$param" == "revoke" ]; then
+        revoke_user "$@"
     else
         help
         exit 1
