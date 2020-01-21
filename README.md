@@ -113,7 +113,13 @@ This code is provided with a graphical blockchain explorer powered by [Hyperledg
 Once the configuration is ready, you can run the explorer (and all the connected tools) with a simple command:
 
 ```bash
-./run.sh network explore
+./run.sh explorer start
+```
+
+To stop and remove all the running Explorer processes:
+
+```bash
+./run.sh explorer stop
 ```
 
 ### UI Explorer
@@ -129,6 +135,38 @@ Once the configuration is ready, you can run the explorer (and all the connected
 - Host: [http://localhost:3000](http://localhost:3000)
 
 ## Fabric CA and user certificates management
+
+The Hyperledger Fabric CA is a Certificate Authority (CA) for Hyperledger Fabric.
+
+It provides features such as:
+
+- registration of identities, or connects to LDAP as the user registry
+
+- issuance of Enrollment Certificates (ECerts)
+
+- certificate renewal and revocation
+
+Hyperledger Fabric CA consists of both a server and a client component.
+
+This section is meant to discuss the basic interactions a client can perform with either local or remote server which may sit on-prem or on a BaaS, such as Oracle Blockchain Platform (OBP) or IBM Blockchain Platform (IBP).
+
+### Oracle Bloclchain Platform
+
+**Note: At the time of writing, Oracle Blockchain Platform uses Oracle Identity Cloud service as its identity provider, therefore you will not be able to perform these operations directly via CLI.**
+
+- In order to register new user on OBP, please refer to the official Oracle documentation - [Set users and application roles](https://docs.oracle.com/en/cloud/paas/blockchain-cloud/administer/set-users-and-application-roles.html)
+
+- In order to enroll a registered user on OBP, please refer to this section on the documentation - [Add enrollments to the REST Proxy](https://docs.oracle.com/en/cloud/paas/blockchain-cloud/user/manage-rest-proxy-nodes.html#GUID-D24E018A-58B0-43FE-AFE1-B297A791D4EB)
+
+**Oracle provides only one certificate per service (the admin certificate) which can be used by any user registered and enrolled on that organization**
+
+The OBP configuration and cryptos can be downloaded from `Developer Tools > Application Development > OBP`.
+
+### IBM Blockchain Platform
+
+At the time of writing, IBM provides two version of their BaaS. In both cases, we are able to register and enroll users directly via UI, but we will not be able to download those certificates from there.
+
+If we want to use a specific user certificate and key, we need first to download the connection profile and cryptos from the platform dashboard and then perform the steps listed in this section in order to retrieve those credentials.
 
 ### Base Prerequisites
 
@@ -245,6 +283,25 @@ fabric-ca-client:
  Go version: go1.9.2
  OS/Arch: darwin/amd64
 ```
+
+#### Issue scenario
+
+While enrolling a user with username and password the following error occurs
+
+```bash
+statusCode=401 (401 Unauthorized)
+Error: Failed to parse response: <html>
+<head><title>401 Authorization Required</title></head>
+<body bgcolor="white">
+<center><h1>401 Authorization Required</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+```
+
+#### Possible solutions
+
+- If you are trying to enroll a registered user on Oracle this cannot be done by CLI. Please read the Oracle-related paragraph above.
 
 ## Cleanup the environment
 
