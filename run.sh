@@ -934,6 +934,36 @@ revoke_user() {
 }
 
 __ca_setup() {
+    echoc "Insert the organization name of the user to register/enroll" light blue
+    while [ -z "$org" ]; do
+        read -p "Organization: [] " org
+    done
+    export org
+    echoc $org light green
+    echo
+
+    users_dir="${CRYPTOS_PATH}/${org}/users"
+
+    if [ "$1" == "register" ]; then
+        # set admin msp path
+        while [ ! -d "${users_dir}/admin" ]; do
+            echoc "Set Admin MSP path containing admincerts, signcerts, etc. directories" light blue
+            admin_msp_default=$(find $NETWORK_PATH -path "*/peerOrganizations/*/Admin*" -type d -name "msp" | head -n 1)
+            read -p "CA cert: [${admin_msp_default}] " admin_msp
+            admin_msp=${admin_msp:-${admin_msp_default}}
+            echoc $admin_msp light green
+            # copy the Admin msp to the main cryptos directory
+            mkdir -p ${users_dir} && cp -r $admin_msp ${users_dir}/admin
+            mv ${users_dir}/admin/signcerts/* ${users_dir}/admin/signcerts/cert.pem
+            cp -r ${users_dir}/admin/signcerts/ ${users_dir}/admin/admincerts/
+            echo
+
+            if [ ! -d "${users_dir}/admin" ]; then
+                echoc "Admin directory not found in: ${users_dir}/admin. Please be sure the selected Admin MSP directory exists." light yellow
+            fi
+        done
+    fi
+
     echoc "Insert the correct Hyperledger Fabric CA version to use (read Troubleshooting section)" light blue
     echoc "This should be the same used by your CA server (i.e. at the time of writing, IBPv1 is using 1.1.0)" light blue
     read -p "CA Version: [${FABRIC_VERSION}] " fabric_version
@@ -956,14 +986,6 @@ __ca_setup() {
     echoc "!! IMPORTANT: Take note of this password before continuing. If you loose this password you will not be able to manage the credentials of this user any longer." light yellow
     echo
 
-    echoc "Insert the organization name of the user to register/enroll" light blue
-    while [ -z "$org" ]; do
-        read -p "Organization: [] " org
-    done
-    export org
-    echoc $org light green
-    echo
-
     echoc "CA secure connection (https)" light blue
     read -p "Using TLS secure connection? (if your CA address starts with https)? [yes/no=default] " yn
     case $yn in
@@ -979,13 +1001,13 @@ __ca_setup() {
     echo
 
     echoc "Set CA TLS certificate path" light blue
-    ca_cert_default=$(find ./network -name "tlsca*.pem" | head -n 1)
+    ca_cert_default=$(find $NETWORK_PATH -name "tlsca*.pem" | head -n 1)
     read -p "CA cert: [${ca_cert_default}] " ca_cert
     ca_cert=${ca_cert:-${ca_cert_default}}
     echoc $ca_cert light green
     # copy the CA certificate to the main cryptos directory
-    cp $ca_cert ${CRYPTOS_PATH}/cert.pem
-    export ca_cert=$(basename ${CRYPTOS_PATH}/cert.pem)
+    cp $ca_cert ${CRYPTOS_PATH}/${org}/cert.pem
+    export ca_cert=$(basename ${CRYPTOS_PATH}/${org}/cert.pem)
     echo
 
     echoc "Insert CA hostname and port only (e.g. ca.example.com:7054)" light blue
@@ -1011,11 +1033,6 @@ __ca_setup() {
 
     # registering a user requires additional information
     if [ "$1" == "register" ]; then
-        if [ ! -d "${CRYPTOS_PATH}/${org}/users/admin" ]; then
-            echoc "Admin directory not found in: ${CRYPTOS_PATH}/${org}/users/. Please enroll the admin user first." light red
-            exit 1
-        fi
-
         echoc "Insert user type (e.g. client, peer, orderer)" light blue
         read -p "User type: [client] " user_type
         export user_type=${user_type:-client}

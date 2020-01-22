@@ -150,7 +150,7 @@ Hyperledger Fabric CA consists of both a server and a client component.
 
 This section is meant to discuss the basic interactions a client can perform with either local or remote server which may sit on-prem or on a BaaS, such as Oracle Blockchain Platform (OBP) or IBM Blockchain Platform (IBP).
 
-### Oracle Bloclchain Platform
+### Oracle Blockchain Platform
 
 **Note: At the time of writing, Oracle Blockchain Platform uses Oracle Identity Cloud service as its identity provider, therefore you will not be able to perform these operations directly via CLI.**
 
@@ -273,6 +273,8 @@ Error: Response from server: Error Code: 20 - Authorization failure
 
 - Be sure the CA certificate and the admin credentials you are using are valid and retrievable from the script
 
+- You may need to enroll again the admin using username and password (try it with `./run.sh enroll`)
+
 - **Be sure you are using the same versions of fabric-ca both in your server and client. Note that IBP, at the time of writing, is using v1.1.0, so be sure your fabric-ca-client is the exact same.**
 
 ```bash
@@ -312,6 +314,19 @@ It will stop and remove all the blockchain network containers including the `dev
 ```bash
 ./run.sh network stop
 ```
+
+#### Issue scenario
+
+While registering a user with an affiliation attribute the following error occurs
+
+```bash
+statusCode=500 (500 Internal Server Error)
+Error: Response from server: Error Code: 0 - Registration of 'user_bdp1Z' failed in affiliation validation: Failed getting affiliation 'org1.example.com': : scode: 404, code: 63, msg: Failed to get Affiliation: sql: no rows in result set
+```
+
+#### Possible solutions
+
+- Be sure you are using an existing affiliation attribute (e.g. for sample setup with `org1.example.com` the affilition attributes to use are `org1.department1` and `org1.department2`)
 
 ## Benchmarks
 
