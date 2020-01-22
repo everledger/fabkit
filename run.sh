@@ -1114,6 +1114,7 @@ if [ "$func" == "network" ]; then
         restart_network
     elif [ "$param" == "stop" ]; then
         stop_network
+    else
         help
         exit 1
     fi
