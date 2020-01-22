@@ -305,16 +305,6 @@ Error: Failed to parse response: <html>
 
 - If you are trying to enroll a registered user on Oracle this cannot be done by CLI. Please read the Oracle-related paragraph above.
 
-## Cleanup the environment
-
-### Tear blockchain network down
-
-It will stop and remove all the blockchain network containers including the `dev-peer*` tagged chaincode ones.
-
-```bash
-./run.sh network stop
-```
-
 #### Issue scenario
 
 While registering a user with an affiliation attribute the following error occurs
@@ -327,6 +317,16 @@ Error: Response from server: Error Code: 0 - Registration of 'user_bdp1Z' failed
 #### Possible solutions
 
 - Be sure you are using an existing affiliation attribute (e.g. for sample setup with `org1.example.com` the affilition attributes to use are `org1.department1` and `org1.department2`)
+
+## Cleanup the environment
+
+### Tear blockchain network down
+
+It will stop and remove all the blockchain network containers including the `dev-peer*` tagged chaincode ones.
+
+```bash
+./run.sh network stop
+```
 
 ## Benchmarks
 
