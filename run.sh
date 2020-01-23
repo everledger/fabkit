@@ -321,8 +321,7 @@ dep_install() {
     echoc "=====================" dark cyan
     echo
 
-    cd ${CHAINCODE_PATH}/${chaincode_name} || exit 1
-    __init_go_mod install
+    __init_go_mod install ${chaincode_name}
 }
 
 dep_update() {
@@ -334,11 +333,13 @@ dep_update() {
     echoc "====================" dark cyan
     echo
 
-    cd ${CHAINCODE_PATH}/${chaincode_name} || exit 1
-    __init_go_mod update
+    __init_go_mod update ${chaincode_name}
 }
 
 __init_go_mod() {
+    local chaincode_name="${2}"
+    cd ${CHAINCODE_PATH}/${chaincode_name} >/dev/null 2>&1 || { echoc >&2 "${CHAINCODE_PATH}/${chaincode_name} path does not exist" light red; exit 1; }
+
     if [ ! -f "./go.mod" ]; then
         go mod init
     fi
@@ -402,8 +403,7 @@ pack_chaincode() {
     __check_chaincode $1
     local chaincode_name="${1}"
 
-    cd $CHAINCODE_PATH/${chaincode_name} >/dev/null 2>&1 || { echoc >&2 "$CHAINCODE_PATH/${chaincode_name} path does not exist" light red; exit 1; }
-    __init_go_mod install
+    __init_go_mod install ${chaincode_name}
 
     if [ ! -d "${DIST_PATH}" ]; then
         mkdir -p ${DIST_PATH}
@@ -675,7 +675,7 @@ create_channel() {
 	local channel_name="$1"
 
 	echoc "Creating channel $channel_name using configuration file $CHANNELS_CONFIG_PATH/$channel_name/${channel_name}_tx.pb" light cyan
-	docker exec $CHAINCODE_UTIL_CONTAINER peer channel create -o $ORDERER_ADDRESS -c $channel_name -f $CHANNELS_CONFIG_PATH/$channel_name/${channel_name}_tx.pb --outputBlock $CHANNELS_CONFIG_PATH/$channel_name/${channel_name}.block
+	docker exec $CHAINCODE_UTIL_CONTAINER peer channel create -o $ORDERER_ADDRESS -c $channel_name -f $CHANNELS_CONFIG_PATH/$channel_name/${channel_name}_tx.pb --outputBlock $CHANNELS_CONFIG_PATH/$channel_name/${channel_name}.block || exit 1
 }
 
 join_channel() {
@@ -692,7 +692,7 @@ join_channel() {
 	local channel_name="$1"
 
 	echoc "Joining channel $channel_name" light cyan
-    docker exec $CHAINCODE_UTIL_CONTAINER peer channel join -b $CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}.block
+    docker exec $CHAINCODE_UTIL_CONTAINER peer channel join -b $CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}.block || exit 1
 }
 
 update_channel() {
@@ -710,7 +710,7 @@ update_channel() {
     local org_msp="$2"
 
 	echoc "Updating anchors peers $channel_name using configuration file $CHANNELS_CONFIG_PATH/$channel_name/${org_msp}_anchors.tx" light cyan
-	docker exec $CHAINCODE_UTIL_CONTAINER peer channel update -o $ORDERER_ADDRESS -c $channel_name -f $CHANNELS_CONFIG_PATH/${channel_name}/${org_msp}_anchors_tx.pb
+	docker exec $CHAINCODE_UTIL_CONTAINER peer channel update -o $ORDERER_ADDRESS -c $channel_name -f $CHANNELS_CONFIG_PATH/${channel_name}/${org_msp}_anchors_tx.pb || exit 1
 }
 
 install_chaincode() {
@@ -724,14 +724,14 @@ install_chaincode() {
     echoc "==================" dark cyan
     echo
 
-    __init_go_mod install
-
 	local chaincode_name="$1"
 	local chaincode_version="$2"
 	local chaincode_path="$3"
 
+    __init_go_mod install ${chaincode_name}
+
     echoc "Installing chaincode $chaincode_name version $chaincode_version from path $chaincode_path" light cyan
-    docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode install -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -p ${CHAINCODE_REMOTE_PATH}/${chaincode_path}
+    docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode install -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -p ${CHAINCODE_REMOTE_PATH}/${chaincode_path} || exit 1
 }
 
 instantiate_chaincode() {
@@ -750,7 +750,7 @@ instantiate_chaincode() {
 	local channel_name="$3"
 
     echoc "Instantiating chaincode $chaincode_name version $chaincode_version into channel $channel_name" light cyan
-	docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode instantiate -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -C $channel_name -c '{"Args":[]}'
+	docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode instantiate -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -C $channel_name -c '{"Args":[]}' || exit 1
 }
 
 upgrade_chaincode() {
@@ -773,7 +773,7 @@ upgrade_chaincode() {
 	install_chaincode $chaincode_name $chaincode_version $chaincode_name
 
     echoc "Upgrading chaincode $chaincode_name to version $chaincode_version into channel $channel_name" light cyan
-	docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode upgrade -n $chaincode_name -v $chaincode_version -C $channel_name -c '{"Args":[]}'
+	docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode upgrade -n $chaincode_name -v $chaincode_version -C $channel_name -c '{"Args":[]}' || exit 1
 }
 
 invoke() {
