@@ -60,9 +60,10 @@ The following command will restart a Hyperledgre Fabric network only if a _data_
 
 ## Upgrade chaincode
 
-Run the following command in order to install and instantiate a new version of the chaincode:
+Run the following commands in order to install and instantiate a newer version of an existing chaincode:
 
 ```bash
+./run.sh chaincode install [chaincode_name] [chaincode_version] [channel_name]
 ./run.sh chaincode upgrade [chaincode_name] [chaincode_version] [channel_name]
 ```
 
