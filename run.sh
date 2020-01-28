@@ -357,8 +357,8 @@ __init_go_mod() {
 }
 
 test_chaincode() {
-    __check_chaincode $1
     local chaincode_name="${1}"
+    __check_chaincode ${chaincode_name}
 
     echoc "===============" dark cyan
 	echoc "Chaincode: test" dark cyan
@@ -379,14 +379,14 @@ test_chaincode() {
 __check_test_deps() {
     type ginkgo >/dev/null 2>&1 || { 
         echoc >&2 "Ginkgo module missing. Going to install..." light yellow
-        go get -u github.com/onsi/ginkgo/ginkgo
-        go get -u github.com/onsi/gomega/...
+        GO111MODULE=off go get -u github.com/onsi/ginkgo/ginkgo
+        GO111MODULE=off go get -u github.com/onsi/gomega/...
     }
 }
 
 build_chaincode() {
-    __check_chaincode $1
     local chaincode_name="${1}"
+    __check_chaincode ${chaincode_name}
 
     echoc "================" dark cyan
 	echoc "Chaincode: build" dakr cyan
@@ -410,8 +410,8 @@ pack_chaincode() {
     echoc "===============" dark cyan
     echo
 
-    __check_chaincode $1
     local chaincode_name="${1}"
+    __check_chaincode ${chaincode_name}
 
     __init_go_mod install ${chaincode_name}
 
