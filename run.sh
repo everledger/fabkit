@@ -365,13 +365,23 @@ test_chaincode() {
     echoc "===============" dark cyan
     echo
 
+    __check_test_deps
+
     if [[ $(check_dependencies test) ]]; then
-        (docker run --rm  -v ${CHAINCODE_PATH}:/usr/src/myapp -w /usr/src/myapp/${chaincode_name} -e CGO_ENABLED=0 -e CORE_CHAINCODE_LOGGING_LEVEL=debug ${GOLANG_DOCKER_IMAGE}:${GOLANG_DOCKER_TAG} sh -c "go test ./... -v") || exit 1
+        (docker run --rm  -v ${CHAINCODE_PATH}:/usr/src/myapp -w /usr/src/myapp/${chaincode_name} -e CGO_ENABLED=0 -e CORE_CHAINCODE_LOGGING_LEVEL=debug ${GOLANG_DOCKER_IMAGE}:${GOLANG_DOCKER_TAG} sh -c "ginkgo -r -v") || exit 1
     else
-	    (cd ${CHAINCODE_PATH}/${chaincode_name} && CORE_CHAINCODE_LOGGING_LEVEL=debug CGO_ENABLED=0 go test ./... -v) || exit 1
+	    (cd ${CHAINCODE_PATH}/${chaincode_name} && CORE_CHAINCODE_LOGGING_LEVEL=debug CGO_ENABLED=0 ginkgo -r -v) || exit 1
     fi
 
     echoc "Test passed!" light green
+}
+
+__check_test_deps() {
+    type ginkgo >/dev/null 2>&1 || { 
+        echoc >&2 "Ginkgo module missing. Going to install..." light yellow
+        go get -u github.com/onsi/ginkgo/ginkgo
+        go get -u github.com/onsi/gomega/...
+    }
 }
 
 build_chaincode() {
@@ -748,9 +758,10 @@ instantiate_chaincode() {
 	local chaincode_name="$1"
 	local chaincode_version="$2"
 	local channel_name="$3"
+    shift 3
 
     echoc "Instantiating chaincode $chaincode_name version $chaincode_version into channel $channel_name" light cyan
-	docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode instantiate -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -C $channel_name -c '{"Args":[]}' || exit 1
+	docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode instantiate -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -C $channel_name -c '{"Args":[]}' "$@" || exit 1
 }
 
 upgrade_chaincode() {
@@ -767,13 +778,13 @@ upgrade_chaincode() {
 	local chaincode_name="$1"
 	local chaincode_version="$2"
 	local channel_name="$3"
+    shift 3
 
 	build_chaincode $chaincode_name
 	test_chaincode $chaincode_name
-	install_chaincode $chaincode_name $chaincode_version $chaincode_name
 
     echoc "Upgrading chaincode $chaincode_name to version $chaincode_version into channel $channel_name" light cyan
-	docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode upgrade -n $chaincode_name -v $chaincode_version -C $channel_name -c '{"Args":[]}' || exit 1
+	docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode upgrade -n $chaincode_name -v $chaincode_version -C $channel_name -c '{"Args":[]}' "$@" || exit 1
 }
 
 invoke() {
@@ -790,8 +801,9 @@ invoke() {
 	local channel_name="$1"
 	local chaincode_name="$2"
 	local request="$3"
+    shift 3
 
-	docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode invoke -o $ORDERER_ADDRESS -C $channel_name -n $chaincode_name -c "$request"
+	docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode invoke -o $ORDERER_ADDRESS -C $channel_name -n $chaincode_name -c "$request" "$@"
 }
 
 query() {
@@ -808,8 +820,9 @@ query() {
 	local channel_name="$1"
 	local chaincode_name="$2"
 	local request="$3"
+    shift 3
 
-	docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode query -o $ORDERER_ADDRESS -C $channel_name -n $chaincode_name -c "$request"
+	docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode query -o $ORDERER_ADDRESS -C $channel_name -n $chaincode_name -c "$request" "$@"
 }
 
 register_user() {
