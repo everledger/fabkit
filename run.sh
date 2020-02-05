@@ -124,15 +124,25 @@ install_network() {
 	docker pull ${GOLANG_DOCKER_IMAGE}:${GOLANG_DOCKER_TAG}
 
 	__docker_fabric_pull
+    __docker_faric_ca_pull
 	__docker_third_party_images_pull
 }
 
 __docker_fabric_pull() {
-    for image in peer orderer ca ccenv tools; do
+    for image in peer orderer ccenv tools; do
         echoc "==> FABRIC IMAGE: $image" light cyan
         echo
         docker pull hyperledger/fabric-$image:${FABRIC_VERSION} || exit 1
         docker tag hyperledger/fabric-$image:${FABRIC_VERSION} hyperledger/fabric-$image:latest
+    done
+}
+
+__docker_faric_ca_pull() {
+    for image in ca; do
+        echoc "==> FABRIC CA IMAGE: $image" light cyan
+        echo
+        docker pull hyperledger/fabric-$image:$FABRIC_CA_VERSION || exit 1
+        docker tag hyperledger/fabric-$image:$FABRIC_CA_VERSION hyperledger/fabric-$image:latest
     done
 }
 
@@ -836,7 +846,7 @@ register_user() {
     docker run --rm \
         -v ${CRYPTOS_PATH}:/crypto-config \
         --network="${DOCKER_NETWORK}" \
-        hyperledger/fabric-ca:${fabric_version} \
+        hyperledger/fabric-ca:${FABRIC_CA_VERSION} \
         sh -c " \
         fabric-ca-client register -d \
             --home /crypto-config \
@@ -864,7 +874,7 @@ enroll_user() {
     docker run --rm \
         -v ${CRYPTOS_PATH}:/crypto-config \
         --network="${DOCKER_NETWORK}" \
-        hyperledger/fabric-ca:${fabric_version} \
+        hyperledger/fabric-ca:${FABRIC_CA_VERSION} \
         sh -c " \
         fabric-ca-client enroll -d \
             --home /crypto-config \
@@ -889,7 +899,7 @@ reenroll_user() {
     docker run --rm \
         -v ${CRYPTOS_PATH}:/crypto-config \
         --network="${DOCKER_NETWORK}" \
-        hyperledger/fabric-ca:${fabric_version} \
+        hyperledger/fabric-ca:${FABRIC_CA_VERSION} \
         sh -c " \
         fabric-ca-client reenroll -d \
             --home /crypto-config \
@@ -948,7 +958,7 @@ revoke_user() {
     docker run --rm \
         -v ${CRYPTOS_PATH}:/crypto-config \
         --network="${DOCKER_NETWORK}" \
-        hyperledger/fabric-ca:${fabric_version} \
+        hyperledger/fabric-ca:${FABRIC_CA_VERSION} \
         sh -c " \
         fabric-ca-client revoke -d \
             --home /crypto-config \
@@ -993,9 +1003,9 @@ __ca_setup() {
 
     echoc "Insert the correct Hyperledger Fabric CA version to use (read Troubleshooting section)" light blue
     echoc "This should be the same used by your CA server (i.e. at the time of writing, IBPv1 is using 1.1.0)" light blue
-    read -p "CA Version: [${FABRIC_VERSION}] " fabric_version
-    export fabric_version=${fabric_version:-${FABRIC_VERSION}}
-    echoc $fabric_version light green
+    read -p "CA Version: [${FABRIC_CA_VERSION}] " FABRIC_CA_VERSION
+    export FABRIC_CA_VERSION=${FABRIC_CA_VERSION:-${FABRIC_CA_VERSION}}
+    echoc $FABRIC_CA_VERSION light green
     echo
 
     echoc "Insert the username of the user to register/enroll" light blue
