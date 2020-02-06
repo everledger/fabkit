@@ -175,7 +175,7 @@ start_network() {
         stop_network
 
         build_chaincode $CHAINCODE_NAME
-        test_chaincode $CHAINCODE_NAME
+        # test_chaincode $CHAINCODE_NAME
     fi
 
     echoc "==============" dark cyan
@@ -278,7 +278,7 @@ initialize_network() {
 	join_channel $CHANNEL_NAME
 	update_channel $CHANNEL_NAME $ORG_MSP
 	install_chaincode $CHAINCODE_NAME $CHAINCODE_VERSION $CHAINCODE_NAME
-	instantiate_chaincode $CHAINCODE_NAME $CHAINCODE_VERSION $CHANNEL_NAME
+	# instantiate_chaincode $CHAINCODE_NAME $CHAINCODE_VERSION $CHANNEL_NAME
 }
 
 start_explorer() {
@@ -362,8 +362,8 @@ __init_go_mod() {
         go get -u=patch ./...
     fi
     
-    go mod tidy
-    go mod vendor
+    GO111MODULE=on go mod tidy
+    GO111MODULE=on go mod vendor
 }
 
 test_chaincode() {
@@ -750,8 +750,15 @@ install_chaincode() {
 
     __init_go_mod install ${chaincode_name}
 
+    # v2.0
+    echoc "Packaging chaincode $chaincode_name version $chaincode_version from path $chaincode_path" light cyan 
+    docker exec $CHAINCODE_UTIL_CONTAINER peer lifecycle chaincode package mychaincode.tar.gz --path ${CHAINCODE_REMOTE_PATH}/${chaincode_path} --lang golang --label mychaincode_1
+    
     echoc "Installing chaincode $chaincode_name version $chaincode_version from path $chaincode_path" light cyan
-    docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode install -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -p ${CHAINCODE_REMOTE_PATH}/${chaincode_path} || exit 1
+    docker exec $CHAINCODE_UTIL_CONTAINER peer lifecycle chaincode install mychaincode.tar.gz
+
+    # v1.4
+    # docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode install -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -p ${CHAINCODE_REMOTE_PATH}/${chaincode_path} || exit 1
 }
 
 instantiate_chaincode() {
