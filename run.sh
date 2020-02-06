@@ -277,7 +277,7 @@ initialize_network() {
 	create_channel $CHANNEL_NAME
 	join_channel $CHANNEL_NAME
 	update_channel $CHANNEL_NAME $ORG_MSP
-	install_chaincode $CHAINCODE_NAME $CHAINCODE_VERSION $CHAINCODE_NAME
+	install_chaincode $CHAINCODE_NAME $CHAINCODE_VERSION $CHAINCODE_NAME $CHANNEL_NAME
 	# instantiate_chaincode $CHAINCODE_NAME $CHAINCODE_VERSION $CHANNEL_NAME
 }
 
@@ -362,8 +362,8 @@ __init_go_mod() {
         go get -u=patch ./...
     fi
     
-    GO111MODULE=on go mod tidy
-    GO111MODULE=on go mod vendor
+    go mod tidy
+    go mod vendor
 }
 
 test_chaincode() {
@@ -747,6 +747,7 @@ install_chaincode() {
 	local chaincode_name="$1"
 	local chaincode_version="$2"
 	local chaincode_path="$3"
+    local channel_name="$4"
 
     __init_go_mod install ${chaincode_name}
 
@@ -757,8 +758,12 @@ install_chaincode() {
     echoc "Installing chaincode $chaincode_name version $chaincode_version from path $chaincode_path" light cyan
     docker exec $CHAINCODE_UTIL_CONTAINER peer lifecycle chaincode install mychaincode.tar.gz
 
-    # v1.4
-    # docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode install -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -p ${CHAINCODE_REMOTE_PATH}/${chaincode_path} || exit 1
+    echoc "Querying chaincode package ID" light cyan
+    docker exec $CHAINCODE_UTIL_CONTAINER peer lifecycle chaincode queryinstalled>log.txt
+
+    echoc "Storing the packageID into an variable for further use" light cyan
+    docker exec -i $CHAINCODE_UTIL_CONTAINER bash -c "export PACKAGE_ID=`sed -n '/Package/{s/^Package ID: //; s/, Label:.*$//; p;}' chaincode/mychaincode/log.txt`; peer lifecycle chaincode approveformyorg --channelID $channel_name --name  $chaincode_name --version 1.0 --init-required --package-id $PACKAGE_ID --sequence 1 --waitForEvent --tls false"
+
 }
 
 instantiate_chaincode() {
