@@ -41,6 +41,7 @@ help() {
         chaincode build [chaincode_path]                                            : run build and test against the binary file
         chaincode pack [chaincode_path]                                             : create an archive ready for deployment containing chaincode and vendors
         chaincode install [chaincode_name] [chaincode_version] [chaincode_path]     : install chaincode on a peer
+                          [channel_name]
         chaincode instantiate [chaincode_name] [chaincode_version] [channel_name]   : instantiate chaincode on a peer for an assigned channel
         chaincode upgrade [chaincode_name] [chaincode_version] [channel_name]       : upgrade chaincode with a new version
         chaincode query [channel_name] [chaincode_name] [data_in_json]              : run query in the format '{\"Args\":[\"queryFunction\",\"key\"]}'
@@ -278,7 +279,7 @@ initialize_network() {
 	join_channel $CHANNEL_NAME
 	update_channel $CHANNEL_NAME $ORG_MSP
 	install_chaincode $CHAINCODE_NAME $CHAINCODE_VERSION $CHAINCODE_NAME $CHANNEL_NAME
-	# instantiate_chaincode $CHAINCODE_NAME $CHAINCODE_VERSION $CHANNEL_NAME
+	instantiate_chaincode $CHAINCODE_NAME $CHAINCODE_VERSION $CHANNEL_NAME
 }
 
 start_explorer() {
@@ -751,19 +752,29 @@ install_chaincode() {
 
     __init_go_mod install ${chaincode_name}
 
-    # v2.0
     echoc "Packaging chaincode $chaincode_name version $chaincode_version from path $chaincode_path" light cyan 
-    docker exec $CHAINCODE_UTIL_CONTAINER peer lifecycle chaincode package mychaincode.tar.gz --path ${CHAINCODE_REMOTE_PATH}/${chaincode_path} --lang golang --label mychaincode_1
+    docker exec $CHAINCODE_UTIL_CONTAINER peer lifecycle chaincode package ${chaincode_name}_${chaincode_version}.tar.gz --path ${CHAINCODE_REMOTE_PATH}/${chaincode_path} --lang golang --label ${chaincode_name}_${chaincode_version}
     
     echoc "Installing chaincode $chaincode_name version $chaincode_version from path $chaincode_path" light cyan
-    docker exec $CHAINCODE_UTIL_CONTAINER peer lifecycle chaincode install mychaincode.tar.gz
+    docker exec $CHAINCODE_UTIL_CONTAINER peer lifecycle chaincode install ${chaincode_name}_${chaincode_version}.tar.gz || exit 1
 
     echoc "Querying chaincode package ID" light cyan
-    docker exec $CHAINCODE_UTIL_CONTAINER peer lifecycle chaincode queryinstalled>log.txt
+    docker exec $CHAINCODE_UTIL_CONTAINER bash -c "peer lifecycle chaincode queryinstalled > log.txt; export PACKAGE_ID=`sed -n '/Package/{s/^Package ID: //; s/, Label:.*$//; p;}' chaincode/mychaincode/log.txt`" || exit 1
 
-    echoc "Storing the packageID into an variable for further use" light cyan
-    docker exec -i $CHAINCODE_UTIL_CONTAINER bash -c "export PACKAGE_ID=`sed -n '/Package/{s/^Package ID: //; s/, Label:.*$//; p;}' chaincode/mychaincode/log.txt`; peer lifecycle chaincode approveformyorg --channelID $channel_name --name  $chaincode_name --version 1.0 --init-required --package-id $PACKAGE_ID --sequence 1 --waitForEvent --tls false"
+    echoc "Approve chaincode for my organization" light cyan
+    docker exec $CHAINCODE_UTIL_CONTAINER peer lifecycle chaincode approveformyorg --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --package-id $PACKAGE_ID --sequence 1 --waitForEvent || exit 1
 
+    echoc "Check whether the chaincode definition is ready to be committed" light cyan
+    docker exec $CHAINCODE_UTIL_CONTAINER peer lifecycle chaincode checkcommitreadiness --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --sequence 1 --output json || exit 1
+    
+    echoc "Commit the definition the channel" light cyan
+    docker exec $CHAINCODE_UTIL_CONTAINER peer lifecycle chaincode commit --channelID $channel_name --name $chaincode_name --version $chaincode_version --sequence 1 --init-required --peerAddresses peer0.org1.example.com:7051 || exit 1
+
+    echoc "Query the chaincode definitions that have been committed to a channel" light cyan
+    docker exec $CHAINCODE_UTIL_CONTAINER peer lifecycle chaincode querycommitted --channelID $channel_name --name $chaincode_name --peerAddresses peer0.org1.example.com:7051 --output json || exit 1
+    
+    echoc "Init the chaincode" light cyan
+    docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode invoke --isInit --channelID $channel_name --name $chaincode_name --peerAddresses peer0.org1.example.com:7051 -c '{"Args":[]}' --waitForEvent || exit 1
 }
 
 instantiate_chaincode() {
