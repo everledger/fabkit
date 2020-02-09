@@ -763,19 +763,19 @@ install_chaincode() {
     echo $PACKAGE_ID
    
     echoc "Approve chaincode for my organization" light cyan
-    docker exec $CHAINCODE_UTIL_CONTAINER peer lifecycle chaincode approveformyorg —-signature-policy "OR('Org1MSP.member', 'Org2MSP.member')" --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --package-id $PACKAGE_ID --sequence 1 --waitForEvent || exit 1
+    docker exec $CHAINCODE_UTIL_CONTAINER peer lifecycle chaincode approveformyorg —-signature-policy "AND('Org1MSP.member')" --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --package-id $PACKAGE_ID --sequence 1 --waitForEvent || exit 1
 
     echoc "Check whether the chaincode definition is ready to be committed" light cyan
     docker exec $CHAINCODE_UTIL_CONTAINER peer lifecycle chaincode checkcommitreadiness --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --sequence 1 --output json || exit 1
     
     echoc "Commit the definition the channel" light cyan
-    docker exec $CHAINCODE_UTIL_CONTAINER peer lifecycle chaincode commit --channelID $channel_name --name $chaincode_name --version $chaincode_version --sequence 1 --init-required --peerAddresses CORE_PEER_ADDRESS || exit 1
+    docker exec $CHAINCODE_UTIL_CONTAINER peer lifecycle chaincode commit --channelID $channel_name --name $chaincode_name --version $chaincode_version --sequence 1 --init-required --peerAddresses peer0.org1.example.com:7051 || exit 1
 
     echoc "Query the chaincode definitions that have been committed to a channel" light cyan
-    docker exec $CHAINCODE_UTIL_CONTAINER peer lifecycle chaincode querycommitted --channelID $channel_name --name $chaincode_name --peerAddresses CORE_PEER_ADDRESS --output json || exit 1
+    docker exec $CHAINCODE_UTIL_CONTAINER peer lifecycle chaincode querycommitted --channelID $channel_name --name $chaincode_name --peerAddresses peer0.org1.example.com:7051 --output json || exit 1
     
     echoc "Init the chaincode" light cyan
-    docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode invoke --isInit --channelID $channel_name --name $chaincode_name --peerAddresses CORE_PEER_ADDRESS -c '{"Args":[]}' --waitForEvent || exit 1
+    docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode invoke --isInit --channelID $channel_name --name $chaincode_name --peerAddresses peer0.org1.example.com:7051 -c '{"Args":[]}' --waitForEvent || exit 1
 }
 
 instantiate_chaincode() {
