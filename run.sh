@@ -41,9 +41,10 @@ help() {
         chaincode build [chaincode_path]                                            : run build and test against the binary file
         chaincode pack [chaincode_path]                                             : create an archive ready for deployment containing chaincode and vendors
         chaincode install [chaincode_name] [chaincode_version] [chaincode_path]     : install chaincode on a peer
-                          [channel_name]
-        chaincode instantiate [chaincode_name] [chaincode_version] [channel_name]   : instantiate chaincode on a peer for an assigned channel
-        chaincode upgrade [chaincode_name] [chaincode_version] [channel_name]       : upgrade chaincode with a new version
+                          [channel_name] [sequence_nr]
+        chaincode commit [chaincode_name] [chaincode_version] [channel_name]        : commit chaincode on a peer for an assigned channel
+        chaincode upgrade [chaincode_name] [chaincode_version] [chaincode_path]     : upgrade chaincode with a new version
+                          [channel_name] [sequence_nr]
         chaincode query [channel_name] [chaincode_name] [data_in_json]              : run query in the format '{\"Args\":[\"queryFunction\",\"key\"]}'
         chaincode invoke [channel_name] [chaincode_name] [data_in_json]             : run invoke in the format '{\"Args\":[\"invokeFunction\",\"key\",\"value\"]}'
         
@@ -125,7 +126,7 @@ install_network() {
 	docker pull ${GOLANG_DOCKER_IMAGE}:${GOLANG_DOCKER_TAG}
 
 	__docker_fabric_pull
-    __docker_faric_ca_pull
+    __docker_fabric_ca_pull
 	__docker_third_party_images_pull
 }
 
@@ -138,7 +139,7 @@ __docker_fabric_pull() {
     done
 }
 
-__docker_faric_ca_pull() {
+__docker_fabric_ca_pull() {
     for image in ca; do
         echoc "==> FABRIC CA IMAGE: $image" light cyan
         echo
@@ -232,6 +233,7 @@ stop_network() {
     docker rm -f $(docker ps -a | awk '($2 ~ /fabric|dev-/) {print $1}') 2>/dev/null
     docker rmi -f $(docker images -qf "dangling=true") 2>/dev/null
     docker rmi -f $(docker images | awk '($1 ~ /^<none>|dev-/) {print $3}') 2>/dev/null
+    docker system prune -f 2>/dev/null
 
     if [ -d "$DATA_PATH" ]; then
         echoc "!!!!! ATTENTION !!!!!" light red
@@ -278,8 +280,8 @@ initialize_network() {
 	create_channel $CHANNEL_NAME
 	join_channel $CHANNEL_NAME
 	update_channel $CHANNEL_NAME $ORG_MSP
-	install_chaincode $CHAINCODE_NAME $CHAINCODE_VERSION $CHAINCODE_NAME $CHANNEL_NAME
-	commit_chaincode $CHAINCODE_NAME $CHAINCODE_VERSION $CHANNEL_NAME
+	install_chaincode $CHAINCODE_NAME $CHAINCODE_VERSION $CHAINCODE_NAME $CHANNEL_NAME 1
+	commit_chaincode $CHAINCODE_NAME $CHAINCODE_VERSION $CHANNEL_NAME 1
 }
 
 start_explorer() {
@@ -735,69 +737,82 @@ update_channel() {
 }
 
 install_chaincode() {
-	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
+	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ]; then
 		echoc "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" dark red
 		exit 1
 	fi
 
-    echoc "==================" dark cyan
-    echoc "Chaincode: install" dark cyan
-    echoc "==================" dark cyan
+    echoc "============================" dark cyan
+    echoc "Chaincode: install & approve" dark cyan
+    echoc "============================" dark cyan
     echo
 
 	local chaincode_name="$1"
 	local chaincode_version="$2"
 	local chaincode_path="$3"
     local channel_name="$4"
+    local sequence_nr="$5"
+    shift 5
 
     __init_go_mod install ${chaincode_name}
 
     echoc "Packaging chaincode $chaincode_name version $chaincode_version from path $chaincode_path" light cyan 
-    docker exec $CHAINCODE_UTIL_CONTAINER peer lifecycle chaincode package ${chaincode_name}_${chaincode_version}.tar.gz --path ${CHAINCODE_REMOTE_PATH}/${chaincode_path} --lang golang --label ${chaincode_name}_${chaincode_version}
+    # TODO export functionality for future uses replacing "chaincode pack"
+    # TODO add support for multilang
+    # TODO explore issue which runs into deps error every so often
+    docker exec $CHAINCODE_UTIL_CONTAINER peer lifecycle chaincode package ${chaincode_name}_${chaincode_version}.tar.gz --path ${CHAINCODE_REMOTE_PATH}/${chaincode_path} --label ${chaincode_name}_${chaincode_version} --lang golang || exit 1
     
     echoc "Installing chaincode $chaincode_name version $chaincode_version from path $chaincode_path" light cyan
     docker exec $CHAINCODE_UTIL_CONTAINER peer lifecycle chaincode install ${chaincode_name}_${chaincode_version}.tar.gz || exit 1
 
     echoc "Querying chaincode package ID" light cyan
-    export PACKAGE_ID=$(docker exec $CHAINCODE_UTIL_CONTAINER peer lifecycle chaincode queryinstalled 2>&1 | awk -F "[, ]+" '/Label: /{print $3}') 
-    echo $PACKAGE_ID
+    # TODO make this command to work with multiple installed chaincodes
+    export PACKAGE_ID=$(docker exec $CHAINCODE_UTIL_CONTAINER peer lifecycle chaincode queryinstalled 2>&1 | awk -F "[, ]+" '/Label: /{print $3}' || exit 1) 
+    echoc "Package ID: $PACKAGE_ID" light green
    
     echoc "Approve chaincode for my organization" light cyan
-    docker exec $CHAINCODE_UTIL_CONTAINER peer lifecycle chaincode approveformyorg —-signature-policy "AND('Org1MSP.member')" --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --package-id $PACKAGE_ID --sequence 1 --waitForEvent || exit 1
+    # TODO policy to be passed as input argument
+    docker exec $CHAINCODE_UTIL_CONTAINER peer lifecycle chaincode approveformyorg --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --package-id $PACKAGE_ID --sequence $sequence_nr --waitForEvent —-signature-policy "OR('Org1MSP.member','Org2MSP.member')" || exit 1
 
     echoc "Check whether the chaincode definition is ready to be committed" light cyan
-    docker exec $CHAINCODE_UTIL_CONTAINER peer lifecycle chaincode checkcommitreadiness --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --sequence 1 --output json || exit 1
-
+    docker exec $CHAINCODE_UTIL_CONTAINER peer lifecycle chaincode checkcommitreadiness --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --sequence $sequence_nr --output json || exit 1
 }
 
 commit_chaincode() {
-	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
+    echo $@
+	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ]; then
 		echoc "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" dark red
 		exit 1
 	fi
+    if [ -z "$PACKAGE_ID" ]; then
+		echoc "Package ID is not defined. Be sure you are running an install command first." dark red
+		exit 1
+	fi
 
-    echoc "======================" dark cyan
-    echoc "Chaincode: Commit" dark cyan
-    echoc "======================" dark cyan
+    echoc "=================" dark cyan
+    echoc "Chaincode: commit" dark cyan
+    echoc "=================" dark cyan
     echo
 
 	local chaincode_name="$1"
 	local chaincode_version="$2"
 	local channel_name="$3"
-    shift 3
+    local sequence_nr="$4"
+    shift 4
 
     echoc "Commit the definition the channel" light cyan
-    docker exec $CHAINCODE_UTIL_CONTAINER peer lifecycle chaincode commit --channelID $channel_name --name $chaincode_name --version $chaincode_version --sequence 1 --init-required --peerAddresses "$CORE_PEER_ADDRESS" || exit 1
+    docker exec $CHAINCODE_UTIL_CONTAINER peer lifecycle chaincode commit --channelID $channel_name --name $chaincode_name --version $chaincode_version --sequence $sequence_nr --init-required --peerAddresses "$CORE_PEER_ADDRESS" —-signature-policy "OR('Org1MSP.member','Org2MSP.member')" || exit 1
 
     echoc "Query the chaincode definitions that have been committed to a channel" light cyan
     docker exec $CHAINCODE_UTIL_CONTAINER peer lifecycle chaincode querycommitted --channelID $channel_name --name $chaincode_name --peerAddresses "$CORE_PEER_ADDRESS" --output json || exit 1
 
     echoc "Init the chaincode" light cyan
-    docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode invoke -o $ORDERER_ADDRESS --isInit --channelID $channel_name --name $chaincode_name --peerAddresses "$CORE_PEER_ADDRESS" -c '{"Args":[]}' --waitForEvent || exit 1
+    docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode invoke -o $ORDERER_ADDRESS --isInit --channelID $channel_name --name $chaincode_name --peerAddresses "$CORE_PEER_ADDRESS" --waitForEvent -c '{"Args":[]}' || exit 1
 }
 
+# TODO to fix after upgrade to v2.0 (package id)
 upgrade_chaincode() {
-	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
+	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ]; then
 		echoc "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" dark red
 		exit 1
 	fi
@@ -810,13 +825,14 @@ upgrade_chaincode() {
 	local chaincode_name="$1"
 	local chaincode_version="$2"
 	local channel_name="$3"
-    shift 3
+	local sequence_nr="$4"
+    shift 4
+
+    echoc "Upgrading chaincode $chaincode_name to version $chaincode_version & sequence number $sequence_nr into channel $channel_name" light cyan
 
 	build_chaincode $chaincode_name
 	test_chaincode $chaincode_name
-
-    echoc "Upgrading chaincode $chaincode_name to version $chaincode_version into channel $channel_name" light cyan
-	docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode upgrade -n $chaincode_name -v $chaincode_version -C $channel_name -c '{"Args":[]}' "$@" || exit 1
+	commit_chaincode $chaincode_name $chaincode_version $channel_name $sequence_nr "$@"
 }
 
 invoke() {
@@ -835,7 +851,6 @@ invoke() {
 	local request="$3"
     shift 3
 
-        
     echoc "Invoking the chaincode" light cyan
     docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode invoke -o $ORDERER_ADDRESS --channelID $channel_name --name $chaincode_name --peerAddresses "$CORE_PEER_ADDRESS" -c "$request" "$@" --waitForEvent || exit 1
 }
@@ -1206,8 +1221,8 @@ elif [ "$func" == "chaincode" ]; then
     shift
     if [ "$param" == "install" ]; then
         install_chaincode "$@"
-    elif [ "$param" == "instantiate" ]; then
-        instantiate_chaincode "$@"
+    elif [ "$param" == "commit" ]; then
+        commit_chaincode "$@"
     elif [ "$param" == "upgrade" ]; then
         upgrade_chaincode "$@"
     elif [ "$param" == "test" ]; then
