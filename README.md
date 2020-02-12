@@ -44,7 +44,7 @@ It will execute the following functions:
 - Add default peer to join the channel
 - Update the channel with anchor peers
 - Install the default chaincode into the default peer
-- Instantiate the chaincode on the default peer
+- Commit the chaincode on the default peer and organisation
 
 Afterwards, the network will be ready to accept `invoke` and `query` functions.
 
@@ -60,14 +60,19 @@ The following command will restart a Hyperledgre Fabric network only if a _data_
 
 ## Upgrade chaincode
 
-Run the following commands in order to install and instantiate a newer version of an existing chaincode:
+Run the following commands in order to install and commit a newer version of an existing chaincode:
 
 ```bash
-./run.sh chaincode install [chaincode_name] [chaincode_version] [channel_name]
-./run.sh chaincode upgrade [chaincode_name] [chaincode_version] [channel_name]
+# run the install only if you are upgrading the chaincode binaries
+./run.sh chaincode install [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [sequence_nr]
+./run.sh chaincode upgrade [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [sequence_nr]
 ```
 
-Be sure the `chaincode_version` is unique and never used before (otherwise an error will be prompted).
+>If you are upgrading the chaincode binaries, you need to update the chaincode version and the package ID in the chaincode definition. You can also update your chaincode endorsement policy without having to repackage your chaincode binaries. Channel members simply need to approve a definition with the new policy. The new definition needs to increment the sequence variable in the definition by one.
+
+Be sure the `chaincode_version` is unique and never used before (otherwise an error will be prompted) and the `sequence_nr` as an incremental value.
+
+More details here: [Chaincode Lifecyle - Upgrade](https://hyperledger-fabric.readthedocs.io/en/release-2.0/chaincode4noah.html#upgrade-a-chaincode)
 
 ## Pack chaincode for deployment
 
@@ -81,14 +86,14 @@ Follow the output message in console to see where the archive has been created.
 
 ## Invoke and query
 
-It is possible to use the CLI to run and test functionalities.
+It is possible to use the CLI to run and test functionalities via invoke and query.
 
 **Note:** The function appearing as a string in the first place of the array `Args` needs to be defined in the chaincode and the `request` should be provided as a JSON wrapped into single quotes `'`.
 
 ### Invoke
 
 ```bash
-./run.sh chaincode invoke [channel_name] [chaincode_name] [request]
+./run.sh chaincode invoke [channel_name] [chaincode_name] [request] [additional flags]
 
 # e.g.
 ./run.sh chaincode invoke mychannel mychaincode '{"Args":["put","key1","10"]}'
@@ -97,7 +102,7 @@ It is possible to use the CLI to run and test functionalities.
 ### Query
 
 ```bash
-./run.sh chaincode query [channel_name] [chaincode_name] [request]
+./run.sh chaincode query [channel_name] [chaincode_name] [request] [additional flags]
 
 # e.g.
 ./run.sh chaincode query mychannel mychaincode '{"Args":["get","key1"]}'

@@ -47,7 +47,7 @@ services:
     command: orderer
 
   ca-base:
-    image: hyperledger/fabric-ca:${FABRIC_VERSION}
+    image: hyperledger/fabric-ca:${FABRIC_CA_VERSION}
     environment:
       - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
     command: sh -c 'fabric-ca-server start --ca.certfile `ls /etc/hyperledger/fabric-ca-server-config/*.pem` --ca.keyfile `ls /etc/hyperledger/fabric-ca-server-config/*_sk` -b admin:adminpw -d'
