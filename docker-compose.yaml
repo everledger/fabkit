@@ -45,7 +45,7 @@ services:
       - CORE_PEER_LISTENADDRESS=0.0.0.0:7051
       - CORE_PEER_CHAINCODEADDRESS=peer0.org1.example.com:7052
       - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:7052
-      # - CORE_PEER_GOSSIP_BOOTSTRAP=peer1.org1.example.com:8051
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.org2.example.com:8051
       - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.org1.example.com:7051
       - CORE_PEER_LOCALMSPID=Org1MSP
       - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp
@@ -86,6 +86,119 @@ services:
     ports:
       - 5984:5984
 
+
+
+  peer0.org2.example.com:
+    container_name: peer0.org2.example.com
+    extends:
+      file: network/base/base.yaml
+      service: peer-base
+    environment:
+      # Change this value aligning with the defined docker network name
+      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=${DOCKER_NETWORK}
+      - CORE_PEER_ID=peer0.org2.example.com
+      - CORE_PEER_ADDRESS=peer0.org2.example.com:8051
+      - CORE_PEER_LISTENADDRESS=0.0.0.0:8051
+      - CORE_PEER_CHAINCODEADDRESS=peer0.org2.example.com:8052
+      - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:8052
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.org3.example.com:9051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.org2.example.com:8051
+      - CORE_PEER_LOCALMSPID=org2MSP
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp
+      # # the following setting starts chaincode containers on the same
+      # # bridge network as the peers
+      # # https://docs.docker.com/compose/networking/
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=peer0.org2.example.com-couchdb:6984
+      # The CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME and CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD
+      # provide the credentials for ledger to connect to CouchDB.  The username and password must
+      # match the username and password set for the associated CouchDB.
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=
+    volumes:
+        # trick: for security reasons some services such as Bitbucket Pipeline will not allow to mount volumes 
+        # which are sitting outside the cloned/project directory
+      - ./docker.sock/:/host/var/run/
+      - ./network/cryptos/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/msp:/etc/hyperledger/fabric/msp
+      - ./network/cryptos/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls:/etc/hyperledger/fabric/tls
+      - ./data/peer0.org2.example.com:/var/hyperledger/production
+    ports:
+      - 8051:8051
+    depends_on:
+      - peer0.org2.example.com-couchdb
+
+  peer0.org2.example.com-couchdb:
+    container_name: peer0.org2.example.com-couchdb
+    extends: 
+      file: network/base/base.yaml
+      service: couchdb-base
+    # Populate the COUCHDB_USER and COUCHDB_PASSWORD to set an admin user and password
+    # for CouchDB.  This will prevent CouchDB from operating in an "Admin Party" mode.
+    environment:
+      - COUCHDB_USER=
+      - COUCHDB_PASSWORD=
+    volumes:
+      - ./data/peer0.org2.example.com-couchdb:/opt/couchdb/data
+    ports:
+      - 6984:5984
+
+
+
+  peer0.org3.example.com:
+    container_name: peer0.org3.example.com
+    extends:
+      file: network/base/base.yaml
+      service: peer-base
+    environment:
+      # Change this value aligning with the defined docker network name
+      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=${DOCKER_NETWORK}
+      - CORE_PEER_ID=peer0.org3.example.com
+      - CORE_PEER_ADDRESS=peer0.org3.example.com:9051
+      - CORE_PEER_LISTENADDRESS=0.0.0.0:9051
+      - CORE_PEER_CHAINCODEADDRESS=peer0.org3.example.com:9052
+      - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:9052
+      # - CORE_PEER_GOSSIP_BOOTSTRAP=peer1.org3.example.com:8051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.org3.example.com:9051
+      - CORE_PEER_LOCALMSPID=org3MSP
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp
+      # # the following setting starts chaincode containers on the same
+      # # bridge network as the peers
+      # # https://docs.docker.com/compose/networking/
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=peer0.org3.example.com-couchdb:7984
+      # The CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME and CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD
+      # provide the credentials for ledger to connect to CouchDB.  The username and password must
+      # match the username and password set for the associated CouchDB.
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=
+    volumes:
+        # trick: for security reasons some services such as Bitbucket Pipeline will not allow to mount volumes 
+        # which are sitting outside the cloned/project directory
+      - ./docker.sock/:/host/var/run/
+      - ./network/cryptos/peerOrganizations/org3.example.com/peers/peer0.org3.example.com/msp:/etc/hyperledger/fabric/msp
+      - ./network/cryptos/peerOrganizations/org3.example.com/peers/peer0.org3.example.com/tls:/etc/hyperledger/fabric/tls
+      - ./data/peer0.org3.example.com:/var/hyperledger/production
+    ports:
+      - 9051:9051
+    depends_on:
+      - peer0.org3.example.com-couchdb
+
+  peer0.org3.example.com-couchdb:
+    container_name: peer0.org3.example.com-couchdb
+    extends: 
+      file: network/base/base.yaml
+      service: couchdb-base
+    # Populate the COUCHDB_USER and COUCHDB_PASSWORD to set an admin user and password
+    # for CouchDB.  This will prevent CouchDB from operating in an "Admin Party" mode.
+    environment:
+      - COUCHDB_USER=
+      - COUCHDB_PASSWORD=
+    volumes:
+      - ./data/peer0.org3.example.com-couchdb:/opt/couchdb/data
+    ports:
+      - 7984:5984
+
+      
   fabric-cli:
     container_name: ${CHAINCODE_UTIL_CONTAINER}
     extends:
@@ -112,3 +225,6 @@ services:
       - ca.example.com
       - orderer.example.com
       - peer0.org1.example.com
+      - peer0.org2.example.com
+      - peer0.org3.example.com
+

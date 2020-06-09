@@ -32,9 +32,9 @@ SPDX-License-Identifier: Apache-2.0
 // peer chaincode invoke -C mychannel -n marblesp -c '{"Args":["delete"]}' --transient "{\"marble_delete\":\"$MARBLE_DELETE\"}"
 
 // ==== Query marbles, since queries are not recorded on chain we don't need to hide private data in transient map ====
-// ./run.sh chaincode query mychannel pdc '{"Args":["readMarble","marble1"]}' 
+// ./run.sh chaincode query mychannel pdc '{"Args":["readMarble","marble1"]}'
 // ./run.sh chaincode query mychannel pdc '{"Args":["readMarblePrivateDetails","marble1"]}'
-// ./run.sh chaincode query mychannel pdc '{"Args":["getMarblesByRange","marble1","marble4"]}'  
+// ./run.sh chaincode query mychannel pdc '{"Args":["getMarblesByRange","marble1","marble4"]}'
 // peer chaincode query -C mychannel -n marblesp -c '{"Args":["readMarble","marble1"]}'
 // peer chaincode query -C mychannel -n marblesp -c '{"Args":["readMarblePrivateDetails","marble1"]}'
 // peer chaincode query -C mychannel -n marblesp -c '{"Args":["getMarblesByRange","marble1","marble4"]}'
@@ -42,7 +42,7 @@ SPDX-License-Identifier: Apache-2.0
 // Rich Query (Only supported if CouchDB is used as state database):
 //   peer chaincode query -C mychannel -n marblesp -c '{"Args":["queryMarblesByOwner","tom"]}'
 //   peer chaincode query -C mychannel -n marblesp -c '{"Args":["queryMarbles","{\"selector\":{\"owner\":\"tom\"}}"]}'
-// ./run.sh chaincode query mychannel pdc '{"Args":["queryMarblesByOwner","tom"]}' 
+// ./run.sh chaincode query mychannel pdc '{"Args":["queryMarblesByOwner","tom"]}'
 // ./run.sh chaincode query mychannel pdc '{"Args":["queryMarbles","{\"selector\":{\"owner\":\"tom\"}}"]}'
 // ./run.sh chaincode query mychannel pdc '{"Args":["queryMarbles","{\"selector\":{\"docType\":\"marble\",\"owner\":\"tom\"}, \"use_index\":[\"_design/indexOwnerDoc\", \"indexOwner\"]}"]}'
 // ./run.sh chaincode query mychannel pdc '{"Args":["queryMarbles","{\"selector\":{\"docType\":{\"$eq\":\"marble\"},\"owner\":{\"$eq\":\"tom\"},\"size\":{\"$gt\":0}},\"fields\":[\"docType\",\"owner\",\"size\"],\"sort\":[{\"size\":\"desc\"}],\"use_index\":\"_design/indexSizeSortDoc\"}"]}'

@@ -5,6 +5,29 @@ source $(pwd)/.env
 export GO111MODULE=on
 export GOPRIVATE=bitbucket.org/everledger/*
 
+
+#ORG ,  PEER 
+
+    #   - CORE_PEER_ID=fabric-cli
+    #   - CORE_PEER_ADDRESS=peer0.org1.example.com:7051
+    #   - CORE_PEER_LOCALMSPID=Org1MSP
+    #   - CORE_PEER_TLS_ENABLED=false
+    #   - CORE_PEER_TLS_CERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/server.crt
+    #   - CORE_PEER_TLS_KEY_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/server.key
+    #   - CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt
+    #   - CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp
+
+setGlobals ()  {
+    CORE_PEER_ADDRESS=peer$2.org$1.example.com:$((6 + $1))051
+    CORE_PEER_LOCALMSPID=Org$1MSP
+    CORE_PEER_TLS_ENABLED=false
+    CORE_PEER_TLS_CERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org$1.example.com/peers/peer$2.org$1.example.com/tls/server.crt
+    CORE_PEER_TLS_KEY_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org$1.example.com/peers/peer$2.org$1.example.com/tls/server.key
+    CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org$1.example.com/peers/peer$2.org$1.example.com/tls/ca.crt
+    CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org$1.example.com/users/Admin@org$1.example.com/msp   
+}
+
+
 help() {
     local help="
         Usage: run.sh [command]
@@ -264,11 +287,12 @@ initialize_network() {
     echoc "=============" dark cyan
     echo
 
+    setGlobals 1 0
 	create_channel $CHANNEL_NAME
 	join_channel $CHANNEL_NAME
 	update_channel $CHANNEL_NAME $ORG_MSP
-	install_chaincode $CHAINCODE_NAME $CHAINCODE_VERSION $CHAINCODE_NAME
-	instantiate_chaincode $CHAINCODE_NAME $CHAINCODE_VERSION $CHANNEL_NAME
+	install_chaincode $CHAINCODE_NAME $CHAINCODE_VERSION $CHAINCODE_NAME  1 0
+	instantiate_chaincode $CHAINCODE_NAME $CHAINCODE_VERSION $CHANNEL_NAME 1 0 
 }
 
 start_explorer() {
@@ -724,7 +748,7 @@ update_channel() {
 }
 
 install_chaincode() {
-	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
+	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] ||  [ -z "$5" ]; then
 		echoc "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" dark red
 		exit 1
 	fi
@@ -737,15 +761,44 @@ install_chaincode() {
 	local chaincode_name="$1"
 	local chaincode_version="$2"
 	local chaincode_path="$3"
+    local org="$4"
+    local peer="$5"
+
+    # org - 1 , peer -2 
+    setGlobals $org $peer
+
+    echo "================******************************************************"
+    echo $CORE_PEER_ADDRESS
+    echo "================******************************************************"
+
+    echo "------------------------------------------------"
+    echo $CORE_PEER_TLS_CERT_FILE
+    echo "------------------------------------------------"
 
     __init_go_mod install ${chaincode_name}
+    
+
+    # export CORE_PEER_ADDRESS=peer$2.org$1.example.com:$((7 + $1))051
+    # CORE_PEER_LOCALMSPID=Org$1MSP
+    # CORE_PEER_TLS_ENABLED=false
+    # CORE_PEER_TLS_CERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org$1.example.com/peers/peer$2.org$1.example.com/tls/server.crt
+    # CORE_PEER_TLS_KEY_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org$1.example.com/peers/peer$2.org$1.example.com/tls/server.key
+    # CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org$1.example.com/peers/peer$2.org$1.example.com/tls/ca.crt
+    # CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org$1.example.com/users/Admin@org$1.example.com/msp    
 
     echoc "Installing chaincode $chaincode_name version $chaincode_version from path $chaincode_path" light cyan
-    docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode install -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -p ${CHAINCODE_REMOTE_PATH}/${chaincode_path} || exit 1
+    docker exec -e CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS\
+                -e CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID\
+                -e CORE_PEER_TLS_ENABLED=$CORE_PEER_TLS_ENABLED\
+                -e CORE_PEER_TLS_CERT_FILE=$CORE_PEER_TLS_CERT_FILE\
+                -e CORE_PEER_TLS_KEY_FILE=$CORE_PEER_TLS_KEY_FILE\
+                -e CORE_PEER_TLS_ROOTCERT_FILE=$CORE_PEER_TLS_ROOTCERT_FILE\
+                -e CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH\
+                $CHAINCODE_UTIL_CONTAINER peer chaincode install -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -p ${CHAINCODE_REMOTE_PATH}/${chaincode_path} || exit 1
 }
 
 instantiate_chaincode() {
-	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
+	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] ||  [ -z "$5" ]; then
 		echoc "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" dark red
 		exit 1
 	fi
@@ -758,10 +811,21 @@ instantiate_chaincode() {
 	local chaincode_name="$1"
 	local chaincode_version="$2"
 	local channel_name="$3"
-    shift 3
+    local org="$4"
+    local peer="$5"
+    setGlobals $org $peer
+    shift 5
 
     echoc "Instantiating chaincode $chaincode_name version $chaincode_version into channel $channel_name" light cyan
-	docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode instantiate -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -C $channel_name -c '{"Args":[]}' "$@" || exit 1
+
+    docker exec -e CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS\
+                -e CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID\
+                -e CORE_PEER_TLS_ENABLED=$CORE_PEER_TLS_ENABLED\
+                -e CORE_PEER_TLS_CERT_FILE=$CORE_PEER_TLS_CERT_FILE\
+                -e CORE_PEER_TLS_KEY_FILE=$CORE_PEER_TLS_KEY_FILE\
+                -e CORE_PEER_TLS_ROOTCERT_FILE=$CORE_PEER_TLS_ROOTCERT_FILE\
+                -e CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH\
+	            $CHAINCODE_UTIL_CONTAINER peer chaincode instantiate -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -C $channel_name -c '{"Args":[]}' "$@" || exit 1
 }
 
 upgrade_chaincode() {
@@ -784,6 +848,7 @@ upgrade_chaincode() {
 	test_chaincode $chaincode_name
 
     echoc "Upgrading chaincode $chaincode_name to version $chaincode_version into channel $channel_name" light cyan
+    
 	docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode upgrade -n $chaincode_name -v $chaincode_version -C $channel_name -c '{"Args":[]}' "$@" || exit 1
 }
 
