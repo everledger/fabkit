@@ -19,12 +19,23 @@ export GOPRIVATE=bitbucket.org/everledger/*
 
 setGlobals ()  {
     CORE_PEER_ADDRESS=peer$2.org$1.example.com:$((6 + $1))051
+    #CORE_PEER_ADDRESS=peer$2.org$1.example.com:
     CORE_PEER_LOCALMSPID=Org$1MSP
     CORE_PEER_TLS_ENABLED=false
     CORE_PEER_TLS_CERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org$1.example.com/peers/peer$2.org$1.example.com/tls/server.crt
     CORE_PEER_TLS_KEY_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org$1.example.com/peers/peer$2.org$1.example.com/tls/server.key
     CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org$1.example.com/peers/peer$2.org$1.example.com/tls/ca.crt
     CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org$1.example.com/users/Admin@org$1.example.com/msp   
+
+
+    echo "CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS"
+    echo "CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID"
+    echo "CORE_PEER_TLS_ENABLED=$CORE_PEER_TLS_ENABLED"    
+    echo "CORE_PEER_TLS_CERT_FILE=$CORE_PEER_TLS_CERT_FILE"
+    echo "CORE_PEER_TLS_KEY_FILE=$CORE_PEER_TLS_KEY_FILE"
+    echo "CORE_PEER_TLS_ROOTCERT_FILE=$CORE_PEER_TLS_ROOTCERT_FILE"
+    echo "CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH"    
+
 }
 
 

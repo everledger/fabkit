@@ -133,6 +133,11 @@ type marblePrivateDetails struct {
 	Price      int    `json:"price"`
 }
 
+// Vehicle ..
+type Vehicle struct {
+	ObjectType string `json:"docType"`
+}
+
 // ===================================================================================
 // Main
 // ===================================================================================
