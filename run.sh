@@ -164,8 +164,8 @@ start_network() {
 
         stop_network
 
-        build_chaincode $CHAINCODE_NAME
-        test_chaincode $CHAINCODE_NAME
+        # build_chaincode $CHAINCODE_NAME
+        # test_chaincode $CHAINCODE_NAME
     fi
 
     echoc "==============" dark cyan
@@ -690,7 +690,7 @@ set_certs ()  {
 }
 
 create_channel() {
-	if [ -z "$1" ]; then
+	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
 		echoc "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" dark red
 		exit 1
 	fi
@@ -701,13 +701,24 @@ create_channel() {
     echo
 
 	local channel_name="$1"
+    local org="$2"
+    local peer="$3"
+
+    set_certs $org $peer
 
 	echoc "Creating channel $channel_name using configuration file $CHANNELS_CONFIG_PATH/$channel_name/${channel_name}_tx.pb" light cyan
-	docker exec $CHAINCODE_UTIL_CONTAINER peer channel create -o $ORDERER_ADDRESS -c $channel_name -f $CHANNELS_CONFIG_PATH/$channel_name/${channel_name}_tx.pb --outputBlock $CHANNELS_CONFIG_PATH/$channel_name/${channel_name}.block || exit 1
+	docker exec -e CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
+                -e CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID \
+                -e CORE_PEER_TLS_ENABLED=$CORE_PEER_TLS_ENABLED \
+                -e CORE_PEER_TLS_CERT_FILE=$CORE_PEER_TLS_CERT_FILE \
+                -e CORE_PEER_TLS_KEY_FILE=$CORE_PEER_TLS_KEY_FILE \
+                -e CORE_PEER_TLS_ROOTCERT_FILE=$CORE_PEER_TLS_ROOTCERT_FILE \
+                -e CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH \
+                $CHAINCODE_UTIL_CONTAINER peer channel create -o $ORDERER_ADDRESS -c $channel_name -f $CHANNELS_CONFIG_PATH/$channel_name/${channel_name}_tx.pb --outputBlock $CHANNELS_CONFIG_PATH/$channel_name/${channel_name}.block || exit 1
 }
 
 join_channel() {
- 	if [ -z "$1" ]; then
+ 	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
 		echoc "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" dark red
 		exit 1
 	fi
@@ -718,13 +729,24 @@ join_channel() {
     echo
 
 	local channel_name="$1"
+    local org="$2"
+    local peer="$3"
+
+    set_certs $org $peer
 
 	echoc "Joining channel $channel_name" light cyan
-    docker exec $CHAINCODE_UTIL_CONTAINER peer channel join -b $CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}.block || exit 1
+    docker exec -e CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
+                -e CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID \
+                -e CORE_PEER_TLS_ENABLED=$CORE_PEER_TLS_ENABLED \
+                -e CORE_PEER_TLS_CERT_FILE=$CORE_PEER_TLS_CERT_FILE \
+                -e CORE_PEER_TLS_KEY_FILE=$CORE_PEER_TLS_KEY_FILE \
+                -e CORE_PEER_TLS_ROOTCERT_FILE=$CORE_PEER_TLS_ROOTCERT_FILE \
+                -e CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH \
+                $CHAINCODE_UTIL_CONTAINER peer channel join -b $CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}.block || exit 1
 }
 
 update_channel() {
-	if [ -z "$1" ] || [ -z "$2" ]; then
+	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ]; then
 		echoc "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" dark red
 		exit 1
 	fi
@@ -736,9 +758,20 @@ update_channel() {
 
 	local channel_name="$1"
     local org_msp="$2"
+    local org="$3"
+    local peer="$4"
+
+    set_certs $org $peer
 
 	echoc "Updating anchors peers $channel_name using configuration file $CHANNELS_CONFIG_PATH/$channel_name/${org_msp}_anchors.tx" light cyan
-	docker exec $CHAINCODE_UTIL_CONTAINER peer channel update -o $ORDERER_ADDRESS -c $channel_name -f $CHANNELS_CONFIG_PATH/${channel_name}/${org_msp}_anchors_tx.pb || exit 1
+	docker exec -e CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
+                -e CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID \
+                -e CORE_PEER_TLS_ENABLED=$CORE_PEER_TLS_ENABLED \
+                -e CORE_PEER_TLS_CERT_FILE=$CORE_PEER_TLS_CERT_FILE \
+                -e CORE_PEER_TLS_KEY_FILE=$CORE_PEER_TLS_KEY_FILE \
+                -e CORE_PEER_TLS_ROOTCERT_FILE=$CORE_PEER_TLS_ROOTCERT_FILE \
+                -e CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH \
+                $CHAINCODE_UTIL_CONTAINER peer channel update -o $ORDERER_ADDRESS -c $channel_name -f $CHANNELS_CONFIG_PATH/${channel_name}/${org_msp}_anchors_tx.pb || exit 1
 }
 
 install_chaincode() {

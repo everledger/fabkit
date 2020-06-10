@@ -228,6 +228,7 @@ services:
       service: tools-base
     tty: true
     environment:
+      - FABRIC_LOGGING_SPEC=info
       - GODEBUG=netdns=go
       - CORE_PEER_ID=fabric-cli
       - CORE_PEER_ADDRESS=peer0.org1.example.com:7051
