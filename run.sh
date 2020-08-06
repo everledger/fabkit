@@ -5,48 +5,52 @@ source $(pwd)/.env
 export GO111MODULE=on
 export GOPRIVATE=bitbucket.org/everledger/*
 
+readonly one_org="OneOrgOrdererGenesis"
+readonly two_orgs="TwoOrgsOrdererGenesis"
+readonly three_orgs="ThreeOrgsOrdererGenesis"
+
 help() {
     local help="
         Usage: run.sh [command]
         commands:
 
-        help                                                                                        : this help
-
-        dep install [chaincode_name]                                                                : install all go modules as vendor and init go.mod if does not exist yet
-        dep update [chaincode_name]                                                                 : update all go modules and rerun install
-        
-        ca register                                                                                 : register a new user
-        ca enroll                                                                                   : enroll a previously registered user    
-        ca reenroll                                                                                 : reenroll a user if its certificate expired
-        ca revoke                                                                                   : revoke a user's key/certificate providing a reason
-        
-        network install                                                                             : install all the dependencies and docker images
-        network start                                                                               : start the blockchain network and initialize it
-        network restart                                                                             : restart a previously running the blockchain network
-        network stop                                                                                : stop the blockchain network and remove all the docker containers
-        
-        explorer start                                                                              : run the blockchain explorer user-interface and analytics
-        explorer stop                                                                               : stop the blockchain explorer user-interface and analytics
-
-        channel create [channel_name]                                                               : generate channel configuration file
-        channel update [channel_name] [org]                                                         : update channel with anchor peers
-        channel join [channel_name]                                                                 : run by a peer to join a channel
-
-        generate cryptos [config_path] [cryptos_path]                                               : generate all the crypto keys and certificates for the network
-        generate genesis [base_path] [config_path]                                                  : generate the genesis block for the ordering service
-        generate channeltx [channel_name] [base_path] [config_path] [cryptos_path]                  : generate channel configuration files
-                           [network_profile] [channel_profile] [org_msp]            
-
-        chaincode test [chaincode_path]                                                             : run unit tests
-        chaincode build [chaincode_path]                                                            : run build and test against the binary file
-        chaincode pack [chaincode_path]                                                             : create an archive ready for deployment containing chaincode and vendors
-        chaincode install [chaincode_name] [chaincode_version] [chaincode_path] [org] [peer]        : install chaincode on a peer
-        chaincode instantiate [chaincode_name] [chaincode_version] [channel_name] [org] [peer]      : instantiate chaincode on a peer for an assigned channel
-        chaincode upgrade [chaincode_name] [chaincode_version] [channel_name] [org] [peer]          : upgrade chaincode with a new version
-        chaincode query [channel_name] [chaincode_name] [data_in_json] [org] [peer]                 : run query in the format '{\"Args\":[\"queryFunction\",\"key\"]}'
-        chaincode invoke [channel_name] [chaincode_name] [data_in_json] [org] [peer]                : run invoke in the format '{\"Args\":[\"invokeFunction\",\"key\",\"value\"]}'
-        
-        benchmark load [jobs] [entries]                                                             : run benchmark bulk loading of [entries] per parallel [jobs] against a running network
+        help                                                                                            : this help
+    
+        dep install [chaincode_name]                                                                    : install all go modules as vendor and init go.mod if does not exist yet
+        dep update [chaincode_name]                                                                     : update all go modules and rerun install
+            
+        ca register                                                                                     : register a new user
+        ca enroll                                                                                       : enroll a previously registered user    
+        ca reenroll                                                                                     : reenroll a user if its certificate expired
+        ca revoke                                                                                       : revoke a user's key/certificate providing a reason
+            
+        network install                                                                                 : install all the dependencies and docker images
+        network start                                                                                   : start the blockchain network and initialize it
+        network restart                                                                                 : restart a previously running the blockchain network
+        network stop                                                                                    : stop the blockchain network and remove all the docker containers
+            
+        explorer start                                                                                  : run the blockchain explorer user-interface and analytics
+        explorer stop                                                                                   : stop the blockchain explorer user-interface and analytics
+    
+        channel create [channel_name] [org_no] [peer_no]                                                : generate channel configuration file
+        channel update [channel_name] [org_msp] [org_no] [peer_no]                                      : update channel with anchor peers
+        channel join [channel_name] [org_no] [peer_no]                                                  : run by a peer to join a channel
+    
+        generate cryptos [config_path] [cryptos_path]                                                   : generate all the crypto keys and certificates for the network
+        generate genesis [base_path] [config_path]                                                      : generate the genesis block for the ordering service
+        generate channeltx [channel_name] [base_path] [config_path] [cryptos_path]                      : generate channel configuration files
+                           [network_profile] [channel_profile] [org_msp]                
+    
+        chaincode test [chaincode_path]                                                                 : run unit tests
+        chaincode build [chaincode_path]                                                                : run build and test against the binary file
+        chaincode pack [chaincode_path]                                                                 : create an archive ready for deployment containing chaincode and vendors
+        chaincode install [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no]      : install chaincode on a peer
+        chaincode instantiate [chaincode_name] [chaincode_version] [channel_name] [org_no] [peer_no]    : instantiate chaincode on a peer for an assigned channel
+        chaincode upgrade [chaincode_name] [chaincode_version] [channel_name] [org_no] [peer_no]        : upgrade chaincode with a new version
+        chaincode query [channel_name] [chaincode_name] [org_no] [peer_no] [data_in_json]               : run query in the format '{\"Args\":[\"queryFunction\",\"key\"]}'
+        chaincode invoke [channel_name] [chaincode_name] [org_no] [peer_no] [data_in_json]              : run invoke in the format '{\"Args\":[\"invokeFunction\",\"key\",\"value\"]}'
+            
+        benchmark load [jobs] [entries]                                                                 : run benchmark bulk loading of [entries] per parallel [jobs] against a running network
         "
     echoc "$help" dark cyan
 }
@@ -164,8 +168,8 @@ start_network() {
 
         stop_network
 
-        # build_chaincode $CHAINCODE_NAME
-        # test_chaincode $CHAINCODE_NAME
+        build_chaincode $CHAINCODE_NAME
+        test_chaincode $CHAINCODE_NAME
     fi
 
     echoc "==============" dark cyan
@@ -180,6 +184,12 @@ start_network() {
     docker network create ${DOCKER_NETWORK} 2>/dev/null
     
     docker-compose -f ${ROOT}/docker-compose.yaml up -d || exit 1
+    if [ "${CONFIGTX_PROFILE_NETWORK}" == "${two_orgs}" ]; then
+        docker-compose -f ${ROOT}/docker-compose.org2.yaml up -d || exit 1
+    elif [ "${CONFIGTX_PROFILE_NETWORK}" == "${three_orgs}" ]; then
+        docker-compose -f ${ROOT}/docker-compose.org2.yaml up -d || exit 1
+        docker-compose -f ${ROOT}/docker-compose.org3.yaml up -d || exit 1
+    fi
 	
     sleep 5
 	
@@ -198,8 +208,16 @@ restart_network() {
     fi
 
     __delete_shared
+
+    docker network create ${DOCKER_NETWORK} 2>/dev/null
     
     docker-compose -f ${ROOT}/docker-compose.yaml up --force-recreate -d || exit 1
+    if [ "${CONFIGTX_PROFILE_NETWORK}" == "${two_orgs}" ]; then
+        docker-compose -f ${ROOT}/docker-compose.org2.yaml up --force-recreate -d || exit 1
+    elif [ "${CONFIGTX_PROFILE_NETWORK}" == "${three_orgs}" ]; then
+        docker-compose -f ${ROOT}/docker-compose.org2.yaml up --force-recreate -d || exit 1
+        docker-compose -f ${ROOT}/docker-compose.org3.yaml up --force-recreate -d || exit 1
+    fi
 
     echoc "The chaincode container will be instantiated automatically once the peer executes the first invoke or query" light yellow
 }
@@ -210,6 +228,12 @@ stop_network() {
     echoc "=============" dark cyan
 
     docker-compose -f ${ROOT}/docker-compose.yaml down || exit 1
+    if [ "${CONFIGTX_PROFILE_NETWORK}" == "${two_orgs}" ]; then
+        docker-compose -f ${ROOT}/docker-compose.org2.yaml down || exit 1
+    elif [ "${CONFIGTX_PROFILE_NETWORK}" == "${three_orgs}" ]; then
+        docker-compose -f ${ROOT}/docker-compose.org2.yaml down || exit 1
+        docker-compose -f ${ROOT}/docker-compose.org3.yaml down || exit 1
+    fi
 
     __delete_shared
 
@@ -359,6 +383,12 @@ __init_go_mod() {
 test_chaincode() {
     local chaincode_name="${1}"
     __check_chaincode ${chaincode_name}
+
+    # avoid "found no test suites" ginkgo error
+    if [ ! `find ${CHAINCODE_PATH}/${chaincode_name} -type f -name "*_test*" ! -path "**/node_modules/*" ! -path "**/vendor/*"` ]; then
+        echoc "No test suites found. Skipping tests..." light yellow
+        return 
+    fi
 
     echoc "===============" dark cyan
 	echoc "Chaincode: test" dark cyan
@@ -578,7 +608,7 @@ generate_channeltx() {
         mkdir -p $channel_dir
     fi
     
-# generate channel configuration transaction
+    # generate channel configuration transaction
     docker run --rm -v ${config_path}/configtx.yaml:/configtx.yaml \
                     -v ${channel_dir}:/channels/${channel_name} \
                     -v ${cryptos_path}:/crypto-config \
@@ -680,13 +710,11 @@ set_certs ()  {
     CORE_PEER_TLS_ROOTCERT_FILE=${CONTAINER_PEER_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/peers/peer${2}.org${1}.example.com/tls/ca.crt
     CORE_PEER_MSPCONFIGPATH=${CONTAINER_PEER_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/users/Admin@org${1}.example.com/msp   
 
-    echo "==========================================="
-    echo $CORE_PEER_ADDRESS
-    echo "==========================================="
+    echoc "===========================================" light cyan
+    echoc "Peer address: ${CORE_PEER_ADDRESS}" light cyan
+    echoc "Peer cert: ${CORE_PEER_TLS_CERT_FILE}" light cyan
+    echoc "===========================================" light cyan
     echo
-    echo "==========================================="
-    echo $CORE_PEER_TLS_CERT_FILE
-    echo "==========================================="
 }
 
 create_channel() {
@@ -706,7 +734,8 @@ create_channel() {
 
     set_certs $org $peer
 
-	echoc "Creating channel $channel_name using configuration file $CHANNELS_CONFIG_PATH/$channel_name/${channel_name}_tx.pb" light cyan
+	echoc "Creating channel $channel_name using configuration file ${CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}_tx.pb" light cyan
+
 	docker exec -e CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
                 -e CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID \
                 -e CORE_PEER_TLS_ENABLED=$CORE_PEER_TLS_ENABLED \
@@ -735,6 +764,7 @@ join_channel() {
     set_certs $org $peer
 
 	echoc "Joining channel $channel_name" light cyan
+
     docker exec -e CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
                 -e CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID \
                 -e CORE_PEER_TLS_ENABLED=$CORE_PEER_TLS_ENABLED \
@@ -742,7 +772,7 @@ join_channel() {
                 -e CORE_PEER_TLS_KEY_FILE=$CORE_PEER_TLS_KEY_FILE \
                 -e CORE_PEER_TLS_ROOTCERT_FILE=$CORE_PEER_TLS_ROOTCERT_FILE \
                 -e CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH \
-                $CHAINCODE_UTIL_CONTAINER peer channel join -b $CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}.block || exit 1
+                $CHAINCODE_UTIL_CONTAINER peer channel join -b ${CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}.block || exit 1
 }
 
 update_channel() {
@@ -763,7 +793,8 @@ update_channel() {
 
     set_certs $org $peer
 
-	echoc "Updating anchors peers $channel_name using configuration file $CHANNELS_CONFIG_PATH/$channel_name/${org_msp}_anchors.tx" light cyan
+	echoc "Updating anchors peers $channel_name using configuration file ${CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors.tx" light cyan
+
 	docker exec -e CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
                 -e CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID \
                 -e CORE_PEER_TLS_ENABLED=$CORE_PEER_TLS_ENABLED \
@@ -771,7 +802,7 @@ update_channel() {
                 -e CORE_PEER_TLS_KEY_FILE=$CORE_PEER_TLS_KEY_FILE \
                 -e CORE_PEER_TLS_ROOTCERT_FILE=$CORE_PEER_TLS_ROOTCERT_FILE \
                 -e CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH \
-                $CHAINCODE_UTIL_CONTAINER peer channel update -o $ORDERER_ADDRESS -c $channel_name -f $CHANNELS_CONFIG_PATH/${channel_name}/${org_msp}_anchors_tx.pb || exit 1
+                $CHAINCODE_UTIL_CONTAINER peer channel update -o $ORDERER_ADDRESS -c $channel_name -f ${CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors_tx.pb || exit 1
 }
 
 install_chaincode() {
@@ -795,7 +826,8 @@ install_chaincode() {
 
     __init_go_mod install ${chaincode_name}
     
-    echoc "Installing chaincode $chaincode_name version $chaincode_version from path $chaincode_path" light cyan
+    echoc "Installing chaincode $chaincode_name version $chaincode_version from path ${CHAINCODE_PATH}/${chaincode_path}" light cyan
+
     docker exec -e CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
                 -e CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID \
                 -e CORE_PEER_TLS_ENABLED=$CORE_PEER_TLS_ENABLED \
@@ -886,12 +918,14 @@ invoke() {
 
 	local channel_name="$1"
 	local chaincode_name="$2"
-	local request="$3"
-    local org="$4"
-    local peer="$5"
+    local org="$3"
+    local peer="$4"
+    local request="$5"
     shift 5
 
     set_certs $org $peer
+
+    echoc "Invoking chaincode $chaincode_name on channel $channel_name as org${org} and peer${peer} with the following params $request" light cyan
 
 	docker exec -e CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
                 -e CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID \
@@ -916,12 +950,14 @@ query() {
 
 	local channel_name="$1"
 	local chaincode_name="$2"
-	local request="$3"
-    local org="$4"
-    local peer="$5"
+    local org="$3"
+    local peer="$4"
+    local request="$5"
     shift 5
 
     set_certs $org $peer
+
+    echoc "Querying chaincode $chaincode_name on channel $channel_name as org${org} and peer${peer} with the following params $request $@" light cyan
 
 	docker exec -e CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
                 -e CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID \
@@ -1082,6 +1118,7 @@ __ca_setup() {
 
     users_dir="${CRYPTOS_PATH}/${org}/users"
 
+    # TODO: Dynamically allocate admin user username
     if [ "$1" == "register" ]; then
         # set admin msp path
         while [ ! -d "${users_dir}/admin" ]; do
@@ -1091,7 +1128,7 @@ __ca_setup() {
             admin_msp=${admin_msp:-${admin_msp_default}}
             echoc $admin_msp light green
             # copy the Admin msp to the main cryptos directory
-            mkdir -p ${users_dir} && cp -r $admin_msp ${users_dir}/admin
+            mkdir -p ${users_dir}/admin && cp -r $admin_msp ${users_dir}/admin/
             mv ${users_dir}/admin/signcerts/* ${users_dir}/admin/signcerts/cert.pem
             cp -r ${users_dir}/admin/signcerts/ ${users_dir}/admin/admincerts/
             echo

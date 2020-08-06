@@ -52,7 +52,7 @@ Run `./run.sh help` for the complete list of functionalities.
 
 ## Restart a previously running network
 
-The following command will restart a Hyperledgre Fabric network only if a _data_ directory is found:
+The following command will restart a Hyperledger Fabric network only if a _data_ directory is found:
 
 ```bash
 ./run.sh network restart
@@ -63,8 +63,12 @@ The following command will restart a Hyperledgre Fabric network only if a _data_
 Run the following commands in order to install and instantiate a newer version of an existing chaincode:
 
 ```bash
-./run.sh chaincode install [chaincode_name] [chaincode_version] [channel_name]
-./run.sh chaincode upgrade [chaincode_name] [chaincode_version] [channel_name]
+./run.sh chaincode install [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no]
+./run.sh chaincode upgrade [chaincode_name] [chaincode_version] [channel_name] [org_no] [peer_no]
+
+# e.g.
+./run.sh chaincode install mychaincode 1.1 mychaincode 1 0
+./run.sh chaincode upgrade mychaincode 1.1 mychannel 1 0
 ```
 
 Be sure the `chaincode_version` is unique and never used before (otherwise an error will be prompted).
@@ -88,20 +92,101 @@ It is possible to use the CLI to run and test functionalities.
 ### Invoke
 
 ```bash
-./run.sh chaincode invoke [channel_name] [chaincode_name] [request]
+./run.sh chaincode invoke [channel_name] [chaincode_name] [org_no] [peer_no] [request]
 
 # e.g.
-./run.sh chaincode invoke mychannel mychaincode '{"Args":["put","key1","10"]}'
+./run.sh chaincode invoke mychannel mychaincode 1 0 '{"Args":["put","key1","10"]}'
 ```
 
 ### Query
 
 ```bash
-./run.sh chaincode query [channel_name] [chaincode_name] [request]
+./run.sh chaincode query [channel_name] [chaincode_name] [org_no] [peer_no] [request]
 
 # e.g.
-./run.sh chaincode query mychannel mychaincode '{"Args":["get","key1"]}'
+./run.sh chaincode query mychannel mychaincode 1 0 '{"Args":["get","key1"]}'
 ```
+
+## Private Data Collections
+
+Starting from v1.2, Fabric offers the ability to create private data collections, which allow a defined subset of organizations on a channel the ability to endorse, commit, or query private data without having to create a separate channel.
+
+This boilerplate propose a sample chaincode, `pdc`, exported from the [fabric-samples]([fabri](https://github.com/hyperledger/fabric-samples)) official repository, which includes a `collections_config.json` file with the following configuration:
+
+- `collectionMarbles`: Org1MSP, Org2MSP
+- `collectionMarblePrivateDetails`: Org1MSP
+
+In order to provide with a basic demonstration of how private data collections work, it is recommended to run the network with the **3-orgs setup** (2-orgs will also work).
+
+Set the following variables in `.env` file to these values:
+
+```bash
+CONFIGTX_PROFILE_NETWORK=ThreeOrgsOrdererGenesis
+CONFIGTX_PROFILE_CHANNEL=ThreeOrgsChannel
+```
+
+```bash
+# not
+./run.sh network start
+```
+
+The network will be initialised with the following components:
+
+- orderer
+- ca.org1
+- peer0.org1 (mychaincode installed)
+- peer0.org1-couchdb
+- ca.org2
+- peer0.org2
+- peer0.org2-couchdb
+- ca.org3
+- peer0.org3
+- peer0.org3-couchdb
+- cli
+
+Then complete your network setup adding the other organisations to the channel:
+
+```bash
+# join org2 peer0 to mychannel
+./run.sh channel join mychannel 2 0
+# join org3 peer0 to mychannel
+./run.sh channel join mychannel 3 0
+```
+
+Install and instantiate the `pdc` chaincode:
+
+```bash
+# install the pdc chaincode on all the organisations' peer0
+./run.sh chaincode install pdc 1.0 pdc 1 0
+./run.sh chaincode install pdc 1.0 pdc 2 0
+./run.sh chaincode install pdc 1.0 pdc 3 0
+
+# instantiate pdc chaincode on mychannel using org1 peer0
+./run.sh chaincode instantiate pdc 1.0 mychannel 1 0 --collections-config ./chaincode/pdc/collections_config.json -P "OR('Org1MSP.member','Org2MSP.member','Org3MSP.member')"
+```
+
+Execute some actions:
+
+```bash
+# create a new marble as org1 peer0
+export MARBLE=$(echo -n "{\"name\":\"marble1\",\"color\":\"blue\",\"size\":35,\"owner\":\"tom\",\"price\":99}" | base64 | tr -d \\n)
+./run.sh chaincode invoke mychannel pdc 1 0 '{"Args":["initMarble"]}' --transient "{\"marble\":\"$MARBLE\"}"
+
+# query marble as org2 peer0 (successful)
+./run.sh chaincode query mychannel pdc 2 0 '{"Args":["readMarble","marble1"]}'
+
+# query marble as org3 peer0 (fail, as org3 is not part of this collection)
+./run.sh chaincode query mychannel pdc 3 0 '{"Args":["readMarble","marble1"]}'
+```
+
+You can access the CouchDB UI for each organisation's peer to inspect the data which gets effectively stored and its format.
+
+For each private collection your StateDB will create 2 databases, one public to the channel and one private. e.g.:
+
+- `mychannel_pdc$$hcollection$marbles`: it refers to `collectionMarbles` where the `h` in front stands for `hash`. This will contain only the hash of the data and it is shared publicly across the channel.
+- `mychannel_pdc$$pcollection$marbles`: it refers to `collectionMarbles` where the `p` in front stands for `private`. This will contain the data in clear.
+
+A few more examples of commands are available in the main chaincode file `./chaincode/pdc/main.go` commented out in the header.
 
 ## Blockchain Explorer
 
@@ -175,19 +260,19 @@ To perform any of the below procedures you need to have satisfied the following 
 
 - Downloaded locally the CA root certificate (for IBP, that is usually available directly in the connection profile, but it needs to be converted from string to file without \n and other escape characters)
 
-- Downloaded the connection profile if available or be sure you have on your hands the following informations
+- Downloaded the connection profile if available or be sure you have on your hands the following information
 
-    - Admin username (commonly `admin`) and password. This user needs to have the right permissions in order to perform any of the operations below.
-    
-    - Organization name
-
-    - CA hostname and port
+  - Admin username (commonly `admin`) and password. This user needs to have the right permissions in order to perform any of the operations below.
+  
+  - Organization name
+  
+  - CA hostname and port
 
 ### Register and enroll a new user
 
 #### Prerequisites
 
-- Fullfilled all the base prerequisites
+- Fulfilled all the base prerequisites
 
 - Username and password of the new user to register and enroll
 
@@ -218,7 +303,7 @@ This final command will generate a new certificate for the user under `network/c
 ### Renew an expired certificate
 
 Hyperledger Fabric certificates do not last forever and they usually have an expiration date which is set by default to **1 year**.
-That means, after such period, any oepration made by a blockchain identity with an expired certificate will not work, causing possible disruptions on the system.
+That means, after such period, any operation made by a blockchain identity with an expired certificate will not work, causing possible disruptions on the system.
 
 The procedure to renew a certificate follows a few steps but it is not that banal, so please read these lines below very carefully and be sure you are running these commands on a machine you trust and you have access to the output log (in console should be sufficient).
 
@@ -317,7 +402,25 @@ Error: Response from server: Error Code: 0 - Registration of 'user_bdp1Z' failed
 
 #### Possible solutions
 
-- Be sure you are using an existing affiliation attribute (e.g. for sample setup with `org1.example.com` the affilition attributes to use are `org1.department1` and `org1.department2`)
+- Be sure you are using an existing affiliation attribute (e.g. for sample setup with `org1.example.com` the affiliation attributes to use are `org1.department1` and `org1.department2`)
+
+#### Issue scenario
+
+While installing a chaincode the following (or similar) error occurs
+
+```bash
+Error: error getting chaincode code pdc: error getting chaincode package bytes: Error writing src/github.com/hyperledger/fabric/peer/chaincode/pdc/vendor/golang.org/x/net/http/httpguts/guts.go to tar: Error copy (path: /opt/gopath/src/github.com/hyperledger/fabric/peer/chaincode/pdc/vendor/golang.org/x/net/http/httpguts/guts.go, oldname:guts.go,newname:src/github.com/hyperledger/fabric/peer/chaincode/pdc/vendor/golang.org/x/net/http/httpguts/guts.go,sz:1425) : archive/tar: write too long
+```
+
+#### Possible solutions
+
+It is a common error in environments running under low resources (or not-Linux machines).
+
+If your docker is running on less than half of your available CPU and RAM, try to reallocate more resources.
+
+It could also be related to mismatched references between packages in `vendor` and the ones written in `go.sum`. **Try to delete the ./chaincode/[chaincode]/go.sum** file.
+
+Keep refiring the same command.
 
 ## Cleanup the environment
 

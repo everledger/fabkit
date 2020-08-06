@@ -369,6 +369,28 @@ Channel: &ChannelDefaults
 #
 ################################################################################
 Profiles:
+    OneOrgOrdererGenesis:
+        <<: *ChannelDefaults
+        Orderer:
+            <<: *OrdererDefaults
+            Organizations:
+                - *OrdererOrg
+            Capabilities:
+                <<: *OrdererCapabilities
+        Consortiums:
+            SampleConsortium:
+                Organizations:
+                    - *Org1
+
+    OneOrgChannel:
+        Consortium: SampleConsortium
+        <<: *ChannelDefaults
+        Application:
+            <<: *ApplicationDefaults
+            Organizations:
+                - *Org1
+            Capabilities:
+                <<: *ApplicationCapabilities
 
     TwoOrgsOrdererGenesis:
         <<: *ChannelDefaults
@@ -383,6 +405,7 @@ Profiles:
                 Organizations:
                     - *Org1
                     - *Org2
+
     TwoOrgsChannel:
         Consortium: SampleConsortium
         <<: *ChannelDefaults
@@ -393,6 +416,7 @@ Profiles:
                 - *Org2
             Capabilities:
                 <<: *ApplicationCapabilities
+                
     ThreeOrgsOrdererGenesis:
         <<: *ChannelDefaults
         Orderer:
