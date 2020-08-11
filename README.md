@@ -109,7 +109,7 @@ It is possible to use the CLI to run and test functionalities.
 
 ## Private Data Collections
 
-Starting from v1.2, Fabric offers the ability to create private data collections, which allow a defined subset of organizations on a channel the ability to endorse, commit, or query private data without having to create a separate channel.
+Starting from v1.2, Fabric offers the ability to create [private data collections](https://hyperledger-fabric.readthedocs.io/en/release-1.4/private-data/private-data.html), which allow a defined subset of organizations on a channel the ability to endorse, commit, or query private data without having to create a separate channel.
 
 This boilerplate propose a sample chaincode, `pdc`, exported from the [fabric-samples]([fabri](https://github.com/hyperledger/fabric-samples)) official repository, which includes a `collections_config.json` file with the following configuration:
 
@@ -187,6 +187,8 @@ For each private collection your StateDB will create 2 databases, one public to 
 - `mychannel_pdc$$pcollection$marbles`: it refers to `collectionMarbles` where the `p` in front stands for `private`. This will contain the data in clear.
 
 A few more examples of commands are available in the main chaincode file `./chaincode/pdc/main.go` commented out in the header.
+
+For a full overview about collections properties and definitions check the official documentation at [this page](https://hyperledger-fabric.readthedocs.io/en/release-1.4/private-data-arch.html).
 
 ## Blockchain Explorer
 
