@@ -5,48 +5,52 @@ source $(pwd)/.env
 export GO111MODULE=on
 export GOPRIVATE=bitbucket.org/everledger/*
 
+readonly one_org="OneOrgOrdererGenesis"
+readonly two_orgs="TwoOrgsOrdererGenesis"
+readonly three_orgs="ThreeOrgsOrdererGenesis"
+
 help() {
     local help="
         Usage: run.sh [command]
         commands:
 
-        help                                                                        : this help
-
-        dep install [chaincode_name]                                                : install all go modules as vendor and init go.mod if does not exist yet
-        dep update [chaincode_name]                                                 : update all go modules and rerun install
-        
-        ca register                                                                 : register a new user
-        ca enroll                                                                   : enroll a previously registered user    
-        ca reenroll                                                                 : reenroll a user if its certificate expired
-        ca revoke                                                                   : revoke a user's key/certificate providing a reason
-        
-        network install                                                             : install all the dependencies and docker images
-        network start                                                               : start the blockchain network and initialize it
-        network restart                                                             : restart a previously running the blockchain network
-        network stop                                                                : stop the blockchain network and remove all the docker containers
-        
-        explorer start                                                              : run the blockchain explorer user-interface and analytics
-        explorer stop                                                               : stop the blockchain explorer user-interface and analytics
-
-        channel create [channel_name]                                               : generate channel configuration file
-        channel update [channel_name] [org]                                         : update channel with anchor peers
-        channel join [channel_name]                                                 : run by a peer to join a channel
-
-        generate cryptos [config_path] [cryptos_path]                               : generate all the crypto keys and certificates for the network
-        generate genesis [base_path] [config_path]                                  : generate the genesis block for the ordering service
-        generate channeltx [channel_name] [base_path] [config_path] [cryptos_path]  : generate channel configuration files
-                           [network_profile] [channel_profile] [org_msp]            
-
-        chaincode test [chaincode_path]                                             : run unit tests
-        chaincode build [chaincode_path]                                            : run build and test against the binary file
-        chaincode pack [chaincode_path]                                             : create an archive ready for deployment containing chaincode and vendors
-        chaincode install [chaincode_name] [chaincode_version] [chaincode_path]     : install chaincode on a peer
-        chaincode instantiate [chaincode_name] [chaincode_version] [channel_name]   : instantiate chaincode on a peer for an assigned channel
-        chaincode upgrade [chaincode_name] [chaincode_version] [channel_name]       : upgrade chaincode with a new version
-        chaincode query [channel_name] [chaincode_name] [data_in_json]              : run query in the format '{\"Args\":[\"queryFunction\",\"key\"]}'
-        chaincode invoke [channel_name] [chaincode_name] [data_in_json]             : run invoke in the format '{\"Args\":[\"invokeFunction\",\"key\",\"value\"]}'
-        
-        benchmark load [jobs] [entries]                                             : run benchmark bulk loading of [entries] per parallel [jobs] against a running network
+        help                                                                                            : this help
+    
+        dep install [chaincode_name]                                                                    : install all go modules as vendor and init go.mod if does not exist yet
+        dep update [chaincode_name]                                                                     : update all go modules and rerun install
+            
+        ca register                                                                                     : register a new user
+        ca enroll                                                                                       : enroll a previously registered user    
+        ca reenroll                                                                                     : reenroll a user if its certificate expired
+        ca revoke                                                                                       : revoke a user's key/certificate providing a reason
+            
+        network install                                                                                 : install all the dependencies and docker images
+        network start                                                                                   : start the blockchain network and initialize it
+        network restart                                                                                 : restart a previously running the blockchain network
+        network stop                                                                                    : stop the blockchain network and remove all the docker containers
+            
+        explorer start                                                                                  : run the blockchain explorer user-interface and analytics
+        explorer stop                                                                                   : stop the blockchain explorer user-interface and analytics
+    
+        channel create [channel_name] [org_no] [peer_no]                                                : generate channel configuration file
+        channel update [channel_name] [org_msp] [org_no] [peer_no]                                      : update channel with anchor peers
+        channel join [channel_name] [org_no] [peer_no]                                                  : run by a peer to join a channel
+    
+        generate cryptos [config_path] [cryptos_path]                                                   : generate all the crypto keys and certificates for the network
+        generate genesis [base_path] [config_path]                                                      : generate the genesis block for the ordering service
+        generate channeltx [channel_name] [base_path] [config_path] [cryptos_path]                      : generate channel configuration files
+                           [network_profile] [channel_profile] [org_msp]                
+    
+        chaincode test [chaincode_path]                                                                 : run unit tests
+        chaincode build [chaincode_path]                                                                : run build and test against the binary file
+        chaincode pack [chaincode_path]                                                                 : create an archive ready for deployment containing chaincode and vendors
+        chaincode install [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no]      : install chaincode on a peer
+        chaincode instantiate [chaincode_name] [chaincode_version] [channel_name] [org_no] [peer_no]    : instantiate chaincode on a peer for an assigned channel
+        chaincode upgrade [chaincode_name] [chaincode_version] [channel_name] [org_no] [peer_no]        : upgrade chaincode with a new version
+        chaincode query [channel_name] [chaincode_name] [org_no] [peer_no] [data_in_json]               : run query in the format '{\"Args\":[\"queryFunction\",\"key\"]}'
+        chaincode invoke [channel_name] [chaincode_name] [org_no] [peer_no] [data_in_json]              : run invoke in the format '{\"Args\":[\"invokeFunction\",\"key\",\"value\"]}'
+            
+        benchmark load [jobs] [entries]                                                                 : run benchmark bulk loading of [entries] per parallel [jobs] against a running network
         "
     echoc "$help" dark cyan
 }
@@ -180,6 +184,12 @@ start_network() {
     docker network create ${DOCKER_NETWORK} 2>/dev/null
     
     docker-compose -f ${ROOT}/docker-compose.yaml up -d || exit 1
+    if [ "${CONFIGTX_PROFILE_NETWORK}" == "${two_orgs}" ]; then
+        docker-compose -f ${ROOT}/docker-compose.org2.yaml up -d || exit 1
+    elif [ "${CONFIGTX_PROFILE_NETWORK}" == "${three_orgs}" ]; then
+        docker-compose -f ${ROOT}/docker-compose.org2.yaml up -d || exit 1
+        docker-compose -f ${ROOT}/docker-compose.org3.yaml up -d || exit 1
+    fi
 	
     sleep 5
 	
@@ -198,8 +208,16 @@ restart_network() {
     fi
 
     __delete_shared
+
+    docker network create ${DOCKER_NETWORK} 2>/dev/null
     
     docker-compose -f ${ROOT}/docker-compose.yaml up --force-recreate -d || exit 1
+    if [ "${CONFIGTX_PROFILE_NETWORK}" == "${two_orgs}" ]; then
+        docker-compose -f ${ROOT}/docker-compose.org2.yaml up --force-recreate -d || exit 1
+    elif [ "${CONFIGTX_PROFILE_NETWORK}" == "${three_orgs}" ]; then
+        docker-compose -f ${ROOT}/docker-compose.org2.yaml up --force-recreate -d || exit 1
+        docker-compose -f ${ROOT}/docker-compose.org3.yaml up --force-recreate -d || exit 1
+    fi
 
     echoc "The chaincode container will be instantiated automatically once the peer executes the first invoke or query" light yellow
 }
@@ -210,6 +228,12 @@ stop_network() {
     echoc "=============" dark cyan
 
     docker-compose -f ${ROOT}/docker-compose.yaml down || exit 1
+    if [ "${CONFIGTX_PROFILE_NETWORK}" == "${two_orgs}" ]; then
+        docker-compose -f ${ROOT}/docker-compose.org2.yaml down || exit 1
+    elif [ "${CONFIGTX_PROFILE_NETWORK}" == "${three_orgs}" ]; then
+        docker-compose -f ${ROOT}/docker-compose.org2.yaml down || exit 1
+        docker-compose -f ${ROOT}/docker-compose.org3.yaml down || exit 1
+    fi
 
     __delete_shared
 
@@ -264,11 +288,11 @@ initialize_network() {
     echoc "=============" dark cyan
     echo
 
-	create_channel $CHANNEL_NAME
-	join_channel $CHANNEL_NAME
-	update_channel $CHANNEL_NAME $ORG_MSP
-	install_chaincode $CHAINCODE_NAME $CHAINCODE_VERSION $CHAINCODE_NAME
-	instantiate_chaincode $CHAINCODE_NAME $CHAINCODE_VERSION $CHANNEL_NAME
+	create_channel $CHANNEL_NAME 1 0
+	join_channel $CHANNEL_NAME 1 0
+	update_channel $CHANNEL_NAME $ORG_MSP 1 0
+	install_chaincode $CHAINCODE_NAME $CHAINCODE_VERSION $CHAINCODE_NAME 1 0
+	instantiate_chaincode $CHAINCODE_NAME $CHAINCODE_VERSION $CHANNEL_NAME 1 0 
 }
 
 start_explorer() {
@@ -359,6 +383,12 @@ __init_go_mod() {
 test_chaincode() {
     local chaincode_name="${1}"
     __check_chaincode ${chaincode_name}
+
+    # avoid "found no test suites" ginkgo error
+    if [ ! `find ${CHAINCODE_PATH}/${chaincode_name} -type f -name "*_test*" ! -path "**/node_modules/*" ! -path "**/vendor/*"` ]; then
+        echoc "No test suites found. Skipping tests..." light yellow
+        return 
+    fi
 
     echoc "===============" dark cyan
 	echoc "Chaincode: test" dark cyan
@@ -578,7 +608,7 @@ generate_channeltx() {
         mkdir -p $channel_dir
     fi
     
-# generate channel configuration transaction
+    # generate channel configuration transaction
     docker run --rm -v ${config_path}/configtx.yaml:/configtx.yaml \
                     -v ${channel_dir}:/channels/${channel_name} \
                     -v ${cryptos_path}:/crypto-config \
@@ -671,8 +701,24 @@ generate_cryptos() {
     cp -r ${cryptos_path}/** ${CRYPTOS_SHARED_PATH}
 }
 
+set_certs ()  {
+    CORE_PEER_ADDRESS=peer${2}.org${1}.example.com:$((6 + ${1}))051
+    CORE_PEER_LOCALMSPID=Org${1}MSP
+    CORE_PEER_TLS_ENABLED=false
+    CORE_PEER_TLS_CERT_FILE=${CONTAINER_PEER_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/peers/peer${2}.org${1}.example.com/tls/server.crt
+    CORE_PEER_TLS_KEY_FILE=${CONTAINER_PEER_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/peers/peer${2}.org${1}.example.com/tls/server.key
+    CORE_PEER_TLS_ROOTCERT_FILE=${CONTAINER_PEER_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/peers/peer${2}.org${1}.example.com/tls/ca.crt
+    CORE_PEER_MSPCONFIGPATH=${CONTAINER_PEER_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/users/Admin@org${1}.example.com/msp   
+
+    echoc "===========================================" light cyan
+    echoc "Peer address: ${CORE_PEER_ADDRESS}" light cyan
+    echoc "Peer cert: ${CORE_PEER_TLS_CERT_FILE}" light cyan
+    echoc "===========================================" light cyan
+    echo
+}
+
 create_channel() {
-	if [ -z "$1" ]; then
+	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
 		echoc "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" dark red
 		exit 1
 	fi
@@ -683,13 +729,25 @@ create_channel() {
     echo
 
 	local channel_name="$1"
+    local org="$2"
+    local peer="$3"
 
-	echoc "Creating channel $channel_name using configuration file $CHANNELS_CONFIG_PATH/$channel_name/${channel_name}_tx.pb" light cyan
-	docker exec $CHAINCODE_UTIL_CONTAINER peer channel create -o $ORDERER_ADDRESS -c $channel_name -f $CHANNELS_CONFIG_PATH/$channel_name/${channel_name}_tx.pb --outputBlock $CHANNELS_CONFIG_PATH/$channel_name/${channel_name}.block || exit 1
+    set_certs $org $peer
+
+	echoc "Creating channel $channel_name using configuration file ${CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}_tx.pb" light cyan
+
+	docker exec -e CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
+                -e CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID \
+                -e CORE_PEER_TLS_ENABLED=$CORE_PEER_TLS_ENABLED \
+                -e CORE_PEER_TLS_CERT_FILE=$CORE_PEER_TLS_CERT_FILE \
+                -e CORE_PEER_TLS_KEY_FILE=$CORE_PEER_TLS_KEY_FILE \
+                -e CORE_PEER_TLS_ROOTCERT_FILE=$CORE_PEER_TLS_ROOTCERT_FILE \
+                -e CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH \
+                $CHAINCODE_UTIL_CONTAINER peer channel create -o $ORDERER_ADDRESS -c $channel_name -f $CHANNELS_CONFIG_PATH/$channel_name/${channel_name}_tx.pb --outputBlock $CHANNELS_CONFIG_PATH/$channel_name/${channel_name}.block || exit 1
 }
 
 join_channel() {
- 	if [ -z "$1" ]; then
+ 	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
 		echoc "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" dark red
 		exit 1
 	fi
@@ -700,13 +758,25 @@ join_channel() {
     echo
 
 	local channel_name="$1"
+    local org="$2"
+    local peer="$3"
+
+    set_certs $org $peer
 
 	echoc "Joining channel $channel_name" light cyan
-    docker exec $CHAINCODE_UTIL_CONTAINER peer channel join -b $CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}.block || exit 1
+
+    docker exec -e CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
+                -e CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID \
+                -e CORE_PEER_TLS_ENABLED=$CORE_PEER_TLS_ENABLED \
+                -e CORE_PEER_TLS_CERT_FILE=$CORE_PEER_TLS_CERT_FILE \
+                -e CORE_PEER_TLS_KEY_FILE=$CORE_PEER_TLS_KEY_FILE \
+                -e CORE_PEER_TLS_ROOTCERT_FILE=$CORE_PEER_TLS_ROOTCERT_FILE \
+                -e CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH \
+                $CHAINCODE_UTIL_CONTAINER peer channel join -b ${CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}.block || exit 1
 }
 
 update_channel() {
-	if [ -z "$1" ] || [ -z "$2" ]; then
+	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ]; then
 		echoc "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" dark red
 		exit 1
 	fi
@@ -718,13 +788,25 @@ update_channel() {
 
 	local channel_name="$1"
     local org_msp="$2"
+    local org="$3"
+    local peer="$4"
 
-	echoc "Updating anchors peers $channel_name using configuration file $CHANNELS_CONFIG_PATH/$channel_name/${org_msp}_anchors.tx" light cyan
-	docker exec $CHAINCODE_UTIL_CONTAINER peer channel update -o $ORDERER_ADDRESS -c $channel_name -f $CHANNELS_CONFIG_PATH/${channel_name}/${org_msp}_anchors_tx.pb || exit 1
+    set_certs $org $peer
+
+	echoc "Updating anchors peers $channel_name using configuration file ${CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors.tx" light cyan
+
+	docker exec -e CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
+                -e CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID \
+                -e CORE_PEER_TLS_ENABLED=$CORE_PEER_TLS_ENABLED \
+                -e CORE_PEER_TLS_CERT_FILE=$CORE_PEER_TLS_CERT_FILE \
+                -e CORE_PEER_TLS_KEY_FILE=$CORE_PEER_TLS_KEY_FILE \
+                -e CORE_PEER_TLS_ROOTCERT_FILE=$CORE_PEER_TLS_ROOTCERT_FILE \
+                -e CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH \
+                $CHAINCODE_UTIL_CONTAINER peer channel update -o $ORDERER_ADDRESS -c $channel_name -f ${CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors_tx.pb || exit 1
 }
 
 install_chaincode() {
-	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
+	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] ||  [ -z "$5" ]; then
 		echoc "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" dark red
 		exit 1
 	fi
@@ -737,15 +819,27 @@ install_chaincode() {
 	local chaincode_name="$1"
 	local chaincode_version="$2"
 	local chaincode_path="$3"
+    local org="$4"
+    local peer="$5"
+
+    set_certs $org $peer
 
     __init_go_mod install ${chaincode_name}
+    
+    echoc "Installing chaincode $chaincode_name version $chaincode_version from path ${CHAINCODE_PATH}/${chaincode_path}" light cyan
 
-    echoc "Installing chaincode $chaincode_name version $chaincode_version from path $chaincode_path" light cyan
-    docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode install -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -p ${CHAINCODE_REMOTE_PATH}/${chaincode_path} || exit 1
+    docker exec -e CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
+                -e CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID \
+                -e CORE_PEER_TLS_ENABLED=$CORE_PEER_TLS_ENABLED \
+                -e CORE_PEER_TLS_CERT_FILE=$CORE_PEER_TLS_CERT_FILE \
+                -e CORE_PEER_TLS_KEY_FILE=$CORE_PEER_TLS_KEY_FILE \
+                -e CORE_PEER_TLS_ROOTCERT_FILE=$CORE_PEER_TLS_ROOTCERT_FILE \
+                -e CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH \
+                $CHAINCODE_UTIL_CONTAINER peer chaincode install -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -p ${CHAINCODE_REMOTE_PATH}/${chaincode_path} || exit 1
 }
 
 instantiate_chaincode() {
-	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
+	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ]; then
 		echoc "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" dark red
 		exit 1
 	fi
@@ -758,14 +852,26 @@ instantiate_chaincode() {
 	local chaincode_name="$1"
 	local chaincode_version="$2"
 	local channel_name="$3"
-    shift 3
+    local org="$4"
+    local peer="$5"
+    shift 5
+
+    set_certs $org $peer
 
     echoc "Instantiating chaincode $chaincode_name version $chaincode_version into channel $channel_name" light cyan
-	docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode instantiate -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -C $channel_name -c '{"Args":[]}' "$@" || exit 1
+
+    docker exec -e CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
+                -e CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID \
+                -e CORE_PEER_TLS_ENABLED=$CORE_PEER_TLS_ENABLED \
+                -e CORE_PEER_TLS_CERT_FILE=$CORE_PEER_TLS_CERT_FILE \
+                -e CORE_PEER_TLS_KEY_FILE=$CORE_PEER_TLS_KEY_FILE \
+                -e CORE_PEER_TLS_ROOTCERT_FILE=$CORE_PEER_TLS_ROOTCERT_FILE \
+                -e CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH \
+	            $CHAINCODE_UTIL_CONTAINER peer chaincode instantiate -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -C $channel_name -c '{"Args":[]}' "$@" || exit 1
 }
 
 upgrade_chaincode() {
-	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
+	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ]; then
 		echoc "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" dark red
 		exit 1
 	fi
@@ -778,17 +884,29 @@ upgrade_chaincode() {
 	local chaincode_name="$1"
 	local chaincode_version="$2"
 	local channel_name="$3"
-    shift 3
+    local org="$4"
+    local peer="$5"
+    shift 5
+
+    set_certs $org $peer
 
 	build_chaincode $chaincode_name
 	test_chaincode $chaincode_name
 
     echoc "Upgrading chaincode $chaincode_name to version $chaincode_version into channel $channel_name" light cyan
-	docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode upgrade -n $chaincode_name -v $chaincode_version -C $channel_name -c '{"Args":[]}' "$@" || exit 1
+    
+	docker exec -e CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
+                -e CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID \
+                -e CORE_PEER_TLS_ENABLED=$CORE_PEER_TLS_ENABLED \
+                -e CORE_PEER_TLS_CERT_FILE=$CORE_PEER_TLS_CERT_FILE \
+                -e CORE_PEER_TLS_KEY_FILE=$CORE_PEER_TLS_KEY_FILE \
+                -e CORE_PEER_TLS_ROOTCERT_FILE=$CORE_PEER_TLS_ROOTCERT_FILE \
+                -e CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH \
+                $CHAINCODE_UTIL_CONTAINER peer chaincode upgrade -n $chaincode_name -v $chaincode_version -C $channel_name -c '{"Args":[]}' "$@" || exit 1
 }
 
 invoke() {
-	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
+	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ]; then
 		echoc "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" dark red
 		exit 1
 	fi
@@ -800,14 +918,27 @@ invoke() {
 
 	local channel_name="$1"
 	local chaincode_name="$2"
-	local request="$3"
-    shift 3
+    local org="$3"
+    local peer="$4"
+    local request="$5"
+    shift 5
 
-	docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode invoke -o $ORDERER_ADDRESS -C $channel_name -n $chaincode_name -c "$request" "$@"
+    set_certs $org $peer
+
+    echoc "Invoking chaincode $chaincode_name on channel $channel_name as org${org} and peer${peer} with the following params $request" light cyan
+
+	docker exec -e CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
+                -e CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID \
+                -e CORE_PEER_TLS_ENABLED=$CORE_PEER_TLS_ENABLED \
+                -e CORE_PEER_TLS_CERT_FILE=$CORE_PEER_TLS_CERT_FILE \
+                -e CORE_PEER_TLS_KEY_FILE=$CORE_PEER_TLS_KEY_FILE \
+                -e CORE_PEER_TLS_ROOTCERT_FILE=$CORE_PEER_TLS_ROOTCERT_FILE \
+                -e CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH \
+                $CHAINCODE_UTIL_CONTAINER peer chaincode invoke -o $ORDERER_ADDRESS -C $channel_name -n $chaincode_name -c "$request" "$@"
 }
 
 query() {
-	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
+	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ]; then
 		echoc "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" dark red
 		exit 1
 	fi
@@ -819,10 +950,23 @@ query() {
 
 	local channel_name="$1"
 	local chaincode_name="$2"
-	local request="$3"
-    shift 3
+    local org="$3"
+    local peer="$4"
+    local request="$5"
+    shift 5
 
-	docker exec $CHAINCODE_UTIL_CONTAINER peer chaincode query -o $ORDERER_ADDRESS -C $channel_name -n $chaincode_name -c "$request" "$@"
+    set_certs $org $peer
+
+    echoc "Querying chaincode $chaincode_name on channel $channel_name as org${org} and peer${peer} with the following params $request $@" light cyan
+
+	docker exec -e CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
+                -e CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID \
+                -e CORE_PEER_TLS_ENABLED=$CORE_PEER_TLS_ENABLED \
+                -e CORE_PEER_TLS_CERT_FILE=$CORE_PEER_TLS_CERT_FILE \
+                -e CORE_PEER_TLS_KEY_FILE=$CORE_PEER_TLS_KEY_FILE \
+                -e CORE_PEER_TLS_ROOTCERT_FILE=$CORE_PEER_TLS_ROOTCERT_FILE \
+                -e CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH \
+                $CHAINCODE_UTIL_CONTAINER peer chaincode query -o $ORDERER_ADDRESS -C $channel_name -n $chaincode_name -c "$request" "$@"
 }
 
 register_user() {
@@ -842,7 +986,7 @@ register_user() {
             --home /crypto-config \
             --mspdir ${org}/users/admin \
             --url ${ca_protocol}${ca_url} \
-            --tls.certfiles ${ca_cert} \
+            --tls.certfiles ${org}/${ca_cert} \
             --id.name $username \
             --id.secret $password  \
             --id.affiliation $user_affiliation \
@@ -870,7 +1014,7 @@ enroll_user() {
             --home /crypto-config \
             --mspdir ${org}/users/${username} \
             --url ${ca_protocol}${username}:${password}@${ca_url} \
-            --tls.certfiles $ca_cert \
+            --tls.certfiles ${org}/${ca_cert} \
             --enrollment.attrs $user_attributes
         "
 
@@ -895,7 +1039,7 @@ reenroll_user() {
             --home /crypto-config \
             --mspdir ${org}/users/${username} \
             --url ${ca_protocol}${username}:${password}@${ca_url} \
-            --tls.certfiles $ca_cert \
+            --tls.certfiles ${org}/${ca_cert} \
             --enrollment.attrs $user_attributes
         "
 
@@ -954,13 +1098,16 @@ revoke_user() {
             --home /crypto-config \
             --mspdir ${org}/users/admin \
             --url ${ca_protocol}${ca_url} \
-            --tls.certfiles $ca_cert \
+            --tls.certfiles ${org}/${ca_cert} \
             --revoke.name $username \
             --revoke.reason $reason
         "
 }
 
 __ca_setup() {
+    echoc "Creating docker network..." light blue
+    docker network create ${DOCKER_NETWORK} 2>/dev/null
+
     echoc "Insert the organization name of the user to register/enroll" light blue
     while [ -z "$org" ]; do
         read -p "Organization: [] " org
@@ -971,6 +1118,7 @@ __ca_setup() {
 
     users_dir="${CRYPTOS_PATH}/${org}/users"
 
+    # TODO: Dynamically allocate admin user username
     if [ "$1" == "register" ]; then
         # set admin msp path
         while [ ! -d "${users_dir}/admin" ]; do
@@ -980,7 +1128,7 @@ __ca_setup() {
             admin_msp=${admin_msp:-${admin_msp_default}}
             echoc $admin_msp light green
             # copy the Admin msp to the main cryptos directory
-            mkdir -p ${users_dir} && cp -r $admin_msp ${users_dir}/admin
+            mkdir -p ${users_dir}/admin && cp -r $admin_msp ${users_dir}/admin/
             mv ${users_dir}/admin/signcerts/* ${users_dir}/admin/signcerts/cert.pem
             cp -r ${users_dir}/admin/signcerts/ ${users_dir}/admin/admincerts/
             echo
@@ -1033,6 +1181,7 @@ __ca_setup() {
     ca_cert=${ca_cert:-${ca_cert_default}}
     echoc $ca_cert light green
     # copy the CA certificate to the main cryptos directory
+    mkdir -p ${CRYPTOS_PATH}/${org}
     cp $ca_cert ${CRYPTOS_PATH}/${org}/cert.pem
     export ca_cert=$(basename ${CRYPTOS_PATH}/${org}/cert.pem)
     echo
@@ -1128,6 +1277,7 @@ readonly func="$1"
 shift
 
 if [ "$func" == "network" ]; then
+    check_dependencies deploy
     readonly param="$1"
     shift
     if [ "$param" == "install" ]; then
@@ -1146,6 +1296,7 @@ if [ "$func" == "network" ]; then
         exit 1
     fi
 elif [ "$func" == "explorer" ]; then
+    check_dependencies deploy
     readonly param="$1"
     shift
     if [ "$param" == "start" ]; then
@@ -1171,10 +1322,13 @@ elif [ "$func" == "chaincode" ]; then
     readonly param="$1"
     shift
     if [ "$param" == "install" ]; then
+        check_dependencies deploy
         install_chaincode "$@"
     elif [ "$param" == "instantiate" ]; then
+        check_dependencies deploy
         instantiate_chaincode "$@"
     elif [ "$param" == "upgrade" ]; then
+        check_dependencies deploy
         upgrade_chaincode "$@"
     elif [ "$param" == "test" ]; then
         test_chaincode "$@"
@@ -1191,6 +1345,7 @@ elif [ "$func" == "chaincode" ]; then
         exit 1
     fi
 elif [ "$func" == "generate" ]; then
+    check_dependencies deploy
     readonly param="$1"
     shift
     if [ "$param" == "cryptos" ]; then
@@ -1204,11 +1359,13 @@ elif [ "$func" == "generate" ]; then
         exit 1
     fi
 elif [ "$func" == "ca" ]; then
+    check_dependencies deploy
     readonly param="$1"
     shift
     if [ "$param" == "register" ]; then
         register_user "$@"
     elif [ "$param" == "enroll" ]; then
+        check_dependencies deploy
         enroll_user "$@"
     elif [ "$param" == "reenroll" ]; then
         reenroll_user "$@"
@@ -1219,6 +1376,7 @@ elif [ "$func" == "ca" ]; then
         exit 1
     fi
 elif [ "$func" == "channel" ]; then
+    check_dependencies deploy
     readonly param="$1"
     shift
     if [ "$param" == "create" ]; then

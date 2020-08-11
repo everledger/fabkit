@@ -7,6 +7,7 @@ require (
 	github.com/Knetic/govaluate v3.0.0+incompatible // indirect
 	github.com/Microsoft/hcsshim v0.8.9 // indirect
 	github.com/Shopify/sarama v1.23.1 // indirect
+	github.com/containerd/containerd v1.3.4 // indirect
 	github.com/containerd/continuity v0.0.0-20200413184840-d3ef23f19fbb // indirect
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/fsouza/go-dockerclient v1.6.5 // indirect
@@ -16,7 +17,7 @@ require (
 	github.com/hyperledger/fabric v1.4.7
 	github.com/hyperledger/fabric-amcl v0.0.0-20200424173818-327c9e2cf77a // indirect
 	github.com/miekg/pkcs11 v1.0.3 // indirect
-	github.com/mitchellh/mapstructure v1.3.0 // indirect
+	github.com/mitchellh/mapstructure v1.3.2 // indirect
 	github.com/op/go-logging v0.0.0-20160315200505-970db520ece7 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/pelletier/go-toml v1.7.0 // indirect
@@ -35,6 +36,7 @@ require (
 	golang.org/x/sys v0.0.0-20200515095857-1151b9dac4a9 // indirect
 	google.golang.org/genproto v0.0.0-20200514193133-8feb7f20f2a2 // indirect
 	google.golang.org/grpc v1.29.1 // indirect
+	gopkg.in/ini.v1 v1.51.1 // indirect
 	gopkg.in/jcmturner/goidentity.v3 v3.0.0 // indirect
 	gopkg.in/jcmturner/gokrb5.v7 v7.2.4 // indirect
 	gopkg.in/yaml.v2 v2.3.0 // indirect
