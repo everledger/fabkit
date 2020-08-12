@@ -177,6 +177,16 @@ start_network() {
     echoc "==============" dark cyan
     echo
 
+    for arg in "$@"
+    do
+        case $arg in
+            -o=* | --org=*)
+            ORGS="${arg#*=}"
+            shift
+            ;;
+        esac
+    done
+
 	generate_cryptos $CONFIG_PATH $CRYPTOS_PATH
     generate_genesis $NETWORK_PATH $CONFIG_PATH $CRYPTOS_PATH $CONFIGTX_PROFILE_NETWORK
     generate_channeltx $CHANNEL_NAME $NETWORK_PATH $CONFIG_PATH $CRYPTOS_PATH $CONFIGTX_PROFILE_NETWORK $CONFIGTX_PROFILE_CHANNEL $ORG_MSP
@@ -184,9 +194,13 @@ start_network() {
     docker network create ${DOCKER_NETWORK} 2>/dev/null
     
     docker-compose -f ${ROOT}/docker-compose.yaml up -d || exit 1
-    if [ "${CONFIGTX_PROFILE_NETWORK}" == "${two_orgs}" ]; then
+    if [ "${ORGS}" == "2" ]; then
+        CONFIGTX_PROFILE_NETWORK=TwoOrgsOrdererGenesis
+        CONFIGTX_PROFILE_CHANNEL=TwoOrgsChannel
         docker-compose -f ${ROOT}/docker-compose.org2.yaml up -d || exit 1
-    elif [ "${CONFIGTX_PROFILE_NETWORK}" == "${three_orgs}" ]; then
+    elif [ "${ORGS}" == "3" ]; then
+        CONFIGTX_PROFILE_NETWORK=ThreeOrgsOrdererGenesis
+        CONFIGTX_PROFILE_CHANNEL=ThreeOrgsChannel
         docker-compose -f ${ROOT}/docker-compose.org2.yaml up -d || exit 1
         docker-compose -f ${ROOT}/docker-compose.org3.yaml up -d || exit 1
     fi
