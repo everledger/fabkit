@@ -188,6 +188,15 @@ start_network() {
     done
 
 	generate_cryptos $CONFIG_PATH $CRYPTOS_PATH
+
+    if [ "${ORGS}" == "2" ] || [ "${CONFIGTX_PROFILE_NETWORK}" == "${two_orgs}" ]; then
+        CONFIGTX_PROFILE_NETWORK=TwoOrgsOrdererGenesis
+        CONFIGTX_PROFILE_CHANNEL=TwoOrgsChannel
+    elif [ "${ORGS}" == "3" ] || [ "${CONFIGTX_PROFILE_NETWORK}" == "${three_orgs}" ]; then
+        CONFIGTX_PROFILE_NETWORK=ThreeOrgsOrdererGenesis
+        CONFIGTX_PROFILE_CHANNEL=ThreeOrgsChannel
+    fi
+
     generate_genesis $NETWORK_PATH $CONFIG_PATH $CRYPTOS_PATH $CONFIGTX_PROFILE_NETWORK
     generate_channeltx $CHANNEL_NAME $NETWORK_PATH $CONFIG_PATH $CRYPTOS_PATH $CONFIGTX_PROFILE_NETWORK $CONFIGTX_PROFILE_CHANNEL $ORG_MSP
     
@@ -195,12 +204,8 @@ start_network() {
     
     docker-compose -f ${ROOT}/docker-compose.yaml up -d || exit 1
     if [ "${ORGS}" == "2" ] || [ "${CONFIGTX_PROFILE_NETWORK}" == "${two_orgs}" ]; then
-        CONFIGTX_PROFILE_NETWORK=TwoOrgsOrdererGenesis
-        CONFIGTX_PROFILE_CHANNEL=TwoOrgsChannel
         docker-compose -f ${ROOT}/docker-compose.org2.yaml up -d || exit 1
     elif [ "${ORGS}" == "3" ] || [ "${CONFIGTX_PROFILE_NETWORK}" == "${three_orgs}" ]; then
-        CONFIGTX_PROFILE_NETWORK=ThreeOrgsOrdererGenesis
-        CONFIGTX_PROFILE_CHANNEL=ThreeOrgsChannel
         docker-compose -f ${ROOT}/docker-compose.org2.yaml up -d || exit 1
         docker-compose -f ${ROOT}/docker-compose.org3.yaml up -d || exit 1
     fi
