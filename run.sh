@@ -25,7 +25,7 @@ help() {
         ca revoke                                                                                       : revoke a user's key/certificate providing a reason
             
         network install                                                                                 : install all the dependencies and docker images
-        network start --org | -o =<orgs>  (default = 1)                                                              : start the blockchain network and initialize it
+        network start --org = <orgs>  (default = 1)                                                              : start the blockchain network and initialize it
         network restart                                                                                 : restart a previously running the blockchain network
         network stop                                                                                    : stop the blockchain network and remove all the docker containers
             
@@ -180,7 +180,7 @@ start_network() {
     for arg in "$@"
     do
         case $arg in
-            -o=* | --org=*)
+            --org=*)
             ORGS="${arg#*=}"
             shift
             ;;
@@ -194,7 +194,7 @@ start_network() {
     docker network create ${DOCKER_NETWORK} 2>/dev/null
     
     docker-compose -f ${ROOT}/docker-compose.yaml up -d || exit 1
-    if [ "${ORGS}" == "2"] || [ "${CONFIGTX_PROFILE_NETWORK}" == "${two_orgs}" ]; then
+    if [ "${ORGS}" == "2" ] || [ "${CONFIGTX_PROFILE_NETWORK}" == "${two_orgs}" ]; then
         CONFIGTX_PROFILE_NETWORK=TwoOrgsOrdererGenesis
         CONFIGTX_PROFILE_CHANNEL=TwoOrgsChannel
         docker-compose -f ${ROOT}/docker-compose.org2.yaml up -d || exit 1
