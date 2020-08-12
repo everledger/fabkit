@@ -25,7 +25,7 @@ help() {
         ca revoke                                                                                       : revoke a user's key/certificate providing a reason
             
         network install                                                                                 : install all the dependencies and docker images
-        network start                                                                                   : start the blockchain network and initialize it
+        network start --org | -o =<orgs>  (default = 1)                                                              : start the blockchain network and initialize it
         network restart                                                                                 : restart a previously running the blockchain network
         network stop                                                                                    : stop the blockchain network and remove all the docker containers
             
