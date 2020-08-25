@@ -434,6 +434,7 @@ build_chaincode() {
 
 pack_chaincode() {
     type zip >/dev/null 2>&1 || { echoc >&2 "zip required but it is not installed. Aborting." light red; exit 1; }
+    type rsync >/dev/null 2>&1 || { echoc >&2 "rsync required but it is not installed. Aborting." light red; exit 1; }
 
     echoc "===============" dark cyan
     echoc "Chaincode: pack" dark cyan
@@ -450,6 +451,11 @@ pack_chaincode() {
     fi
 
     local timestamp=$(date -u +%s)
+
+    # trick to allow chaincode packed as modules to work when deployed against remote environments
+    echoc "Copying chaincode files into vendor..." light cyan
+    mkdir -p ./vendor/${CHAINCODE_REMOTE_PATH}/${chaincode_name} && rsync -ar --exclude='vendor' --exclude='META-INF' . ./vendor/${CHAINCODE_REMOTE_PATH}/${chaincode_name} || { echoc >&2 "Error copying chaincode into vendor directory." light red; exit 1; }
+
     zip -rq ${DIST_PATH}/${chaincode_name}.${timestamp}.zip . || { echoc >&2 "Error creating chaincode archive." light red; exit 1; }
 
     echoc "Chaincode archive created in: ${DIST_PATH}/${chaincode_name}.${timestamp}.zip" light green
