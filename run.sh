@@ -25,7 +25,7 @@ help() {
         ca revoke                                                                                       : revoke a user's key/certificate providing a reason
             
         network install                                                                                 : install all the dependencies and docker images
-        network start                                                                                   : start the blockchain network and initialize it
+        network start [--org=<org_no>] (default = 1)                                                    : start the blockchain network and initialize it
         network restart                                                                                 : restart a previously running the blockchain network
         network stop                                                                                    : stop the blockchain network and remove all the docker containers
             
@@ -177,19 +177,36 @@ start_network() {
     echoc "==============" dark cyan
     echo
 
-	generate_cryptos $CONFIG_PATH $CRYPTOS_PATH
+    local start_command="docker-compose -f ${ROOT}/docker-compose.yaml up -d || exit 1;"
+
+    for arg in "$@"
+    do
+        case $arg in
+            --org=*)
+            ORGS="${arg#*=}"
+            shift
+            ;;
+        esac
+    done
+
+    if [ "${ORGS}" == "2" ] || [ "${CONFIGTX_PROFILE_NETWORK}" == "${two_orgs}" ]; then
+        CONFIGTX_PROFILE_NETWORK=TwoOrgsOrdererGenesis
+        CONFIGTX_PROFILE_CHANNEL=TwoOrgsChannel
+        start_command+="docker-compose -f ${ROOT}/docker-compose.org2.yaml up -d || exit 1;"
+    elif [ "${ORGS}" == "3" ] || [ "${CONFIGTX_PROFILE_NETWORK}" == "${three_orgs}" ]; then
+        CONFIGTX_PROFILE_NETWORK=ThreeOrgsOrdererGenesis
+        CONFIGTX_PROFILE_CHANNEL=ThreeOrgsChannel
+        start_command+="docker-compose -f ${ROOT}/docker-compose.org2.yaml up -d || exit 1;"
+        start_command+="docker-compose -f ${ROOT}/docker-compose.org3.yaml up -d || exit 1;"
+    fi
+
+    generate_cryptos $CONFIG_PATH $CRYPTOS_PATH
     generate_genesis $NETWORK_PATH $CONFIG_PATH $CRYPTOS_PATH $CONFIGTX_PROFILE_NETWORK
     generate_channeltx $CHANNEL_NAME $NETWORK_PATH $CONFIG_PATH $CRYPTOS_PATH $CONFIGTX_PROFILE_NETWORK $CONFIGTX_PROFILE_CHANNEL $ORG_MSP
     
     docker network create ${DOCKER_NETWORK} 2>/dev/null
-    
-    docker-compose -f ${ROOT}/docker-compose.yaml up -d || exit 1
-    if [ "${CONFIGTX_PROFILE_NETWORK}" == "${two_orgs}" ]; then
-        docker-compose -f ${ROOT}/docker-compose.org2.yaml up -d || exit 1
-    elif [ "${CONFIGTX_PROFILE_NETWORK}" == "${three_orgs}" ]; then
-        docker-compose -f ${ROOT}/docker-compose.org2.yaml up -d || exit 1
-        docker-compose -f ${ROOT}/docker-compose.org3.yaml up -d || exit 1
-    fi
+
+    eval ${start_command}
 	
     sleep 5
 	
@@ -202,7 +219,7 @@ restart_network() {
     echoc "================" dark cyan
     echo
 
-    if [ ! -d "$DATA_PATH" ]; then
+    if [ ! -d "${DATA_PATH}" ]; then
         echoc "Data directory not found in: ${DATA_PATH}. Run a normal start." light red
         exit 1
     fi
@@ -212,9 +229,9 @@ restart_network() {
     docker network create ${DOCKER_NETWORK} 2>/dev/null
     
     docker-compose -f ${ROOT}/docker-compose.yaml up --force-recreate -d || exit 1
-    if [ "${CONFIGTX_PROFILE_NETWORK}" == "${two_orgs}" ]; then
+    if [ "$(find ${DATA_PATH} -type d -name 'peer*org2*' -maxdepth 1)" ]; then
         docker-compose -f ${ROOT}/docker-compose.org2.yaml up --force-recreate -d || exit 1
-    elif [ "${CONFIGTX_PROFILE_NETWORK}" == "${three_orgs}" ]; then
+    elif [ "$(find ${DATA_PATH} -type d -name 'peer*org3*' -maxdepth 1)" ]; then
         docker-compose -f ${ROOT}/docker-compose.org2.yaml up --force-recreate -d || exit 1
         docker-compose -f ${ROOT}/docker-compose.org3.yaml up --force-recreate -d || exit 1
     fi
@@ -228,9 +245,9 @@ stop_network() {
     echoc "=============" dark cyan
 
     docker-compose -f ${ROOT}/docker-compose.yaml down || exit 1
-    if [ "${CONFIGTX_PROFILE_NETWORK}" == "${two_orgs}" ]; then
+    if [ "$(find ${DATA_PATH} -type d -name 'peer*org2*' -maxdepth 1)" ]; then
         docker-compose -f ${ROOT}/docker-compose.org2.yaml down || exit 1
-    elif [ "${CONFIGTX_PROFILE_NETWORK}" == "${three_orgs}" ]; then
+    elif [ "$(find ${DATA_PATH} -type d -name 'peer*org3*' -maxdepth 1)" ]; then
         docker-compose -f ${ROOT}/docker-compose.org2.yaml down || exit 1
         docker-compose -f ${ROOT}/docker-compose.org3.yaml down || exit 1
     fi
@@ -246,7 +263,7 @@ stop_network() {
     docker rmi -f $(docker images -qf "dangling=true") 2>/dev/null
     docker rmi -f $(docker images | awk '($1 ~ /^<none>|dev-/) {print $3}') 2>/dev/null
 
-    if [ -d "$DATA_PATH" ]; then
+    if [ -d "${DATA_PATH}" ]; then
         echoc "!!!!! ATTENTION !!!!!" light red
         echoc "Found data directory: ${DATA_PATH}" light red
 		read -p "Do you wish to remove this data? [yes/no=default] " yn
@@ -673,7 +690,7 @@ generate_cryptos() {
 
     if [ -d "${cryptos_path}" ]; then
         echoc "crypto-config already exists" light yellow
-		read -p "Do you wish to remove crypto-config? [yes/no=default] " yn
+		read -p "Do you wish to remove crypto-config and generate new ones? [yes/no=default] " yn
 		case $yn in
 			[Yy]* ) __delete_path ${cryptos_path} ;;
 			* ) ;;
@@ -1286,6 +1303,18 @@ __loader() {
     done
 }
 
+tostring() {
+    type jq >/dev/null 2>&1 || { echoc >&2 "jq required but it is not installed. Aborting." light red; exit 1; }
+
+    echo "$@" | jq tostring
+}
+
+tojson() {
+    type jq >/dev/null 2>&1 || { echoc >&2 "jq required but it is not installed. Aborting." light red; exit 1; }
+
+    echo "$@" | jq .
+}
+
 readonly func="$1"
 shift
 
@@ -1408,6 +1437,17 @@ elif [ "$func" == "benchmark" ]; then
     if [ "$param" == "load" ]; then
         check_dependencies deploy
         __exec_jobs "$@"
+    else
+        help
+        exit 1
+    fi
+elif [ "$func" == "utils" ]; then
+    readonly param="$1"
+    shift
+    if [ "$param" == "tostring" ]; then
+        tostring "$@"
+    elif [ "$param" == "tojson" ]; then
+        tojson "$@"
     else
         help
         exit 1
