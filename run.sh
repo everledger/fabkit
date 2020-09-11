@@ -51,16 +51,26 @@ help() {
         chaincode invoke [channel_name] [chaincode_name] [org_no] [peer_no] [data_in_json]              : run invoke in the format '{\"Args\":[\"invokeFunction\",\"key\",\"value\"]}'
             
         benchmark load [jobs] [entries]                                                                 : run benchmark bulk loading of [entries] per parallel [jobs] against a running network
+       
+        utils tojson                                                                                    : transform a string format with escaped characters to a valid JSON format
+        utils tostring                                                                                  : transform a valid JSON format to a string with escaped characters
         "
     echoc "$help" dark cyan
 }
 
-check_dependencies() {
+__check_deps() {
     if [ "${1}" == "deploy" ]; then
         type docker >/dev/null 2>&1 || { echoc >&2 "docker required but it is not installed. Aborting." light red; exit 1; }
         type docker-compose >/dev/null 2>&1 || { echoc >&2 "docker-compose required but it is not installed. Aborting." light red; exit 1; }
     elif [ "${1}" == "test" ]; then
         type go >/dev/null 2>&1 || { echoc >&2 "Go binary is missing in your PATH. Running the dockerised version..." light yellow; echo $?; }
+    fi
+}
+
+__check_docker_daemon() {
+    if [ "$(docker info --format '{{json .}}' | grep "Cannot connect" 2>/dev/null)" ]; then 
+        echoc "Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?" light red
+        exit 1
     fi
 }
 
@@ -229,10 +239,10 @@ restart_network() {
     docker network create ${DOCKER_NETWORK} 2>/dev/null
     
     docker-compose -f ${ROOT}/docker-compose.yaml up --force-recreate -d || exit 1
-    if [ "$(find ${DATA_PATH} -type d -name 'peer*org2*' -maxdepth 1)" ]; then
+    if [ "$(find ${DATA_PATH} -type d -name 'peer*org2*' -maxdepth 1 2>/dev/null)" ]; then
         docker-compose -f ${ROOT}/docker-compose.org2.yaml up --force-recreate -d || exit 1
-    elif [ "$(find ${DATA_PATH} -type d -name 'peer*org3*' -maxdepth 1)" ]; then
-        docker-compose -f ${ROOT}/docker-compose.org2.yaml up --force-recreate -d || exit 1
+    fi
+    if [ "$(find ${DATA_PATH} -type d -name 'peer*org3*' -maxdepth 1 2>/dev/null)" ]; then
         docker-compose -f ${ROOT}/docker-compose.org3.yaml up --force-recreate -d || exit 1
     fi
 
@@ -245,10 +255,10 @@ stop_network() {
     echoc "=============" dark cyan
 
     docker-compose -f ${ROOT}/docker-compose.yaml down || exit 1
-    if [ "$(find ${DATA_PATH} -type d -name 'peer*org2*' -maxdepth 1)" ]; then
+    if [ "$(find ${DATA_PATH} -type d -name 'peer*org2*' -maxdepth 1 2>/dev/null)" ]; then
         docker-compose -f ${ROOT}/docker-compose.org2.yaml down || exit 1
-    elif [ "$(find ${DATA_PATH} -type d -name 'peer*org3*' -maxdepth 1)" ]; then
-        docker-compose -f ${ROOT}/docker-compose.org2.yaml down || exit 1
+    fi
+    if [ "$(find ${DATA_PATH} -type d -name 'peer*org3*' -maxdepth 1 2>/dev/null)" ]; then
         docker-compose -f ${ROOT}/docker-compose.org3.yaml down || exit 1
     fi
 
@@ -415,7 +425,7 @@ test_chaincode() {
     __check_test_deps
     __delete_path ${CHAINCODE_PATH}/${chaincode_name}/vendor 2>/dev/null
 
-    if [[ $(check_dependencies test) ]]; then
+    if [[ $(__check_deps test) ]]; then
         (docker run --rm  -v ${CHAINCODE_PATH}:/usr/src/myapp -w /usr/src/myapp/${chaincode_name} -e CGO_ENABLED=0 -e CORE_CHAINCODE_LOGGING_LEVEL=debug ${GOLANG_DOCKER_IMAGE}:${GOLANG_DOCKER_TAG} sh -c "ginkgo -r -v") || exit 1
     else
 	    (cd ${CHAINCODE_PATH}/${chaincode_name} && CORE_CHAINCODE_LOGGING_LEVEL=debug CGO_ENABLED=0 ginkgo -r -v) || exit 1
@@ -443,7 +453,7 @@ build_chaincode() {
 
     __delete_path ${CHAINCODE_PATH}/${chaincode_name}/vendor 2>/dev/null
 
-    if [[ $(check_dependencies test) ]]; then
+    if [[ $(__check_deps test) ]]; then
         (docker run --rm -v ${CHAINCODE_PATH}:/usr/src/myapp -w /usr/src/myapp/${chaincode_name} -e CGO_ENABLED=0 ${GOLANG_DOCKER_IMAGE}:${GOLANG_DOCKER_TAG} sh -c "go build -a -installsuffix nocgo ./... && rm -rf ./${chaincode_name} 2>/dev/null") || exit 1
     else
 	    (cd ${CHAINCODE_PATH}/${chaincode_name} && CGO_ENABLED=0 go build -a -installsuffix nocgo ./... && rm -rf ./${chaincode_name} 2>/dev/null) || exit 1
@@ -855,7 +865,7 @@ install_chaincode() {
 
     # Golang: workaround for chaincode written as modules
     # make the install to work when main files are not in the main directory but in cmd
-    if [ ! "$(find ${install_path} -type f -name '*.go' -maxdepth 1)" ] && [ -d ${install_path}/cmd ]; then
+    if [ ! "$(find ${install_path} -type f -name '*.go' -maxdepth 1 2>/dev/null)" ] && [ -d "${CHAINCODE_PATH}/${chaincode_path}/cmd" ]; then
         install_path+="/cmd"
     fi
     
@@ -1014,11 +1024,11 @@ register_user() {
         sh -c " \
         fabric-ca-client register -d \
             --home /crypto-config \
-            --mspdir ${org}/users/admin \
+            --mspdir ${org}/users/${admin} \
             --url ${ca_protocol}${ca_url} \
             --tls.certfiles ${org}/${ca_cert} \
             --id.name $username \
-            --id.secret $password  \
+            --id.secret '$password'  \
             --id.affiliation $user_affiliation \
             --id.attrs $user_attributes \
             --id.type $user_type
@@ -1043,7 +1053,7 @@ enroll_user() {
         fabric-ca-client enroll -d \
             --home /crypto-config \
             --mspdir ${org}/users/${username} \
-            --url ${ca_protocol}${username}:${password}@${ca_url} \
+            --url ${ca_protocol}${username}:'${password}'@${ca_url} \
             --tls.certfiles ${org}/${ca_cert} \
             --enrollment.attrs $user_attributes
         "
@@ -1068,7 +1078,7 @@ reenroll_user() {
         fabric-ca-client reenroll -d \
             --home /crypto-config \
             --mspdir ${org}/users/${username} \
-            --url ${ca_protocol}${username}:${password}@${ca_url} \
+            --url ${ca_protocol}${username}:'${password}'@${ca_url} \
             --tls.certfiles ${org}/${ca_cert} \
             --enrollment.attrs $user_attributes
         "
@@ -1126,7 +1136,7 @@ revoke_user() {
         sh -c " \
         fabric-ca-client revoke -d \
             --home /crypto-config \
-            --mspdir ${org}/users/admin \
+            --mspdir ${org}/users/${admin} \
             --url ${ca_protocol}${ca_url} \
             --tls.certfiles ${org}/${ca_cert} \
             --revoke.name $username \
@@ -1136,7 +1146,7 @@ revoke_user() {
 
 __ca_setup() {
     echoc "Creating docker network..." light blue
-    docker network create ${DOCKER_NETWORK} 2>/dev/null
+    docker network create ${DOCKER_NETWORK} 2>/dev/null 
 
     echoc "Insert the organization name of the user to register/enroll" light blue
     while [ -z "$org" ]; do
@@ -1148,25 +1158,31 @@ __ca_setup() {
 
     users_dir="${CRYPTOS_PATH}/${org}/users"
 
-    # TODO: Dynamically allocate admin user username
+    admin_msp="a/s/d/f/g"
     if [ "$1" == "register" ]; then
         # set admin msp path
-        while [ ! -d "${users_dir}/admin" ]; do
-            echoc "Set Admin MSP path containing admincerts, signcerts, etc. directories" light blue
-            admin_msp_default=$(find $NETWORK_PATH -path "*/peerOrganizations/*/Admin*" -type d -name "msp" | head -n 1)
-            read -p "CA cert: [${admin_msp_default}] " admin_msp
-            admin_msp=${admin_msp:-${admin_msp_default}}
-            echoc $admin_msp light green
-            # copy the Admin msp to the main cryptos directory
-            mkdir -p ${users_dir}/admin && cp -r $admin_msp ${users_dir}/admin/
-            mv ${users_dir}/admin/signcerts/* ${users_dir}/admin/signcerts/cert.pem
-            cp -r ${users_dir}/admin/signcerts/ ${users_dir}/admin/admincerts/
-            echo
+        while [ ! -d "${admin_msp}" ]; do
+            echoc "Set the root Admin MSP path containing admincert, signcert, etc. directories" light blue
+            echoc "You can drag&drop in the terminal the top admin directory - e.g. if the certs are in ./admin/msp, simply drag in the ./admin folder " light blue
+            admin_path_default=$(find $NETWORK_PATH -path "*/peerOrganizations/*/Admin*org1*" | head -n 1)
+            read -p "Admin name/path: [${admin_path_default}] " admin_path
+            admin_path=${admin_path:-${admin_path_default}}
+            echoc "admin path: $admin_path" light green
+            export admin=$(basename ${admin_path})
+            echoc "admin: $admin" light green
+            admin_msp=$(dirname $(find ${admin_path} -type d -name signcert* 2>/dev/null) 2>/dev/null)
+            echoc "admin msp: $admin_msp" light green
 
-            if [ ! -d "${users_dir}/admin" ]; then
-                echoc "Admin directory not found in: ${users_dir}/admin. Please be sure the selected Admin MSP directory exists." light yellow
+            if [ ! -d "${admin_msp}" ]; then
+                echoc "Admin MSP signcerts directory not found in: ${admin_path}. Please be sure the selected Admin MSP directory exists." light yellow
             fi
         done
+
+        # copy the Admin msp to the main cryptos directory
+        mkdir -p ${users_dir}/${admin} && cp -r $admin_msp/** ${users_dir}/${admin}
+        # TODO: check whether this renaming is still necessary
+        # mv ${users_dir}/${admin}/signcert*/* ${users_dir}/${admin}/signcert*/cert.pem
+        cp -r ${users_dir}/${admin}/signcert*/ ${users_dir}/${admin}/admincerts/
     fi
 
     echoc "Insert the correct Hyperledger Fabric CA version to use (read Troubleshooting section)" light blue
@@ -1180,6 +1196,7 @@ __ca_setup() {
     username_default="user_"$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 5; echo)
     read -p "Username: [${username_default}] " username
     export username=${username:-${username_default}}
+    mkdir -p ${users_dir}/${username}
     echoc $username light green
     echo
 
@@ -1319,17 +1336,19 @@ readonly func="$1"
 shift
 
 if [ "$func" == "network" ]; then
-    check_dependencies deploy
+    __check_deps deploy
+    __check_docker_daemon
     readonly param="$1"
     shift
     if [ "$param" == "install" ]; then
-        check_dependencies deploy
+        __check_deps deploy
+        __check_docker_daemon
         install_network
     elif [ "$param" == "start" ]; then
-        check_dependencies deploy
+        __check_deps deploy
         start_network "$@"
     elif [ "$param" == "restart" ]; then
-        check_dependencies deploy
+        __check_deps deploy
         restart_network
     elif [ "$param" == "stop" ]; then
         stop_network
@@ -1338,7 +1357,8 @@ if [ "$func" == "network" ]; then
         exit 1
     fi
 elif [ "$func" == "explorer" ]; then
-    check_dependencies deploy
+    __check_deps deploy
+    __check_docker_daemon
     readonly param="$1"
     shift
     if [ "$param" == "start" ]; then
@@ -1364,13 +1384,16 @@ elif [ "$func" == "chaincode" ]; then
     readonly param="$1"
     shift
     if [ "$param" == "install" ]; then
-        check_dependencies deploy
+        __check_deps deploy
+        __check_docker_daemon
         install_chaincode "$@"
     elif [ "$param" == "instantiate" ]; then
-        check_dependencies deploy
+        __check_deps deploy
+        __check_docker_daemon
         instantiate_chaincode "$@"
     elif [ "$param" == "upgrade" ]; then
-        check_dependencies deploy
+        __check_deps deploy
+        __check_docker_daemon
         upgrade_chaincode "$@"
     elif [ "$param" == "test" ]; then
         test_chaincode "$@"
@@ -1387,7 +1410,8 @@ elif [ "$func" == "chaincode" ]; then
         exit 1
     fi
 elif [ "$func" == "generate" ]; then
-    check_dependencies deploy
+    __check_deps deploy
+    __check_docker_daemon
     readonly param="$1"
     shift
     if [ "$param" == "cryptos" ]; then
@@ -1401,13 +1425,14 @@ elif [ "$func" == "generate" ]; then
         exit 1
     fi
 elif [ "$func" == "ca" ]; then
-    check_dependencies deploy
+    __check_deps deploy
+    __check_docker_daemon
     readonly param="$1"
     shift
     if [ "$param" == "register" ]; then
         register_user "$@"
     elif [ "$param" == "enroll" ]; then
-        check_dependencies deploy
+        __check_deps deploy
         enroll_user "$@"
     elif [ "$param" == "reenroll" ]; then
         reenroll_user "$@"
@@ -1418,7 +1443,8 @@ elif [ "$func" == "ca" ]; then
         exit 1
     fi
 elif [ "$func" == "channel" ]; then
-    check_dependencies deploy
+    __check_deps deploy
+    __check_docker_daemon
     readonly param="$1"
     shift
     if [ "$param" == "create" ]; then
@@ -1435,7 +1461,7 @@ elif [ "$func" == "benchmark" ]; then
     readonly param="$1"
     shift
     if [ "$param" == "load" ]; then
-        check_dependencies deploy
+        __check_deps deploy
         __exec_jobs "$@"
     else
         help

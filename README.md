@@ -118,16 +118,9 @@ This boilerplate propose a sample chaincode, `pdc`, exported from the [fabric-sa
 
 In order to provide with a basic demonstration of how private data collections work, it is recommended to run the network with the **3-orgs setup** (2-orgs will also work).
 
-Set the following variables in `.env` file to these values:
-
 ```bash
-CONFIGTX_PROFILE_NETWORK=ThreeOrgsOrdererGenesis
-CONFIGTX_PROFILE_CHANNEL=ThreeOrgsChannel
-```
-
-```bash
-# not
-./run.sh network start
+# start the network with 3-orgs setup
+./run.sh network start --org=3
 ```
 
 The network will be initialised with the following components:
@@ -162,7 +155,7 @@ Install and instantiate the `pdc` chaincode:
 ./run.sh chaincode install pdc 1.0 pdc 3 0
 
 # instantiate pdc chaincode on mychannel using org1 peer0
-./run.sh chaincode instantiate pdc 1.0 mychannel 1 0 --collections-config ./chaincode/pdc/collections_config.json -P "OR('Org1MSP.member','Org2MSP.member','Org3MSP.member')"
+./run.sh chaincode instantiate pdc 1.0 mychannel 1 0 --collections-config /opt/gopath/src/${CHAINCODE_REMOTE_PATH}/chaincode/pdc/collections_config.json -P "OR('Org1MSP.member','Org2MSP.member','Org3MSP.member')"
 ```
 
 Execute some actions:
