@@ -231,24 +231,6 @@ Hyperledger Fabric CA consists of both a server and a client component.
 
 This section is meant to discuss the basic interactions a client can perform with either local or remote server which may sit on-prem or on a BaaS, such as Oracle Blockchain Platform (OBP) or IBM Blockchain Platform (IBP).
 
-### Oracle Blockchain Platform
-
-**Note: At the time of writing, Oracle Blockchain Platform uses Oracle Identity Cloud service as its identity provider, therefore you will not be able to perform these operations directly via CLI.**
-
-- In order to register new user on OBP, please refer to the official Oracle documentation - [Set users and application roles](https://docs.oracle.com/en/cloud/paas/blockchain-cloud/administer/set-users-and-application-roles.html)
-
-- In order to enroll a registered user on OBP, please refer to this section on the documentation - [Add enrollments to the REST Proxy](https://docs.oracle.com/en/cloud/paas/blockchain-cloud/user/manage-rest-proxy-nodes.html#GUID-D24E018A-58B0-43FE-AFE1-B297A791D4EB)
-
-**Oracle provides only one certificate per service (the admin certificate) which can be used by any user registered and enrolled on that organization**
-
-The OBP configuration and cryptos can be downloaded from `Developer Tools > Application Development > OBP`.
-
-### IBM Blockchain Platform
-
-At the time of writing, IBM provides two version of their BaaS. In both cases, we are able to register and enroll users directly via UI, but we will not be able to download those certificates from there.
-
-If we want to use a specific user certificate and key, we need first to download the connection profile and cryptos from the platform dashboard and then perform the steps listed in this section in order to retrieve those credentials.
-
 ### Base Prerequisites
 
 To perform any of the below procedures you need to have satisfied the following prerequisites:
@@ -330,7 +312,7 @@ For example, a revoker with affiliation `orgs.org1` and `hf.Registrar.Roles=peer
 
 #### Prerequisites
 
-- Fullfilled all the base prerequisites
+- Fulfilled all the base prerequisites
 
 - Username and password of the user whom we want to revoke the certificate
 
@@ -339,6 +321,28 @@ For example, a revoker with affiliation `orgs.org1` and `hf.Registrar.Roles=peer
 ```bash
 ./run.sh ca revoke
 ```
+
+### Registering and enrolling users on PaaS
+
+#### Oracle Blockchain Platform
+
+We have two way of registering and enrolling users in OBP:
+
+1. using Oracle Identity Cloud service, which, however, locks the user key and certificate to be used internally by any of the restproxy service. **Pick this option if you think you will only operate via Oracle restproxy service and you do not need to have these certificates at your hand** (not recommended)
+
+   - In order to register new user on OBP, please refer to the official Oracle documentation - [Set users and application roles](https://docs.oracle.com/en/cloud/paas/blockchain-cloud/administer/set-users-and-application-roles.html)
+
+   - In order to enroll a registered user on OBP via Identity Management, please refer to this section on the documentation - [Add enrollments to the REST Proxy](https://docs.oracle.com/en/cloud/paas/blockchain-cloud/user/manage-rest-proxy-nodes.html#GUID-D24E018A-58B0-43FE-AFE1-B297A791D4EB)
+
+2. via normal Fabric CA CLI interaction. See section below. **Note that during enrollment you will need to insert an empty string `""` when asked to provide enrollment attributes**
+
+The OBP configuration and cryptos can be downloaded from `Developer Tools > Application Development > OBP`.
+
+#### IBM Blockchain Platform
+
+At the time of writing, IBM provides two version of their BaaS. In both cases, we are able to register and enroll users directly via UI, but we will not be able to download those certificates from there.
+
+If we want to use a specific user certificate and key, we need first to download the connection profile and cryptos from the platform dashboard and then perform the steps listed in this section in order to retrieve those credentials.
 
 ### Troubleshooting
 
@@ -416,6 +420,20 @@ If your docker is running on less than half of your available CPU and RAM, try t
 It could also be related to mismatched references between packages in `vendor` and the ones written in `go.sum`. **Try to delete the ./chaincode/[chaincode]/go.sum** file.
 
 Keep refiring the same command.
+
+#### Issue scenario
+
+While enrolling a user via Fabric CA CLI towards a network running on Oracle Blockchain Platform the following error occurs:
+
+```bash
+Error: Response from server: Error Code: 0 - The following required attributes are missing: [hf.Registrar.Attributes hf.AffiliationMgr]
+# or
+Error: Invalid option in attribute request specification at 'admin=false:ecert'; the value after the colon must be 'opt'
+```
+
+#### Possible solutions
+
+You need to insert an empty string `""` when asked to provide enrollment attributes
 
 ## Cleanup the environment
 

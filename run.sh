@@ -423,7 +423,7 @@ test_chaincode() {
     echo
 
     __check_test_deps
-    __delete_path ${CHAINCODE_PATH}/${chaincode_name}/vendor 2>/dev/null
+    __init_go_mod install ${chaincode_name}
 
     if [[ $(__check_deps test) ]]; then
         (docker run --rm  -v ${CHAINCODE_PATH}:/usr/src/myapp -w /usr/src/myapp/${chaincode_name} -e CGO_ENABLED=0 -e CORE_CHAINCODE_LOGGING_LEVEL=debug ${GOLANG_DOCKER_IMAGE}:${GOLANG_DOCKER_TAG} sh -c "ginkgo -r -v") || exit 1
@@ -451,7 +451,7 @@ build_chaincode() {
     echoc "================" dark cyan
     echo
 
-    __delete_path ${CHAINCODE_PATH}/${chaincode_name}/vendor 2>/dev/null
+    __init_go_mod install ${chaincode_name}
 
     if [[ $(__check_deps test) ]]; then
         (docker run --rm -v ${CHAINCODE_PATH}:/usr/src/myapp -w /usr/src/myapp/${chaincode_name} -e CGO_ENABLED=0 ${GOLANG_DOCKER_IMAGE}:${GOLANG_DOCKER_TAG} sh -c "go build -a -installsuffix nocgo ./... && rm -rf ./${chaincode_name} 2>/dev/null") || exit 1
@@ -1158,6 +1158,7 @@ __ca_setup() {
 
     users_dir="${CRYPTOS_PATH}/${org}/users"
 
+    # workaround to avoid emtpy or existing directories
     admin_msp="a/s/d/f/g"
     if [ "$1" == "register" ]; then
         # set admin msp path
@@ -1178,11 +1179,16 @@ __ca_setup() {
             fi
         done
 
-        # copy the Admin msp to the main cryptos directory
-        mkdir -p ${users_dir}/${admin} && cp -r $admin_msp/** ${users_dir}/${admin}
-        # TODO: check whether this renaming is still necessary
-        # mv ${users_dir}/${admin}/signcert*/* ${users_dir}/${admin}/signcert*/cert.pem
-        cp -r ${users_dir}/${admin}/signcert*/ ${users_dir}/${admin}/admincerts/
+        # avoid to copy the admin directory if it is already in place
+        if [ "${users_dir}/${admin}" != "${admin_msp}" ]; then
+            # copy the Admin msp to the main cryptos directory
+            mkdir -p ${users_dir}/${admin} && cp -r $admin_msp/** ${users_dir}/${admin}
+            # TODO: check whether this renaming is still necessary
+            # mv ${users_dir}/${admin}/signcert*/* ${users_dir}/${admin}/signcert*/cert.pem
+            cp -r ${users_dir}/${admin}/signcert*/ ${users_dir}/${admin}/admincerts/
+        else
+            echoc "Admin MSP directory is already in place under ${users_dir}/${admin}. Be sure the certificate are up to date or remove that directory and restart this process." light yellow
+        fi
     fi
 
     echoc "Insert the correct Hyperledger Fabric CA version to use (read Troubleshooting section)" light blue
