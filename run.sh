@@ -190,8 +190,8 @@ start_network() {
 
         stop_network
 
-        # build_chaincode $CHAINCODE_NAME
-        # test_chaincode $CHAINCODE_NAME
+        build_chaincode $CHAINCODE_NAME
+        test_chaincode $CHAINCODE_NAME
     fi
 
     echoc "==============" dark cyan
