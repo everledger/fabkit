@@ -98,7 +98,7 @@ services:
       - CORE_PEER_ID=fabric-cli
       - CORE_PEER_ADDRESS=peer0.org1.example.com:7051
       - CORE_PEER_LOCALMSPID=Org1MSP
-      - CORE_PEER_TLS_ENABLED=false
+      - CORE_PEER_TLS_ENABLED=true
       - CORE_PEER_TLS_CERT_FILE=${CONTAINER_PEER_BASEPATH}/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/server.crt
       - CORE_PEER_TLS_KEY_FILE=${CONTAINER_PEER_BASEPATH}/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/server.key
       - CORE_PEER_TLS_ROOTCERT_FILE=${CONTAINER_PEER_BASEPATH}/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
@@ -110,6 +110,7 @@ services:
       - ./chaincode:/opt/gopath/src/${CHAINCODE_REMOTE_PATH}
       - ./network/cryptos:${CONTAINER_PEER_BASEPATH}/crypto
       - ./network/channels:${CONTAINER_PEER_BASEPATH}/channels
+      - ./dist:${CONTAINER_PEER_BASEPATH}/dist
     depends_on:
       - ca.org1.example.com
       - orderer.example.com
