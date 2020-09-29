@@ -1,6 +1,6 @@
 module bitbucket.org/everledger/fabric-chaincode-boilerplate/chaincode/mychaincode
 
-go 1.14
+go 1.15
 
 require (
 	github.com/DataDog/zstd v1.3.8 // indirect
@@ -14,7 +14,7 @@ require (
 	github.com/golang/protobuf v1.4.2 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.0 // indirect
 	github.com/hashicorp/go-version v1.2.0 // indirect
-	github.com/hyperledger/fabric v1.4.7
+	github.com/hyperledger/fabric v1.4.8
 	github.com/hyperledger/fabric-amcl v0.0.0-20200424173818-327c9e2cf77a // indirect
 	github.com/miekg/pkcs11 v1.0.3 // indirect
 	github.com/mitchellh/mapstructure v1.3.2 // indirect
