@@ -305,6 +305,32 @@ Orderer: &OrdererDefaults
               ClientTLSCert: crypto-config/ordererOrganizations/example.com/orderers/orderer5.example.com/tls/server.crt
               ServerTLSCert: crypto-config/ordererOrganizations/example.com/orderers/orderer5.example.com/tls/server.crt
 
+        # Options to be specified for all the etcd/raft nodes. The values here
+        # are the defaults for all new channels and can be modified on a
+        # per-channel basis via configuration updates.
+        Options:
+            # TickInterval is the time interval between two Node.Tick invocations.
+            TickInterval: 500ms
+
+            # ElectionTick is the number of Node.Tick invocations that must pass
+            # between elections. That is, if a follower does not receive any
+            # message from the leader of current term before ElectionTick has
+            # elapsed, it will become candidate and start an election.
+            # ElectionTick must be greater than HeartbeatTick.
+            ElectionTick: 10
+
+            # HeartbeatTick is the number of Node.Tick invocations that must
+            # pass between heartbeats. That is, a leader sends heartbeat
+            # messages to maintain its leadership every HeartbeatTick ticks.
+            HeartbeatTick: 1
+
+            # MaxInflightBlocks limits the max number of in-flight append messages
+            # during optimistic replication phase.
+            MaxInflightBlocks: 5
+
+            # SnapshotIntervalSize defines number of bytes per which a snapshot is taken
+            SnapshotIntervalSize: 20 MB
+    
     # Organizations is the list of orgs which are defined as participants on
     # the orderer side of the network
     Organizations:
@@ -431,6 +457,7 @@ Profiles:
                     - *Org1
                     - *Org2
                     - *Org3
+                    
     ThreeOrgsChannel:
         Consortium: SampleConsortium
         <<: *ChannelDefaults
@@ -453,7 +480,6 @@ Profiles:
             Kafka:
                 Brokers:
                 - kafka.example.com:9092
-
             Organizations:
             - *OrdererOrg
             Capabilities:
@@ -467,6 +493,20 @@ Profiles:
                 Organizations:
                 - *Org1
                 - *Org2
+
+    OneOrgOrdererEtcdRaft:
+        <<: *ChannelDefaults
+        Orderer:
+            <<: *OrdererDefaults
+            OrdererType: etcdraft
+            Organizations:
+                - *OrdererOrg
+            Capabilities:
+                <<: *OrdererCapabilities
+        Consortiums:
+            SampleConsortium:
+                Organizations:
+                    - *Org1
 
     SampleMultiNodeEtcdRaft:
         <<: *ChannelDefaults
@@ -503,7 +543,6 @@ Profiles:
                 - orderer3.example.com:7050
                 - orderer4.example.com:7050
                 - orderer5.example.com:7050
-
             Organizations:
             - *OrdererOrg
             Capabilities:

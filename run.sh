@@ -246,8 +246,6 @@ restart_network() {
         exit 1
     fi
 
-    __delete_shared
-
     docker network create ${DOCKER_NETWORK} 2>/dev/null
     
     docker-compose -f ${ROOT}/docker-compose.yaml up --force-recreate -d || exit 1
@@ -274,8 +272,6 @@ stop_network() {
         docker-compose -f ${ROOT}/docker-compose.org3.yaml down || exit 1
     fi
 
-    __delete_shared
-
     if [[ $(docker ps | grep "hyperledger/explorer") ]]; then
         stop_explorer
     fi
@@ -294,11 +290,6 @@ stop_network() {
 			* ) return 0
     	esac
     fi
-}
-
-__delete_shared() {
-    # always remove shared directory
-    __delete_path ${SHARED_DATA_PATH}
 }
 
 # delete path recursively and asks for root permissions if needed
@@ -358,8 +349,6 @@ start_explorer() {
     admin_key_path="peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/keystore"
     private_key="/tmp/crypto/${admin_key_path}/$(ls ${CRYPTOS_PATH}/${admin_key_path})"
     cat $config | jq -r --arg private_key "$private_key" '.organizations.Org1MSP.adminPrivateKey.path = $private_key' > tmp && mv tmp $config
-
-    __delete_shared
 
     docker-compose -f ${EXPLORER_PATH}/docker-compose.yaml up --force-recreate -d || exit 1
 

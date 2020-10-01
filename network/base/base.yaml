@@ -1,6 +1,6 @@
 version: '2'
 
-# good samples here: https://github.com/yeasy/docker-compose-files/blob/master/hyperledger_fabric/v1.4.3/base.yaml
+# good samples here: https://github.com/yeasy/docker-compose-files/blob/master/hyperledger_fabric
 
 services:
   peer-base:

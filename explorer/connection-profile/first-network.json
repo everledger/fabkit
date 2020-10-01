@@ -1,11 +1,17 @@
 {
   "name": "first-network",
   "version": "1.0.0",
+  "license": "Apache-2.0",
   "client": {
     "tlsEnable": true,
+    "caCredential": {
+      "id": "admin",
+      "password": "adminpw"
+    },
     "adminCredential": {
       "id": "exploreradmin",
-      "password": "exploreradminpw"
+      "password": "exploreradminpw",
+      "affiliation": "org1.department1"
     },
     "enableAuthentication": true,
     "organization": "Org1MSP",
@@ -38,7 +44,7 @@
     "Org1MSP": {
       "mspid": "Org1MSP",
       "adminPrivateKey": {
-        "path": "/tmp/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/keystore/70d69ba0d7cfefd34ecb44d4f8b7e3285e85a671b469a161dd1e50bc369e7ad5_sk"
+        "path": "/tmp/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/keystore/5c63be61718b640f166fdd60aa748d21c983a5dfb4a08ca8177c6c816ac47a6f_sk"
       },
       "peers": [
         "peer0.org1.example.com"
@@ -57,6 +63,18 @@
       "grpcOptions": {
         "ssl-target-name-override": "peer0.org1.example.com"
       }
+    }
+  },
+  "certificateAuthorities": {
+    "ca.org1.example.com": {
+      "url": "https://ca.org1.example.com:7054",
+      "httpOptions": {
+        "verify": false
+      },
+      "tlsCACerts": {
+        "path": "/tmp/crypto/peerOrganizations/org1.example.org/ca/ca.org1.example.org-cert.pem"
+      },
+      "caName": "ca.org1.example.com"
     }
   }
 }
