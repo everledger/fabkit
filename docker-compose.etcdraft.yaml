@@ -1,0 +1,47 @@
+version: '2'
+
+networks:
+  default:
+    external:
+      # This value should be the same for fabric network and client
+      name: ${DOCKER_NETWORK}
+
+services:
+  orderer2.example.com:
+    container_name: orderer2.example.com
+    extends:
+      file: network/base/base.yaml
+      service: orderer-base
+    volumes:
+        - ./network/channels/orderer-system-channel/genesis_block.pb:/var/hyperledger/orderer/orderer.genesis.block
+        - ./network/cryptos/ordererOrganizations/example.com/orderers/orderer2.example.com/msp:/var/hyperledger/orderer/msp
+        - ./network/cryptos/ordererOrganizations/example.com/orderers/orderer2.example.com/tls/:/var/hyperledger/orderer/tls
+        - ./data/orderer2.example.com:/var/hyperledger/production/orderer
+    ports:
+      - 8050:7050
+
+  orderer3.example.com:
+    container_name: orderer3.example.com
+    extends:
+      file: network/base/base.yaml
+      service: orderer-base
+    volumes:
+        - ./network/channels/orderer-system-channel/genesis_block.pb:/var/hyperledger/orderer/orderer.genesis.block
+        - ./network/cryptos/ordererOrganizations/example.com/orderers/orderer3.example.com/msp:/var/hyperledger/orderer/msp
+        - ./network/cryptos/ordererOrganizations/example.com/orderers/orderer3.example.com/tls/:/var/hyperledger/orderer/tls
+        - ./data/orderer3.example.com:/var/hyperledger/production/orderer
+    ports:
+      - 9050:7050
+
+  orderer4.example.com:
+    container_name: orderer4.example.com
+    extends:
+      file: network/base/base.yaml
+      service: orderer-base
+    volumes:
+        - ./network/channels/orderer-system-channel/genesis_block.pb:/var/hyperledger/orderer/orderer.genesis.block
+        - ./network/cryptos/ordererOrganizations/example.com/orderers/orderer4.example.com/msp:/var/hyperledger/orderer/msp
+        - ./network/cryptos/ordererOrganizations/example.com/orderers/orderer4.example.com/tls/:/var/hyperledger/orderer/tls
+        - ./data/orderer4.example.com:/var/hyperledger/production/orderer
+    ports:
+      - 10050:7050

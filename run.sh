@@ -14,6 +14,7 @@ export CHAINCODE_REMOTE_PATH=bitbucket.org/everledger/${WORKSPACE}/chaincode
 readonly one_org="OneOrgOrdererGenesis"
 readonly two_orgs="TwoOrgsOrdererGenesis"
 readonly three_orgs="ThreeOrgsOrdererGenesis"
+readonly raft_one_org="OneOrgOrdererEtcdRaft"
 
 # DO NOT REMOVE
 # peer exec command
@@ -207,6 +208,7 @@ start_network() {
 
     local start_command="docker-compose --env-file .env -f ${ROOT}/docker-compose.yaml up -d || exit 1;"
 
+
     for arg in "$@"
     do
         case $arg in
@@ -217,12 +219,16 @@ start_network() {
         esac
     done
 
-    if [ "${ORGS}" == "2" ] || [ "${CONFIGTX_PROFILE_NETWORK}" == "${two_orgs}" ]; then
-        CONFIGTX_PROFILE_NETWORK=TwoOrgsOrdererGenesis
+    # TODO: create raft profiles for different network topologies (multi-org support)
+    if [ "${CONFIGTX_PROFILE_NETWORK}" == "${raft_one_org}" ]; then
+        CONFIGTX_PROFILE_NETWORK=${raft_one_org}
+        start_command+="docker-compose --env-file .env -f ${ROOT}/docker-compose.etcdraft.yaml up -d || exit 1;"
+    elif [ "${ORGS}" == "2" ] || [ "${CONFIGTX_PROFILE_NETWORK}" == "${two_orgs}" ]; then
+        CONFIGTX_PROFILE_NETWORK=${two_orgs}
         CONFIGTX_PROFILE_CHANNEL=TwoOrgsChannel
         start_command+="docker-compose --env-file .env -f ${ROOT}/docker-compose.org2.yaml up -d || exit 1;"
     elif [ "${ORGS}" == "3" ] || [ "${CONFIGTX_PROFILE_NETWORK}" == "${three_orgs}" ]; then
-        CONFIGTX_PROFILE_NETWORK=ThreeOrgsOrdererGenesis
+        CONFIGTX_PROFILE_NETWORK=${three_orgs}
         CONFIGTX_PROFILE_CHANNEL=ThreeOrgsChannel
         start_command+="docker-compose --env-file .env -f ${ROOT}/docker-compose.org2.yaml up -d || exit 1;"
         start_command+="docker-compose --env-file .env -f ${ROOT}/docker-compose.org3.yaml up -d || exit 1;"
