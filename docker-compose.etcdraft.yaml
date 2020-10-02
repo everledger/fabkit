@@ -45,3 +45,16 @@ services:
         - ./data/orderer4.example.com:/var/hyperledger/production/orderer
     ports:
       - 10050:7050
+
+  orderer5.example.com:
+    container_name: orderer5.example.com
+    extends:
+      file: network/base/base.yaml
+      service: orderer-base
+    volumes:
+        - ./network/channels/orderer-system-channel/genesis_block.pb:/var/hyperledger/orderer/orderer.genesis.block
+        - ./network/cryptos/ordererOrganizations/example.com/orderers/orderer5.example.com/msp:/var/hyperledger/orderer/msp
+        - ./network/cryptos/ordererOrganizations/example.com/orderers/orderer5.example.com/tls/:/var/hyperledger/orderer/tls
+        - ./data/orderer5.example.com:/var/hyperledger/production/orderer
+    ports:
+      - 11050:7050
