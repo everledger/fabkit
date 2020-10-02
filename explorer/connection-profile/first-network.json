@@ -13,7 +13,7 @@
       "password": "exploreradminpw",
       "affiliation": "org1.department1"
     },
-    "enableAuthentication": true,
+    "enableAuthentication": false,
     "organization": "Org1MSP",
     "connection": {
       "timeout": {
@@ -44,7 +44,7 @@
     "Org1MSP": {
       "mspid": "Org1MSP",
       "adminPrivateKey": {
-        "path": "/tmp/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/keystore/5c63be61718b640f166fdd60aa748d21c983a5dfb4a08ca8177c6c816ac47a6f_sk"
+        "path": "/tmp/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/keystore/f410acd1d85b6d07866708d542edbd0251fc66d1fd822aba6d3f40fd43bb907d_sk"
       },
       "peers": [
         "peer0.org1.example.com"
