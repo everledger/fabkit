@@ -205,7 +205,8 @@ start_network() {
     echoc "Network: start" dark cyan
     echoc "==============" dark cyan
     echo
-    local start_command="docker-compose --env-file .env -f ${ROOT}/docker-compose.yaml up -d || exit 1;"
+
+    local start_command="docker-compose -f ${ROOT}/docker-compose.yaml up -d || exit 1;"
 
 
     for arg in "$@"
@@ -221,16 +222,16 @@ start_network() {
     # TODO: create raft profiles for different network topologies (multi-org support)
     if [ "${CONFIGTX_PROFILE_NETWORK}" == "${raft_one_org}" ]; then
         CONFIGTX_PROFILE_NETWORK=${raft_one_org}
-        start_command+="docker-compose --env-file .env -f ${ROOT}/docker-compose.etcdraft.yaml up -d || exit 1;"
+        start_command+="docker-compose -f ${ROOT}/docker-compose.etcdraft.yaml up -d || exit 1;"
     elif [ "${ORGS}" == "2" ] || [ "${CONFIGTX_PROFILE_NETWORK}" == "${two_orgs}" ]; then
         CONFIGTX_PROFILE_NETWORK=${two_orgs}
         CONFIGTX_PROFILE_CHANNEL=TwoOrgsChannel
-        start_command+="docker-compose --env-file .env -f ${ROOT}/docker-compose.org2.yaml up -d || exit 1;"
+        start_command+="docker-compose -f ${ROOT}/docker-compose.org2.yaml up -d || exit 1;"
     elif [ "${ORGS}" == "3" ] || [ "${CONFIGTX_PROFILE_NETWORK}" == "${three_orgs}" ]; then
         CONFIGTX_PROFILE_NETWORK=${three_orgs}
         CONFIGTX_PROFILE_CHANNEL=ThreeOrgsChannel
-        start_command+="docker-compose --env-file .env -f ${ROOT}/docker-compose.org2.yaml up -d || exit 1;"
-        start_command+="docker-compose --env-file .env -f ${ROOT}/docker-compose.org3.yaml up -d || exit 1;"
+        start_command+="docker-compose -f ${ROOT}/docker-compose.org2.yaml up -d || exit 1;"
+        start_command+="docker-compose -f ${ROOT}/docker-compose.org3.yaml up -d || exit 1;"
     fi
 
     generate_cryptos $CONFIG_PATH $CRYPTOS_PATH
@@ -259,12 +260,12 @@ restart_network() {
 
     docker network create ${DOCKER_NETWORK} 2>/dev/null
     
-    docker-compose --env-file .env -f ${ROOT}/docker-compose.yaml up --force-recreate -d || exit 1
+    docker-compose -f ${ROOT}/docker-compose.yaml up --force-recreate -d || exit 1
     if [ "$(find ${DATA_PATH} -type d -name 'peer*org2*' -maxdepth 1 2>/dev/null)" ]; then
-        docker-compose --env-file .env -f ${ROOT}/docker-compose.org2.yaml up --force-recreate -d || exit 1
+        docker-compose -f ${ROOT}/docker-compose.org2.yaml up --force-recreate -d || exit 1
     fi
     if [ "$(find ${DATA_PATH} -type d -name 'peer*org3*' -maxdepth 1 2>/dev/null)" ]; then
-        docker-compose --env-file .env -f ${ROOT}/docker-compose.org3.yaml up --force-recreate -d || exit 1
+        docker-compose -f ${ROOT}/docker-compose.org3.yaml up --force-recreate -d || exit 1
     fi
 
     echoc "The chaincode container will be instantiated automatically once the peer executes the first invoke or query" light yellow
@@ -275,12 +276,12 @@ stop_network() {
 	echoc "Network: stop" dark cyan
     echoc "=============" dark cyan
 
-    docker-compose --env-file .env -f ${ROOT}/docker-compose.yaml down || exit 1
+    docker-compose -f ${ROOT}/docker-compose.yaml down || exit 1
     if [ "$(find ${DATA_PATH} -type d -name 'peer*org2*' -maxdepth 1 2>/dev/null)" ]; then
-        docker-compose --env-file .env -f ${ROOT}/docker-compose.org2.yaml down || exit 1
+        docker-compose -f ${ROOT}/docker-compose.org2.yaml down || exit 1
     fi
     if [ "$(find ${DATA_PATH} -type d -name 'peer*org3*' -maxdepth 1 2>/dev/null)" ]; then
-        docker-compose --env-file .env -f ${ROOT}/docker-compose.org3.yaml down || exit 1
+        docker-compose -f ${ROOT}/docker-compose.org3.yaml down || exit 1
     fi
 
     if [[ $(docker ps | grep "hyperledger/explorer") ]]; then
@@ -361,7 +362,7 @@ start_explorer() {
     private_key="/tmp/crypto/${admin_key_path}/$(ls ${CRYPTOS_PATH}/${admin_key_path})"
     cat $config | jq -r --arg private_key "$private_key" '.organizations.Org1MSP.adminPrivateKey.path = $private_key' > tmp && mv tmp $config
 
-    docker-compose --env-file .env -f ${EXPLORER_PATH}/docker-compose.yaml up --force-recreate -d || exit 1
+    docker-compose -f ${EXPLORER_PATH}/docker-compose.yaml up --force-recreate -d || exit 1
 
     echoc "Blockchain Explorer default user is exploreradmin/exploreradminpw" light yellow
     echoc "Grafana default user is admin/admin" light yellow
@@ -373,7 +374,7 @@ stop_explorer() {
     echoc "==============" dark cyan
     echo
 
-    docker-compose --env-file .env -f ${EXPLORER_PATH}/docker-compose.yaml down || exit 1
+    docker-compose -f ${EXPLORER_PATH}/docker-compose.yaml down || exit 1
 }
 
 dep_install() {
