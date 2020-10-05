@@ -205,7 +205,7 @@ start_network() {
     echoc "Network: start" dark cyan
     echoc "==============" dark cyan
     echo
-
+    eval $(egrep -v '^#' ./.env | xargs) docker-compose config
     local start_command="docker-compose --env-file .env -f ${ROOT}/docker-compose.yaml up -d || exit 1;"
 
 
