@@ -5,9 +5,22 @@ source $(pwd)/.env
 export GO111MODULE=on
 export GOPRIVATE=bitbucket.org/everledger/*
 
+# name of the working directory/project
+export WORKSPACE=$(basename ${ROOT})
+# it should be under GOPATH (automatically added in front of this path)
+# TODO: Set a default chaincode path and grab the name of the package instead
+export CHAINCODE_REMOTE_PATH=bitbucket.org/everledger/${WORKSPACE}/chaincode
+
 readonly one_org="OneOrgOrdererGenesis"
 readonly two_orgs="TwoOrgsOrdererGenesis"
 readonly three_orgs="ThreeOrgsOrdererGenesis"
+readonly raft_one_org="OneOrgOrdererEtcdRaft"
+
+# DO NOT REMOVE
+# peer exec command
+peer_exec=""
+# enable/disable encrypted communication between components
+TLS_ENABLED="false"
 
 help() {
     local help="
@@ -43,7 +56,8 @@ help() {
     
         chaincode test [chaincode_path]                                                                 : run unit tests
         chaincode build [chaincode_path]                                                                : run build and test against the binary file
-        chaincode pack [chaincode_path]                                                                 : create an archive ready for deployment containing chaincode and vendors
+        chaincode zip [chaincode_path]                                                                  : create a zip archive ready for deployment containing chaincode and vendors
+        chaincode package [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no]      : package, sign and create deployment spec for chaincode 
         chaincode install [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no]      : install chaincode on a peer
         chaincode instantiate [chaincode_name] [chaincode_version] [channel_name] [org_no] [peer_no]    : instantiate chaincode on a peer for an assigned channel
         chaincode upgrade [chaincode_name] [chaincode_version] [channel_name] [org_no] [peer_no]        : upgrade chaincode with a new version
@@ -56,6 +70,11 @@ help() {
         utils tostring                                                                                  : transform a valid JSON format to a string with escaped characters
         "
     echoc "$help" dark cyan
+}
+
+__set_tls() {
+    export TLS_ENABLED=$(docker inspect $CHAINCODE_UTIL_CONTAINER | grep "CORE_PEER_TLS_ENABLED" | sed 's/",//g' | awk '{split($0,a,"="); print a[2]}')
+    echoc "Encrypted communication enabled: $TLS_ENABLED" light cyan
 }
 
 __check_deps() {
@@ -189,6 +208,7 @@ start_network() {
 
     local start_command="docker-compose -f ${ROOT}/docker-compose.yaml up -d || exit 1;"
 
+
     for arg in "$@"
     do
         case $arg in
@@ -199,12 +219,16 @@ start_network() {
         esac
     done
 
-    if [ "${ORGS}" == "2" ] || [ "${CONFIGTX_PROFILE_NETWORK}" == "${two_orgs}" ]; then
-        CONFIGTX_PROFILE_NETWORK=TwoOrgsOrdererGenesis
+    # TODO: create raft profiles for different network topologies (multi-org support)
+    if [ "${CONFIGTX_PROFILE_NETWORK}" == "${raft_one_org}" ]; then
+        CONFIGTX_PROFILE_NETWORK=${raft_one_org}
+        start_command+="docker-compose -f ${ROOT}/docker-compose.etcdraft.yaml up -d || exit 1;"
+    elif [ "${ORGS}" == "2" ] || [ "${CONFIGTX_PROFILE_NETWORK}" == "${two_orgs}" ]; then
+        CONFIGTX_PROFILE_NETWORK=${two_orgs}
         CONFIGTX_PROFILE_CHANNEL=TwoOrgsChannel
         start_command+="docker-compose -f ${ROOT}/docker-compose.org2.yaml up -d || exit 1;"
     elif [ "${ORGS}" == "3" ] || [ "${CONFIGTX_PROFILE_NETWORK}" == "${three_orgs}" ]; then
-        CONFIGTX_PROFILE_NETWORK=ThreeOrgsOrdererGenesis
+        CONFIGTX_PROFILE_NETWORK=${three_orgs}
         CONFIGTX_PROFILE_CHANNEL=ThreeOrgsChannel
         start_command+="docker-compose -f ${ROOT}/docker-compose.org2.yaml up -d || exit 1;"
         start_command+="docker-compose -f ${ROOT}/docker-compose.org3.yaml up -d || exit 1;"
@@ -213,7 +237,7 @@ start_network() {
     generate_cryptos $CONFIG_PATH $CRYPTOS_PATH
     generate_genesis $NETWORK_PATH $CONFIG_PATH $CRYPTOS_PATH $CONFIGTX_PROFILE_NETWORK
     generate_channeltx $CHANNEL_NAME $NETWORK_PATH $CONFIG_PATH $CRYPTOS_PATH $CONFIGTX_PROFILE_NETWORK $CONFIGTX_PROFILE_CHANNEL $ORG_MSP
-    
+
     docker network create ${DOCKER_NETWORK} 2>/dev/null
 
     eval ${start_command}
@@ -233,8 +257,6 @@ restart_network() {
         echoc "Data directory not found in: ${DATA_PATH}. Run a normal start." light red
         exit 1
     fi
-
-    __delete_shared
 
     docker network create ${DOCKER_NETWORK} 2>/dev/null
     
@@ -262,8 +284,6 @@ stop_network() {
         docker-compose -f ${ROOT}/docker-compose.org3.yaml down || exit 1
     fi
 
-    __delete_shared
-
     if [[ $(docker ps | grep "hyperledger/explorer") ]]; then
         stop_explorer
     fi
@@ -282,11 +302,6 @@ stop_network() {
 			* ) return 0
     	esac
     fi
-}
-
-__delete_shared() {
-    # always remove shared directory
-    __delete_path ${SHARED_DATA_PATH}
 }
 
 # delete path recursively and asks for root permissions if needed
@@ -315,6 +330,7 @@ initialize_network() {
     echoc "=============" dark cyan
     echo
 
+    __set_tls
 	create_channel $CHANNEL_NAME 1 0
 	join_channel $CHANNEL_NAME 1 0
 	update_channel $CHANNEL_NAME $ORG_MSP 1 0
@@ -346,11 +362,9 @@ start_explorer() {
     private_key="/tmp/crypto/${admin_key_path}/$(ls ${CRYPTOS_PATH}/${admin_key_path})"
     cat $config | jq -r --arg private_key "$private_key" '.organizations.Org1MSP.adminPrivateKey.path = $private_key' > tmp && mv tmp $config
 
-    __delete_shared
-
     docker-compose -f ${EXPLORER_PATH}/docker-compose.yaml up --force-recreate -d || exit 1
 
-    echoc "Blockchain Explorer default user is admin/adminpw" light yellow
+    echoc "Blockchain Explorer default user is exploreradmin/exploreradminpw" light yellow
     echoc "Grafana default user is admin/admin" light yellow
 }
 
@@ -405,97 +419,6 @@ __init_go_mod() {
     
     go mod tidy
     go mod vendor
-}
-
-test_chaincode() {
-    local chaincode_name="${1}"
-    __check_chaincode ${chaincode_name}
-
-    # avoid "found no test suites" ginkgo error
-    if [ ! `find ${CHAINCODE_PATH}/${chaincode_name} -type f -name "*_test*" ! -path "**/node_modules/*" ! -path "**/vendor/*"` ]; then
-        echoc "No test suites found. Skipping tests..." light yellow
-        return 
-    fi
-
-    echoc "===============" dark cyan
-	echoc "Chaincode: test" dark cyan
-    echoc "===============" dark cyan
-    echo
-
-    __check_test_deps
-    __init_go_mod install ${chaincode_name}
-
-    if [[ $(__check_deps test) ]]; then
-        (docker run --rm  -v ${CHAINCODE_PATH}:/usr/src/myapp -w /usr/src/myapp/${chaincode_name} -e CGO_ENABLED=0 -e CORE_CHAINCODE_LOGGING_LEVEL=debug ${GOLANG_DOCKER_IMAGE}:${GOLANG_DOCKER_TAG} sh -c "ginkgo -r -v") || exit 1
-    else
-	    (cd ${CHAINCODE_PATH}/${chaincode_name} && CORE_CHAINCODE_LOGGING_LEVEL=debug CGO_ENABLED=0 ginkgo -r -v) || exit 1
-    fi
-
-    echoc "Test passed!" light green
-}
-
-__check_test_deps() {
-    type ginkgo >/dev/null 2>&1 || { 
-        echoc >&2 "Ginkgo module missing. Going to install..." light yellow
-        GO111MODULE=off go get -u github.com/onsi/ginkgo/ginkgo
-        GO111MODULE=off go get -u github.com/onsi/gomega/...
-    }
-}
-
-build_chaincode() {
-    local chaincode_name="${1}"
-    __check_chaincode ${chaincode_name}
-
-    echoc "================" dark cyan
-	echoc "Chaincode: build" dakr cyan
-    echoc "================" dark cyan
-    echo
-
-    __init_go_mod install ${chaincode_name}
-
-    if [[ $(__check_deps test) ]]; then
-        (docker run --rm -v ${CHAINCODE_PATH}:/usr/src/myapp -w /usr/src/myapp/${chaincode_name} -e CGO_ENABLED=0 ${GOLANG_DOCKER_IMAGE}:${GOLANG_DOCKER_TAG} sh -c "go build -a -installsuffix nocgo ./... && rm -rf ./${chaincode_name} 2>/dev/null") || exit 1
-    else
-	    (cd ${CHAINCODE_PATH}/${chaincode_name} && CGO_ENABLED=0 go build -a -installsuffix nocgo ./... && rm -rf ./${chaincode_name} 2>/dev/null) || exit 1
-    fi
-
-    echoc "Build passed!" light green
-}
-
-pack_chaincode() {
-    type zip >/dev/null 2>&1 || { echoc >&2 "zip required but it is not installed. Aborting." light red; exit 1; }
-    type rsync >/dev/null 2>&1 || { echoc >&2 "rsync required but it is not installed. Aborting." light red; exit 1; }
-
-    echoc "===============" dark cyan
-    echoc "Chaincode: pack" dark cyan
-    echoc "===============" dark cyan
-    echo
-
-    local chaincode_name="${1}"
-    __check_chaincode ${chaincode_name}
-
-    __init_go_mod install ${chaincode_name}
-
-    if [ ! -d "${DIST_PATH}" ]; then
-        mkdir -p ${DIST_PATH}
-    fi
-
-    local timestamp=$(date -u +%s)
-
-    # trick to allow chaincode packed as modules to work when deployed against remote environments
-    echoc "Copying chaincode files into vendor..." light cyan
-    mkdir -p ./vendor/${CHAINCODE_REMOTE_PATH}/${chaincode_name} && rsync -ar --exclude='vendor' --exclude='META-INF' . ./vendor/${CHAINCODE_REMOTE_PATH}/${chaincode_name} || { echoc >&2 "Error copying chaincode into vendor directory." light red; exit 1; }
-
-    zip -rq ${DIST_PATH}/${chaincode_name}.${timestamp}.zip . || { echoc >&2 "Error creating chaincode archive." light red; exit 1; }
-
-    echoc "Chaincode archive created in: ${DIST_PATH}/${chaincode_name}.${timestamp}.zip" light green
-}
-
-__check_chaincode() {
-    if [ -z "$1" ]; then
-		echoc "Chaincode name missing" dark red
-		exit 1
-	fi
 }
 
 # generate genesis block
@@ -652,7 +575,7 @@ generate_channeltx() {
                     -e FABRIC_CFG_PATH=/ \
                     hyperledger/fabric-tools:${FABRIC_VERSION} \
                     bash -c " \
-                        configtxgen -profile $channel_profile -outputCreateChannelTx /channels/${channel_name}/${channel_name}_tx.pb -channelID $channel_name /configtx.yaml;
+                        configtxgen -profile $channel_profile -outputCreateChannelTx /channels/${channel_name}/${channel_name}_tx.pb -channelID ${channel_name} /configtx.yaml;
                         configtxgen -inspectChannelCreateTx /channels/${channel_name}/${channel_name}_tx.pb
                     "
     if [ "$?" -ne 0 ]; then
@@ -668,7 +591,7 @@ generate_channeltx() {
                     -u $(id -u):$(id -g) \
                     -e FABRIC_CFG_PATH=/ \
                     hyperledger/fabric-tools:${FABRIC_VERSION} \
-                    configtxgen -profile $channel_profile -outputAnchorPeersUpdate /channels/${channel_name}/${org_msp}_anchors_tx.pb -channelID $channel_name -asOrg $org_msp /configtx.yaml
+                    configtxgen -profile $channel_profile -outputAnchorPeersUpdate /channels/${channel_name}/${org_msp}_anchors_tx.pb -channelID ${channel_name} -asOrg $org_msp /configtx.yaml
 	if [ "$?" -ne 0 ]; then
 		echoc "Failed to generate anchor peer update for $org_msp..." dark red
 		exit 1
@@ -744,13 +667,25 @@ set_certs ()  {
     CORE_PEER_TLS_CERT_FILE=${CONTAINER_PEER_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/peers/peer${2}.org${1}.example.com/tls/server.crt
     CORE_PEER_TLS_KEY_FILE=${CONTAINER_PEER_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/peers/peer${2}.org${1}.example.com/tls/server.key
     CORE_PEER_TLS_ROOTCERT_FILE=${CONTAINER_PEER_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/peers/peer${2}.org${1}.example.com/tls/ca.crt
-    CORE_PEER_MSPCONFIGPATH=${CONTAINER_PEER_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/users/Admin@org${1}.example.com/msp   
+    CORE_PEER_MSPCONFIGPATH=${CONTAINER_PEER_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/users/Admin@org${1}.example.com/msp
+    ORDERER_CA=${CONTAINER_PEER_BASEPATH}/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
 
     echoc "===========================================" light cyan
     echoc "Peer address: ${CORE_PEER_ADDRESS}" light cyan
     echoc "Peer cert: ${CORE_PEER_TLS_CERT_FILE}" light cyan
     echoc "===========================================" light cyan
     echo
+}
+
+set_peer_exec() {
+    peer_exec="docker exec -e CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
+            -e CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID \
+            -e CORE_PEER_TLS_ENABLED=$TLS_ENABLED \
+            -e CORE_PEER_TLS_CERT_FILE=$CORE_PEER_TLS_CERT_FILE \
+            -e CORE_PEER_TLS_KEY_FILE=$CORE_PEER_TLS_KEY_FILE \
+            -e CORE_PEER_TLS_ROOTCERT_FILE=$CORE_PEER_TLS_ROOTCERT_FILE \
+            -e CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH \
+            $CHAINCODE_UTIL_CONTAINER "
 }
 
 create_channel() {
@@ -769,17 +704,19 @@ create_channel() {
     local peer="$3"
 
     set_certs $org $peer
+    set_peer_exec
 
-	echoc "Creating channel $channel_name using configuration file ${CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}_tx.pb" light cyan
-
-	docker exec -e CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
-                -e CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID \
-                -e CORE_PEER_TLS_ENABLED=$CORE_PEER_TLS_ENABLED \
-                -e CORE_PEER_TLS_CERT_FILE=$CORE_PEER_TLS_CERT_FILE \
-                -e CORE_PEER_TLS_KEY_FILE=$CORE_PEER_TLS_KEY_FILE \
-                -e CORE_PEER_TLS_ROOTCERT_FILE=$CORE_PEER_TLS_ROOTCERT_FILE \
-                -e CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH \
-                $CHAINCODE_UTIL_CONTAINER peer channel create -o $ORDERER_ADDRESS -c $channel_name -f $CHANNELS_CONFIG_PATH/$channel_name/${channel_name}_tx.pb --outputBlock $CHANNELS_CONFIG_PATH/$channel_name/${channel_name}.block || exit 1
+	echoc "Creating channel ${channel_name} using configuration file ${CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}_tx.pb" light cyan
+    
+    if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
+        peer_exec+="peer channel create -o $ORDERER_ADDRESS -c ${channel_name} -f $CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}_tx.pb --outputBlock $CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}.block || exit 1"
+    else
+        peer_exec+="peer channel create -o $ORDERER_ADDRESS -c ${channel_name} -f $CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}_tx.pb --outputBlock $CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}.block --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
+    fi
+         
+    set -x
+    eval ${peer_exec}
+    set +x
 }
 
 join_channel() {
@@ -798,17 +735,19 @@ join_channel() {
     local peer="$3"
 
     set_certs $org $peer
+    set_peer_exec
 
-	echoc "Joining channel $channel_name" light cyan
+	echoc "Joining channel ${channel_name}" light cyan
+    
+    if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
+        peer_exec+="peer channel join -b ${CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}.block || exit 1"
+    else
+        peer_exec+="peer channel join -b ${CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}.block --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
+    fi
 
-    docker exec -e CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
-                -e CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID \
-                -e CORE_PEER_TLS_ENABLED=$CORE_PEER_TLS_ENABLED \
-                -e CORE_PEER_TLS_CERT_FILE=$CORE_PEER_TLS_CERT_FILE \
-                -e CORE_PEER_TLS_KEY_FILE=$CORE_PEER_TLS_KEY_FILE \
-                -e CORE_PEER_TLS_ROOTCERT_FILE=$CORE_PEER_TLS_ROOTCERT_FILE \
-                -e CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH \
-                $CHAINCODE_UTIL_CONTAINER peer channel join -b ${CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}.block || exit 1
+    set -x
+    eval ${peer_exec}
+    set +x
 }
 
 update_channel() {
@@ -828,17 +767,81 @@ update_channel() {
     local peer="$4"
 
     set_certs $org $peer
+    set_peer_exec
 
-	echoc "Updating anchors peers $channel_name using configuration file ${CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors.tx" light cyan
+	echoc "Updating anchors peers ${channel_name} using configuration file ${CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors.tx" light cyan
+    
+    if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
+        peer_exec+="peer channel update -o $ORDERER_ADDRESS -c ${channel_name} -f ${CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors_tx.pb || exit 1"
+    else
+        peer_exec+="peer channel update -o $ORDERER_ADDRESS -c ${channel_name} -f ${CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors_tx.pb --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
+    fi
 
-	docker exec -e CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
-                -e CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID \
-                -e CORE_PEER_TLS_ENABLED=$CORE_PEER_TLS_ENABLED \
-                -e CORE_PEER_TLS_CERT_FILE=$CORE_PEER_TLS_CERT_FILE \
-                -e CORE_PEER_TLS_KEY_FILE=$CORE_PEER_TLS_KEY_FILE \
-                -e CORE_PEER_TLS_ROOTCERT_FILE=$CORE_PEER_TLS_ROOTCERT_FILE \
-                -e CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH \
-                $CHAINCODE_UTIL_CONTAINER peer channel update -o $ORDERER_ADDRESS -c $channel_name -f ${CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors_tx.pb || exit 1
+    set -x
+    eval ${peer_exec}
+    set +x
+}
+
+test_chaincode() {
+    local chaincode_name="${1}"
+    __check_chaincode ${chaincode_name}
+
+    # avoid "found no test suites" ginkgo error
+    if [ ! `find ${CHAINCODE_PATH}/${chaincode_name} -type f -name "*_test*" ! -path "**/node_modules/*" ! -path "**/vendor/*"` ]; then
+        echoc "No test suites found. Skipping tests..." light yellow
+        return 
+    fi
+
+    echoc "===============" dark cyan
+	echoc "Chaincode: test" dark cyan
+    echoc "===============" dark cyan
+    echo
+
+    __check_test_deps
+    __init_go_mod install ${chaincode_name}
+
+    if [[ $(__check_deps test) ]]; then
+        (docker run --rm  -v ${CHAINCODE_PATH}:/usr/src/myapp -w /usr/src/myapp/${chaincode_name} -e CGO_ENABLED=0 -e CORE_CHAINCODE_LOGGING_LEVEL=debug ${GOLANG_DOCKER_IMAGE}:${GOLANG_DOCKER_TAG} sh -c "ginkgo -r -v") || exit 1
+    else
+	    (cd ${CHAINCODE_PATH}/${chaincode_name} && CORE_CHAINCODE_LOGGING_LEVEL=debug CGO_ENABLED=0 ginkgo -r -v) || exit 1
+    fi
+
+    echoc "Test passed!" light green
+}
+
+__check_test_deps() {
+    type ginkgo >/dev/null 2>&1 || { 
+        echoc >&2 "Ginkgo module missing. Going to install..." light yellow
+        GO111MODULE=off go get -u github.com/onsi/ginkgo/ginkgo
+        GO111MODULE=off go get -u github.com/onsi/gomega/...
+    }
+}
+
+build_chaincode() {
+    local chaincode_name="${1}"
+    __check_chaincode ${chaincode_name}
+
+    echoc "================" dark cyan
+	echoc "Chaincode: build" dakr cyan
+    echoc "================" dark cyan
+    echo
+
+    __init_go_mod install ${chaincode_name}
+
+    if [[ $(__check_deps test) ]]; then
+        (docker run --rm -v ${CHAINCODE_PATH}:/usr/src/myapp -w /usr/src/myapp/${chaincode_name} -e CGO_ENABLED=0 ${GOLANG_DOCKER_IMAGE}:${GOLANG_DOCKER_TAG} sh -c "go build -a -installsuffix nocgo ./... && rm -rf ./${chaincode_name} 2>/dev/null") || exit 1
+    else
+	    (cd ${CHAINCODE_PATH}/${chaincode_name} && CGO_ENABLED=0 go build -a -installsuffix nocgo ./... && rm -rf ./${chaincode_name} 2>/dev/null) || exit 1
+    fi
+
+    echoc "Build passed!" light green
+}
+
+__check_chaincode() {
+    if [ -z "$1" ]; then
+		echoc "Chaincode name missing" dark red
+		exit 1
+	fi
 }
 
 install_chaincode() {
@@ -860,6 +863,7 @@ install_chaincode() {
     local install_path="${CHAINCODE_REMOTE_PATH}/${chaincode_path}"
 
     set_certs $org $peer
+    set_peer_exec
 
     __init_go_mod install ${chaincode_name}
 
@@ -871,14 +875,13 @@ install_chaincode() {
     
     echoc "Installing chaincode $chaincode_name version $chaincode_version from path ${install_path}" light cyan
 
-    docker exec -e CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
-                -e CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID \
-                -e CORE_PEER_TLS_ENABLED=$CORE_PEER_TLS_ENABLED \
-                -e CORE_PEER_TLS_CERT_FILE=$CORE_PEER_TLS_CERT_FILE \
-                -e CORE_PEER_TLS_KEY_FILE=$CORE_PEER_TLS_KEY_FILE \
-                -e CORE_PEER_TLS_ROOTCERT_FILE=$CORE_PEER_TLS_ROOTCERT_FILE \
-                -e CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH \
-                $CHAINCODE_UTIL_CONTAINER peer chaincode install -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -p ${install_path} || exit 1
+    # fabric-samples does not use tls for installing (and it won't work with), however this flag is listed in the install command on the official fabric documentation 
+    # https://hyperledger-fabric.readthedocs.io/en/release-1.4/commands/peerchaincode.html#peer-chaincode-install
+    peer_exec+="peer chaincode install -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -p ${install_path} || exit 1"
+
+    set -x
+    eval ${peer_exec}
+    set +x
 }
 
 instantiate_chaincode() {
@@ -900,17 +903,19 @@ instantiate_chaincode() {
     shift 5
 
     set_certs $org $peer
+    set_peer_exec
 
-    echoc "Instantiating chaincode $chaincode_name version $chaincode_version into channel $channel_name" light cyan
+    echoc "Instantiating chaincode $chaincode_name version $chaincode_version into channel ${channel_name}" light cyan
+    
+    if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
+        peer_exec+="peer chaincode instantiate -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -C ${channel_name} -c '{\"Args\":[]}' \"$@\" || exit 1"
+    else
+        peer_exec+="peer chaincode instantiate -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -C ${channel_name} -c '{\"Args\":[]}' \"$@\" --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
+    fi
 
-    docker exec -e CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
-                -e CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID \
-                -e CORE_PEER_TLS_ENABLED=$CORE_PEER_TLS_ENABLED \
-                -e CORE_PEER_TLS_CERT_FILE=$CORE_PEER_TLS_CERT_FILE \
-                -e CORE_PEER_TLS_KEY_FILE=$CORE_PEER_TLS_KEY_FILE \
-                -e CORE_PEER_TLS_ROOTCERT_FILE=$CORE_PEER_TLS_ROOTCERT_FILE \
-                -e CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH \
-	            $CHAINCODE_UTIL_CONTAINER peer chaincode instantiate -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -C $channel_name -c '{"Args":[]}' "$@" || exit 1
+    set -x
+    eval ${peer_exec}
+    set +x
 }
 
 upgrade_chaincode() {
@@ -932,17 +937,94 @@ upgrade_chaincode() {
     shift 5
 
     set_certs $org $peer
+    set_peer_exec
 
-    echoc "Upgrading chaincode $chaincode_name to version $chaincode_version into channel $channel_name" light cyan
+    echoc "Upgrading chaincode $chaincode_name to version $chaincode_version into channel ${channel_name}" light cyan
     
-	docker exec -e CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
-                -e CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID \
-                -e CORE_PEER_TLS_ENABLED=$CORE_PEER_TLS_ENABLED \
-                -e CORE_PEER_TLS_CERT_FILE=$CORE_PEER_TLS_CERT_FILE \
-                -e CORE_PEER_TLS_KEY_FILE=$CORE_PEER_TLS_KEY_FILE \
-                -e CORE_PEER_TLS_ROOTCERT_FILE=$CORE_PEER_TLS_ROOTCERT_FILE \
-                -e CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH \
-                $CHAINCODE_UTIL_CONTAINER peer chaincode upgrade -n $chaincode_name -v $chaincode_version -C $channel_name -c '{"Args":[]}' "$@" || exit 1
+    if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
+        peer_exec+="peer chaincode upgrade -n $chaincode_name -v $chaincode_version -C ${channel_name} -c '{\"Args\":[]}' \"$@\" || exit 1"
+    else
+        peer_exec+="peer chaincode upgrade -n $chaincode_name -v $chaincode_version -C ${channel_name} -c '{\"Args\":[]}' \"$@\" --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
+    fi
+
+    set -x
+    eval ${peer_exec}
+    set +x
+}
+
+zip_chaincode() {
+    type zip >/dev/null 2>&1 || { echoc >&2 "zip required but it is not installed. Aborting." light red; exit 1; }
+    type rsync >/dev/null 2>&1 || { echoc >&2 "rsync required but it is not installed. Aborting." light red; exit 1; }
+   
+    echoc "==============" dark cyan
+    echoc "Chaincode: zip" dark cyan
+    echoc "==============" dark cyan
+    echo
+
+    local chaincode_name="${1}"
+    __check_chaincode ${chaincode_name}
+
+    __init_go_mod install ${chaincode_name}
+
+    if [ ! -d "${DIST_PATH}" ]; then
+        mkdir -p ${DIST_PATH}
+    fi
+
+    local timestamp=$(date +%Y-%m-%d-%H-%M-%S)
+
+    # trick to allow chaincode packed as modules to work when deployed against remote environments
+    echoc "Copying chaincode files into vendor..." light cyan
+    mkdir -p ./vendor/${CHAINCODE_REMOTE_PATH}/${chaincode_name} && rsync -ar --exclude='vendor' --exclude='META-INF' . ./vendor/${CHAINCODE_REMOTE_PATH}/${chaincode_name} || { echoc >&2 "Error copying chaincode into vendor directory." light red; exit 1; }
+
+    zip -rq ${DIST_PATH}/${chaincode_name}_${timestamp}.zip . || { echoc >&2 "Error creating chaincode archive." light red; exit 1; }
+
+    echoc "Chaincode archive created in: ${DIST_PATH}/${chaincode_name}.${timestamp}.zip" light green
+}
+
+pack_chaincode() {
+    if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] ||  [ -z "$5" ]; then
+		echoc "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" dark red
+		exit 1
+	fi
+
+    type rsync >/dev/null 2>&1 || { echoc >&2 "rsync required but it is not installed. Aborting." light red; exit 1; }
+
+    echoc "==================" dark cyan
+    echoc "Chaincode: package" dark cyan
+    echoc "==================" dark cyan
+    echo
+
+    local chaincode_name="$1"
+	local chaincode_version="$2"
+	local chaincode_path="$3"
+    local org="$4"
+    local peer="$5"
+    local install_path="${CHAINCODE_REMOTE_PATH}/${chaincode_path}"
+
+    set_certs $org $peer
+    set_peer_exec
+
+    __init_go_mod install ${chaincode_name}
+
+    local timestamp=$(date +%Y-%m-%d-%H-%M-%S)
+
+    # trick to allow chaincode packed as modules to work when deployed against remote environments
+    echoc "Copying chaincode files into vendor..." light cyan
+    mkdir -p ./vendor/${CHAINCODE_REMOTE_PATH}/${chaincode_name} && rsync -ar --exclude='vendor' --exclude='META-INF' . ./vendor/${CHAINCODE_REMOTE_PATH}/${chaincode_name} || { echoc >&2 "Error copying chaincode into vendor directory." light red; exit 1; }
+
+    echoc "Packing chaincode $chaincode_name version $chaincode_version from path ${install_path}" light cyan
+    
+    if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
+        peer_exec+="peer chaincode package dist/${chaincode_name}_${chaincode_version}_${timestamp}.cc -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -p ${install_path} -s -S || exit 1"
+    else
+        peer_exec+="peer chaincode package dist/${chaincode_name}_${chaincode_version}_${timestamp}.cc -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -p ${install_path} -s -S --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
+    fi
+
+    set -x
+    eval ${peer_exec}
+    set +x
+
+    echoc "Chaincode package created in: ${DIST_PATH}/${chaincode_name}_${chaincode_version}_${timestamp}.cc" light green
 }
 
 invoke() {
@@ -964,17 +1046,19 @@ invoke() {
     shift 5
 
     set_certs $org $peer
+    set_peer_exec
 
-    echoc "Invoking chaincode $chaincode_name on channel $channel_name as org${org} and peer${peer} with the following params $request" light cyan
+    echoc "Invoking chaincode $chaincode_name on channel ${channel_name} as org${org} and peer${peer} with the following params $request" light cyan
+    
+    if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
+        peer_exec+="peer chaincode invoke -o $ORDERER_ADDRESS -C ${channel_name} -n $chaincode_name -c '$request' '$@' || exit 1"
+    else
+        peer_exec+="peer chaincode invoke -o $ORDERER_ADDRESS -C ${channel_name} -n $chaincode_name -c '$request' '$@' --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
+    fi
 
-	docker exec -e CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
-                -e CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID \
-                -e CORE_PEER_TLS_ENABLED=$CORE_PEER_TLS_ENABLED \
-                -e CORE_PEER_TLS_CERT_FILE=$CORE_PEER_TLS_CERT_FILE \
-                -e CORE_PEER_TLS_KEY_FILE=$CORE_PEER_TLS_KEY_FILE \
-                -e CORE_PEER_TLS_ROOTCERT_FILE=$CORE_PEER_TLS_ROOTCERT_FILE \
-                -e CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH \
-                $CHAINCODE_UTIL_CONTAINER peer chaincode invoke -o $ORDERER_ADDRESS -C $channel_name -n $chaincode_name -c "$request" "$@"
+    set -x
+    eval ${peer_exec}
+    set +x
 }
 
 query() {
@@ -996,17 +1080,19 @@ query() {
     shift 5
 
     set_certs $org $peer
+    set_peer_exec
 
-    echoc "Querying chaincode $chaincode_name on channel $channel_name as org${org} and peer${peer} with the following params $request $@" light cyan
+    echoc "Querying chaincode $chaincode_name on channel ${channel_name} as org${org} and peer${peer} with the following params $request $@" light cyan
+    
+    if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
+        peer_exec+="peer chaincode query -o $ORDERER_ADDRESS -C ${channel_name} -n $chaincode_name -c '$request' '$@' || exit 1"
+    else
+        peer_exec+="peer chaincode query -o $ORDERER_ADDRESS -C ${channel_name} -n $chaincode_name -c '$request' '$@' --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
+    fi
 
-	docker exec -e CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
-                -e CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID \
-                -e CORE_PEER_TLS_ENABLED=$CORE_PEER_TLS_ENABLED \
-                -e CORE_PEER_TLS_CERT_FILE=$CORE_PEER_TLS_CERT_FILE \
-                -e CORE_PEER_TLS_KEY_FILE=$CORE_PEER_TLS_KEY_FILE \
-                -e CORE_PEER_TLS_ROOTCERT_FILE=$CORE_PEER_TLS_ROOTCERT_FILE \
-                -e CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH \
-                $CHAINCODE_UTIL_CONTAINER peer chaincode query -o $ORDERER_ADDRESS -C $channel_name -n $chaincode_name -c "$request" "$@"
+    set -x
+    eval ${peer_exec}
+    set +x
 }
 
 register_user() {
@@ -1347,14 +1433,10 @@ if [ "$func" == "network" ]; then
     readonly param="$1"
     shift
     if [ "$param" == "install" ]; then
-        __check_deps deploy
-        __check_docker_daemon
         install_network
     elif [ "$param" == "start" ]; then
-        __check_deps deploy
         start_network "$@"
     elif [ "$param" == "restart" ]; then
-        __check_deps deploy
         restart_network
     elif [ "$param" == "stop" ]; then
         stop_network
@@ -1392,24 +1474,38 @@ elif [ "$func" == "chaincode" ]; then
     if [ "$param" == "install" ]; then
         __check_deps deploy
         __check_docker_daemon
+        __set_tls
         install_chaincode "$@"
     elif [ "$param" == "instantiate" ]; then
         __check_deps deploy
         __check_docker_daemon
+        __set_tls
         instantiate_chaincode "$@"
     elif [ "$param" == "upgrade" ]; then
         __check_deps deploy
         __check_docker_daemon
+        __set_tls
         upgrade_chaincode "$@"
     elif [ "$param" == "test" ]; then
         test_chaincode "$@"
     elif [ "$param" == "build" ]; then
         build_chaincode "$@"
-    elif [ "$param" == "pack" ]; then
+    elif [ "$param" == "package" ]; then
+        __check_deps deploy
+        __check_docker_daemon
+        __set_tls
         pack_chaincode "$@"
+    elif [ "$param" == "zip" ]; then
+        zip_chaincode "$@"
     elif [ "$param" == "query" ]; then
+        __check_deps deploy
+        __check_docker_daemon
+        __set_tls
         query "$@"
     elif [ "$param" == "invoke" ]; then
+        __check_deps deploy
+        __check_docker_daemon
+        __set_tls
         invoke "$@"
     else
         help
@@ -1451,6 +1547,7 @@ elif [ "$func" == "ca" ]; then
 elif [ "$func" == "channel" ]; then
     __check_deps deploy
     __check_docker_daemon
+    __set_tls
     readonly param="$1"
     shift
     if [ "$param" == "create" ]; then

@@ -32,6 +32,8 @@ The following command will spin a Hyperledger Fabric network up, generating _cha
 
 ```bash
 ./run.sh network start
+# or
+./run.sh network start --org=1
 ```
 
 It will execute the following functions:
@@ -50,9 +52,43 @@ Afterwards, the network will be ready to accept `invoke` and `query` functions.
 
 Run `./run.sh help` for the complete list of functionalities.
 
+### Run the network with different configurations
+
+You may want to run the network with multiple organisations or by using customised network and channel profiles.
+
+To run the network in multi-org setup, you can use the `--org=<number>` flag, where `number` is a numeric integer:
+
+```bash
+./run.sh network start --org=<number>
+```
+
+Note: **The maximum number of organisations supported at the time of writing is 3.**
+
+The consensus mechanism for the Ordering Service so far fully supported by this repo is `SOLO`, however, there is a 1-org configuration made available for `Raft` as well and it can be used by replacing the following variable in the `.env` file:
+
+```bash
+CONFIGTX_PROFILE_NETWORK=OneOrgOrdererEtcdRaft
+```
+
+Then simply run the network with a single organisation:
+
+```bash
+./run.sh network start
+```
+
+All network available configurations can be found under `network/config`. Users can extend them on their own need.
+
+## Stop a running network
+
+The following command will stop all the components of your running network while preserving all the stored data into the _data_ directory by default:
+
+```bash
+./run.sh network stop
+```
+
 ## Restart a previously running network
 
-The following command will restart a Hyperledger Fabric network only if a _data_ directory is found:
+The following command will restart a network with the configuration of your last run only if a _data_ directory is found:
 
 ```bash
 ./run.sh network restart
@@ -73,15 +109,25 @@ Run the following commands in order to install and instantiate a newer version o
 
 Be sure the `chaincode_version` is unique and never used before (otherwise an error will be prompted).
 
-## Pack chaincode for deployment
+## Archive chaincode for deployment
 
 Run the following command in order to create an archive for the selected chaincode including all the required dependencies:
 
 ```bash
-./run.sh chaincode pack [chaincode_name]
+./run.sh chaincode zip [chaincode_name]
 ```
 
 Follow the output message in console to see where the archive has been created.
+
+## Package and sign chaincode for deployment
+
+Some platforms, like IBPv2, do not accept `.zip` or archives which are not packaged and signed using the `peer chaincode package` Fabric functionality. In this specific cases you can use the following command:
+
+```bash
+./run.sh chaincode package [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no]
+```
+
+Follow the output message in console to see where the package has been created.
 
 ## Invoke and query
 
