@@ -240,6 +240,9 @@ start_network() {
 
     docker network create ${DOCKER_NETWORK} 2>/dev/null
 
+    # After Building and testing chaincode, come back to root directory so that docker-compose can take .env file automatically
+    cd ${ROOT}
+
     eval ${start_command}
 	
     sleep 5
