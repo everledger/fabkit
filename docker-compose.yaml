@@ -12,6 +12,9 @@ services:
     extends:
       file: network/base/base.yaml
       service: orderer-base
+    environment:
+      - GRPC_VERBOSITY=info
+      - FABRIC_LOGGING_SPEC=info
     volumes:
         - ./network/channels/orderer-system-channel/genesis_block.pb:/var/hyperledger/orderer/orderer.genesis.block
         - ./network/cryptos/ordererOrganizations/example.com/orderers/orderer.example.com/msp:/var/hyperledger/orderer/msp
@@ -38,6 +41,9 @@ services:
       file: network/base/base.yaml
       service: peer-base
     environment:
+      - FABRIC_LOGGING_SPEC=info
+      - CORE_CHAINCODE_LOGGING_SHIM=debug
+      - CORE_CHAINCODE_LOGGING_LEVEL=debug
       # Change this value aligning with the defined docker network name
       - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=${DOCKER_NETWORK}
       - CORE_PEER_ID=peer0.org1.example.com
@@ -94,6 +100,7 @@ services:
       service: tools-base
     tty: true
     environment:
+      - FABRIC_LOGGING_SPEC=info
       - GODEBUG=netdns=go
       - CORE_PEER_ID=fabric-cli
       - CORE_PEER_ADDRESS=peer0.org1.example.com:7051
