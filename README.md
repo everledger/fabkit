@@ -380,7 +380,7 @@ We have two way of registering and enrolling users in OBP:
 
    - In order to enroll a registered user on OBP via Identity Management, please refer to this section on the documentation - [Add enrollments to the REST Proxy](https://docs.oracle.com/en/cloud/paas/blockchain-cloud/user/manage-rest-proxy-nodes.html#GUID-D24E018A-58B0-43FE-AFE1-B297A791D4EB)
 
-2. via normal Fabric CA CLI interaction. See section below. **Note that during enrollment you will need to insert an empty string `""` when asked to provide enrollment attributes**
+2. via normal Fabric CA CLI interaction. See section below. **Note that during enrollment you will need to insert the correct list of attributes attached to the user during the registration step, otherwise, a workaround is to pass an empty string `""` (but only if you do want to set any attributes)**
 
 The OBP configuration and cryptos can be downloaded from `Developer Tools > Application Development > OBP`.
 
@@ -469,7 +469,7 @@ Keep refiring the same command.
 
 #### Issue scenario
 
-While enrolling a user via Fabric CA CLI towards a network running on Oracle Blockchain Platform the following error occurs:
+While enrolling a user via Fabric CA CLI towards a network running on Oracle Blockchain Platform, the following error occurs:
 
 ```bash
 Error: Response from server: Error Code: 0 - The following required attributes are missing: [hf.Registrar.Attributes hf.AffiliationMgr]
@@ -479,7 +479,33 @@ Error: Invalid option in attribute request specification at 'admin=false:ecert';
 
 #### Possible solutions
 
-You need to insert an empty string `""` when asked to provide enrollment attributes
+When asked to provide enrollment attributes be sure you are either using a correct list of attributes (check existing attributes querying the CA) or you can simply pass an empty string `""`
+
+## Cleanup the environment
+
+### Tear blockchain network down
+
+It will stop and remove all the blockchain network containers including the `dev-peer*` tagged chaincode ones.
+
+```bash
+./run.sh network stop
+```
+
+#### Issue scenario
+
+- You running Docker on a Mac
+
+- Your version of Docker is > 2.3.x
+
+While running the app with `./run.sh network start` or trying to instantiate a chaincode, the following error occurs:
+
+```bash
+Error: could not assemble transaction, err proposal response was not successful, error code 500, msg error starting container: error starting container: Post http://unix.sock/containers/create?name=dev-peer0.org1.example.com-mychaincode-1.0: dial unix /host/var/run/docker.sock: connect: no such file or directory
+```
+
+#### Possible solutions
+
+- Uncheck “Use gRPC FUSE for file sharing” option in the Docker "Preferences > Experimental Features" and restart your daemon
 
 ## Cleanup the environment
 
