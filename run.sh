@@ -69,91 +69,59 @@ help() {
         utils tojson                                                                                    : transform a string format with escaped characters to a valid JSON format
         utils tostring                                                                                  : transform a valid JSON format to a string with escaped characters
         "
-    echoc "$help" dark cyan
+    log "$help" info
 }
 
 __set_tls() {
     export TLS_ENABLED=$(docker inspect $CHAINCODE_UTIL_CONTAINER | grep "CORE_PEER_TLS_ENABLED" | sed 's/",//g' | awk '{split($0,a,"="); print a[2]}')
-    echoc "Encrypted communication enabled: $TLS_ENABLED" light cyan
+    log "Encrypted communication enabled: $TLS_ENABLED" info
 }
 
 __check_deps() {
     if [ "${1}" == "deploy" ]; then
-        type docker >/dev/null 2>&1 || { echoc >&2 "docker required but it is not installed. Aborting." light red; exit 1; }
-        type docker-compose >/dev/null 2>&1 || { echoc >&2 "docker-compose required but it is not installed. Aborting." light red; exit 1; }
+        type docker >/dev/null 2>&1 || { log >&2 "docker required but it is not installed. Aborting." error; exit 1; }
+        type docker-compose >/dev/null 2>&1 || { log >&2 "docker-compose required but it is not installed. Aborting." error; exit 1; }
     elif [ "${1}" == "test" ]; then
-        type go >/dev/null 2>&1 || { echoc >&2 "Go binary is missing in your PATH. Running the dockerised version..." light yellow; echo $?; }
+        type go >/dev/null 2>&1 || { log >&2 "Go binary is missing in your PATH. Running the dockerised version..." warning; echo $?; }
     fi
 }
 
 __check_docker_daemon() {
     if [ "$(docker info --format '{{json .}}' | grep "Cannot connect" 2>/dev/null)" ]; then 
-        echoc "Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?" light red
+        log "Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?" error
         exit 1
     fi
 }
 
-# echoc: Prints the user specified string to the screen using the specified colour.
-#
-# Parameters: ${1} - The string to print
-#             ${2} - The intensity of the colour.
-#             ${3} - The colour to use for printing the string.
-#
-#             NOTE: The following color options are available:
-#
-#                   [0|1]30, [dark|light] black
-#                   [0|1]31, [dark|light] red
-#                   [0|1]32, [dark|light] green
-#                   [0|1]33, [dark|light] yellow
-#                   [0|1]34, [dark|light] blue
-#                   [0|1]35, [dark|light] purple
-#                   [0|1]36, [dark|light] cyan
-#
-echoc() {
-    if [[ ${#} != 3 ]]; then
-        echo "usage: ${FUNCNAME} <string> [light|dark] [black|red|green|yellow|blue|pruple|cyan]"
+log() {
+    if [[ ${#} != 2 ]]; then
+        echo "usage: ${FUNCNAME} <string> [debug|info|warning|error|success]"
         exit 1
     fi
 
-    local message=${1}
+    local message="${1}"
+    local colour=$(echo ${2} | awk '{print tolower($0)}')
+    local default_colour="\033[0m"
 
-    case $2 in
-        dark) intensity=0 ;;
-        light) intensity=1 ;;
+    case $colour in 
+        error ) colour_code="\033[1;31m" ;;
+        success ) colour_code="\033[1;32m" ;;
+        warning ) colour_code="\033[1;33m" ;;
+        info ) colour_code="\033[1;34m" ;;
+        debug ) colour_code="\033[1;36m" ;;
+        * ) colour_code=${default_colour} ;;
     esac
 
-    if [[ -z $intensity ]]; then
-        echo "${2} intensity not recognised"
-        exit 1
-    fi
-
-    case $3 in 
-        black) colour_code=${intensity}30 ;;
-        red) colour_code=${intensity}31 ;;
-        green) colour_code=${intensity}32 ;;
-        yellow) colour_code=${intensity}33 ;;
-        blue) colour_code=${intensity}34 ;;
-        purple) colour_code=${intensity}35 ;;
-        cyan) colour_code=${intensity}36 ;;
-    esac
-        
-    if [[ -z $colour_code ]]; then
-        echo "${1} colour not recognised"
-        exit 1
-    fi
-
-    colour_code=${colour_code:1}
-
-    # Print out the message
-    echo "${message}" | awk '{print "\033['${intensity}';'${colour_code}'m" $0 "\033[1;0m"}'
+    # Print out the message and reset
+    echo -e "${colour_code}${message}${default_colour}"
 }
 
 install_network() {
-    echoc "================" dark cyan
-	echoc "Network: install" dark cyan
-    echoc "================" dark cyan
+    log "================" info
+	log "Network: install" info
+    log "================" info
     echo
-	echoc "Pulling Go docker image" light cyan
+	log "Pulling Go docker image" info
 	docker pull ${GOLANG_DOCKER_IMAGE}:${GOLANG_DOCKER_TAG}
 
 	__docker_fabric_pull
@@ -162,7 +130,7 @@ install_network() {
 
 __docker_fabric_pull() {
     for image in peer orderer ca ccenv tools; do
-        echoc "==> FABRIC IMAGE: $image" light cyan
+        log "==> FABRIC IMAGE: $image" info
         echo
         docker pull hyperledger/fabric-$image:${FABRIC_VERSION} || exit 1
         docker tag hyperledger/fabric-$image:${FABRIC_VERSION} hyperledger/fabric-$image:latest
@@ -171,7 +139,7 @@ __docker_fabric_pull() {
 
 __docker_third_party_images_pull() {
     for image in couchdb; do
-        echoc "==> THIRDPARTY DOCKER IMAGE: $image" light cyan
+        log "==> THIRDPARTY DOCKER IMAGE: $image" info
         echo
         docker pull hyperledger/fabric-$image:$FABRIC_THIRDPARTY_IMAGE_VERSION || exit 1
         docker tag hyperledger/fabric-$image:$FABRIC_THIRDPARTY_IMAGE_VERSION hyperledger/fabric-$image:latest
@@ -184,7 +152,7 @@ start_network() {
 
     if [ ! "${1}" == "-ci" ]; then
         if [ -d "$DATA_PATH" ]; then
-            echoc "Found data directory: ${DATA_PATH}" light yellow
+            log "Found data directory: ${DATA_PATH}" warning
             read -p "Do you wish to restart the network and reuse this data? [yes/no=default] " yn
             case $yn in
                 [Yy]* ) 
@@ -201,9 +169,9 @@ start_network() {
         test_chaincode $CHAINCODE_NAME
     fi
 
-    echoc "==============" dark cyan
-    echoc "Network: start" dark cyan
-    echoc "==============" dark cyan
+    log "==============" info
+    log "Network: start" info
+    log "==============" info
     echo
 
     local start_command="docker-compose -f ${ROOT}/docker-compose.yaml up -d || exit 1;"
@@ -251,13 +219,13 @@ start_network() {
 }
 
 restart_network() {
-    echoc "================" dark cyan
-	echoc "Network: restart" dark cyan
-    echoc "================" dark cyan
+    log "================" info
+	log "Network: restart" info
+    log "================" info
     echo
 
     if [ ! -d "${DATA_PATH}" ]; then
-        echoc "Data directory not found in: ${DATA_PATH}. Run a normal start." light red
+        log "Data directory not found in: ${DATA_PATH}. Run a normal start." error
         exit 1
     fi
 
@@ -271,13 +239,13 @@ restart_network() {
         docker-compose -f ${ROOT}/docker-compose.org3.yaml up --force-recreate -d || exit 1
     fi
 
-    echoc "The chaincode container will be instantiated automatically once the peer executes the first invoke or query" light yellow
+    log "The chaincode container will be instantiated automatically once the peer executes the first invoke or query" warning
 }
 
 stop_network() {
-    echoc "=============" dark cyan
-	echoc "Network: stop" dark cyan
-    echoc "=============" dark cyan
+    log "=============" info
+	log "Network: stop" info
+    log "=============" info
 
     docker-compose -f ${ROOT}/docker-compose.yaml down || exit 1
     if [ "$(find ${DATA_PATH} -type d -name 'peer*org2*' -maxdepth 1 2>/dev/null)" ]; then
@@ -291,14 +259,14 @@ stop_network() {
         stop_explorer
     fi
 
-    echoc "Cleaning docker leftovers containers and images" light green
+    log "Cleaning docker leftovers containers and images" success
     docker rm -f $(docker ps -a | awk '($2 ~ /fabric|dev-/) {print $1}') 2>/dev/null
     docker rmi -f $(docker images -qf "dangling=true") 2>/dev/null
     docker rmi -f $(docker images | awk '($1 ~ /^<none>|dev-/) {print $3}') 2>/dev/null
 
     if [ -d "${DATA_PATH}" ]; then
-        echoc "!!!!! ATTENTION !!!!!" light red
-        echoc "Found data directory: ${DATA_PATH}" light red
+        log "!!!!! ATTENTION !!!!!" error
+        log "Found data directory: ${DATA_PATH}" error
 		read -p "Do you wish to remove this data? [yes/no=default] " yn
 		case $yn in
 			[Yy]* ) __delete_path $DATA_PATH ;;
@@ -310,15 +278,15 @@ stop_network() {
 # delete path recursively and asks for root permissions if needed
 __delete_path() {
     if [ ! -d "${1}" ]; then 
-        echoc "Directory \"${1}\" does not exist. Skipping delete. All good :)" light yellow
+        log "Directory \"${1}\" does not exist. Skipping delete. All good :)" warning
         return
     fi
 
     if [ -w "${1}" ]; then
         rm -rf ${1}
     else 
-        echoc "!!!!! ATTENTION !!!!!" light red
-        echoc "Directory \"${1}\" requires superuser permissions" light red
+        log "!!!!! ATTENTION !!!!!" error
+        log "Directory \"${1}\" requires superuser permissions" error
         read -p "Do you wish to continue? [yes/no=default] " yn
         case $yn in
             [Yy]* ) sudo rm -rf ${1} ;;
@@ -328,9 +296,9 @@ __delete_path() {
 }
 
 initialize_network() {
-    echoc "=============" dark cyan
-	echoc "Network: init" dark cyan
-    echoc "=============" dark cyan
+    log "=============" info
+	log "Network: init" info
+    log "=============" info
     echo
 
     __set_tls
@@ -344,22 +312,22 @@ initialize_network() {
 start_explorer() {
     stop_explorer
     
-    echoc "===============" dark cyan
-	echoc "Explorer: start" dark cyan
-    echoc "===============" dark cyan
+    log "===============" info
+	log "Explorer: start" info
+    log "===============" info
     echo
 
     if [[ ! $(docker ps | grep fabric) ]]; then
-        echoc "No Fabric networks running. First launch ./run.sh start" dark red
+        log "No Fabric networks running. First launch ./run.sh start" error
 		exit 1
     fi
 
     if [ ! -d "${CRYPTOS_PATH}" ]; then
-        echoc "Cryptos path ${CRYPTOS_PATH} does not exist." dark red
+        log "Cryptos path ${CRYPTOS_PATH} does not exist." error
     fi
 
     # replacing private key path in connection profile
-    type jq >/dev/null 2>&1 || { echoc >&2 "jq required but it is not installed. Aborting." light red; exit 1; }
+    type jq >/dev/null 2>&1 || { log >&2 "jq required but it is not installed. Aborting." error; exit 1; }
     config=$(ls -d ${EXPLORER_PATH}/connection-profile/*)
     admin_key_path="peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/keystore"
     private_key="/tmp/crypto/${admin_key_path}/$(ls ${CRYPTOS_PATH}/${admin_key_path})"
@@ -367,14 +335,14 @@ start_explorer() {
 
     docker-compose -f ${EXPLORER_PATH}/docker-compose.yaml up --force-recreate -d || exit 1
 
-    echoc "Blockchain Explorer default user is exploreradmin/exploreradminpw" light yellow
-    echoc "Grafana default user is admin/admin" light yellow
+    log "Blockchain Explorer default user is exploreradmin/exploreradminpw" warning
+    log "Grafana default user is admin/admin" warning
 }
 
 stop_explorer() {
-    echoc "==============" dark cyan
-	echoc "Explorer: stop" dark cyan
-    echoc "==============" dark cyan
+    log "==============" info
+	log "Explorer: stop" info
+    log "==============" info
     echo
 
     docker-compose -f ${EXPLORER_PATH}/docker-compose.yaml down || exit 1
@@ -384,9 +352,9 @@ dep_install() {
     __check_chaincode $1
     local chaincode_name="${1}"
 
-    echoc "=====================" dark cyan
-    echoc "Dependencies: install" dark cyan
-    echoc "=====================" dark cyan
+    log "=====================" info
+    log "Dependencies: install" info
+    log "=====================" info
     echo
 
     __init_go_mod install ${chaincode_name}
@@ -396,9 +364,9 @@ dep_update() {
     __check_chaincode $1
     local chaincode_name="${1}"
 
-    echoc "====================" dark cyan
-    echoc "Dependencies: update" dark cyan
-    echoc "====================" dark cyan
+    log "====================" info
+    log "Dependencies: update" info
+    log "====================" info
     echo
 
     __init_go_mod update ${chaincode_name}
@@ -406,7 +374,7 @@ dep_update() {
 
 __init_go_mod() {
     local chaincode_name="${2}"
-    cd ${CHAINCODE_PATH}/${chaincode_name} >/dev/null 2>&1 || { echoc >&2 "${CHAINCODE_PATH}/${chaincode_name} path does not exist" light red; exit 1; }
+    cd ${CHAINCODE_PATH}/${chaincode_name} >/dev/null 2>&1 || { log >&2 "${CHAINCODE_PATH}/${chaincode_name} path does not exist" error; exit 1; }
 
     if [ ! -f "./go.mod" ]; then
         go mod init
@@ -431,19 +399,19 @@ __init_go_mod() {
 # $4: network profile name
 generate_genesis() {
     if [ -z "$1" ]; then
-		echoc "Base path missing" dark red
+		log "Base path missing" error
 		exit 1
 	fi
     if [ -z "$2" ]; then
-		echoc "Config path missing" dark red
+		log "Config path missing" error
 		exit 1
 	fi
     if [ -z "$3" ]; then
-		echoc "Crypto material path missing" dark red
+		log "Crypto material path missing" error
 		exit 1
 	fi
     if [ -z "$4" ]; then
-		echoc "Network profile name" dark red
+		log "Network profile name" error
 		exit 1
 	fi
 
@@ -454,7 +422,7 @@ generate_genesis() {
     local network_profile="$4"
 
     if [ -d "$channel_dir" ]; then
-        echoc "Channel directory ${channel_dir} already exists" light yellow
+        log "Channel directory ${channel_dir} already exists" warning
 		read -p "Do you wish to re-generate channel config? [yes/no=default] " yn
 		case $yn in
 			[Yy]* ) ;;
@@ -464,14 +432,14 @@ generate_genesis() {
         mkdir -p $channel_dir
     fi
 
-    echoc "========================" dark cyan
-    echoc "Generating genesis block" dark cyan
-    echoc "========================" dark cyan
+    log "========================" info
+    log "Generating genesis block" info
+    log "========================" info
     echo
-	echoc "Base path: $base_path" light cyan
-	echoc "Config path: $config_path" light cyan
-	echoc "Cryptos path: $cryptos_path" light cyan
-	echoc "Network profile: $network_profile" light cyan
+	log "Base path: $base_path" debug
+	log "Config path: $config_path" debug
+	log "Cryptos path: $cryptos_path" debug
+	log "Network profile: $network_profile" debug
 
     if [ ! -d "$channel_dir" ]; then
         mkdir -p $channel_dir
@@ -490,7 +458,7 @@ generate_genesis() {
                         configtxgen -inspectBlock /channels/orderer-system-channel/genesis_block.pb
                     "
     if [ "$?" -ne 0 ]; then
-        echoc "Failed to generate orderer genesis block..." dark red
+        log "Failed to generate orderer genesis block..." error
         exit 1
     fi
 }
@@ -505,31 +473,31 @@ generate_genesis() {
 # $7: org msp
 generate_channeltx() {
     if [ -z "$1" ]; then
-		echoc "Channel name missing" dark red
+		log "Channel name missing" error
 		exit 1
 	fi
     if [ -z "$2" ]; then
-		echoc "Base path missing" dark red
+		log "Base path missing" error
 		exit 1
 	fi
     if [ -z "$3" ]; then
-		echoc "Config path missing" dark red
+		log "Config path missing" error
 		exit 1
 	fi
     if [ -z "$4" ]; then
-		echoc "Crypto material path missing" dark red
+		log "Crypto material path missing" error
 		exit 1
 	fi
     if [ -z "$5" ]; then
-		echoc "Network profile missing" dark red
+		log "Network profile missing" error
 		exit 1
 	fi
     if [ -z "$6" ]; then
-		echoc "Channel profile missing" dark red
+		log "Channel profile missing" error
 		exit 1
 	fi
     if [ -z "$7" ]; then
-		echoc "MSP missing" dark red
+		log "MSP missing" error
 		exit 1
 	fi
 
@@ -543,7 +511,7 @@ generate_channeltx() {
     local org_msp="$7"
 
     if [ -d "$channel_dir" ]; then
-        echoc "Channel directory ${channel_dir} already exists" light yellow
+        log "Channel directory ${channel_dir} already exists" warning
 		read -p "Do you wish to re-generate channel config? [yes/no=default] " yn
 		case $yn in
 			[Yy]* ) ;;
@@ -553,18 +521,18 @@ generate_channeltx() {
         mkdir -p $channel_dir
     fi 
 
-    echoc "=========================" dark cyan
-    echoc "Generating channel config" dark cyan
-    echoc "=========================" dark cyan
+    log "=========================" info
+    log "Generating channel config" info
+    log "=========================" info
     echo
-	echoc "Channel: $channel_name" light cyan
-	echoc "Base path: $base_path" light cyan
-	echoc "Config path: $config_path" light cyan
-	echoc "Cryptos path: $cryptos_path" light cyan
-	echoc "Channel dir: $channel_dir" light cyan
-	echoc "Network profile: $network_profile" light cyan
-	echoc "Channel profile: $channel_profile" light cyan
-	echoc "Org MSP: $org_msp" light cyan
+	log "Channel: $channel_name" debug
+	log "Base path: $base_path" debug
+	log "Config path: $config_path" debug
+	log "Cryptos path: $cryptos_path" debug
+	log "Channel dir: $channel_dir" debug
+	log "Network profile: $network_profile" debug
+	log "Channel profile: $channel_profile" debug
+	log "Org MSP: $org_msp" debug
 
 	if [ ! -d "$channel_dir" ]; then
         mkdir -p $channel_dir
@@ -582,7 +550,7 @@ generate_channeltx() {
                         configtxgen -inspectChannelCreateTx /channels/${channel_name}/${channel_name}_tx.pb
                     "
     if [ "$?" -ne 0 ]; then
-        echoc "Failed to generate channel configuration transaction..." dark red
+        log "Failed to generate channel configuration transaction..." error
         exit 1
     fi
     
@@ -596,7 +564,7 @@ generate_channeltx() {
                     hyperledger/fabric-tools:${FABRIC_VERSION} \
                     configtxgen -profile $channel_profile -outputAnchorPeersUpdate /channels/${channel_name}/${org_msp}_anchors_tx.pb -channelID ${channel_name} -asOrg $org_msp /configtx.yaml
 	if [ "$?" -ne 0 ]; then
-		echoc "Failed to generate anchor peer update for $org_msp..." dark red
+		log "Failed to generate anchor peer update for $org_msp..." error
 		exit 1
 	fi
 }
@@ -606,26 +574,26 @@ generate_channeltx() {
 # $2: certificates output directory
 generate_cryptos() {
     if [ -z "$1" ]; then
-		echoc "Config path missing" dark red
+		log "Config path missing" error
 		exit 1
 	fi
     if [ -z "$2" ]; then
-		echoc "Cryptos path missing" dark red
+		log "Cryptos path missing" error
 		exit 1
 	fi
 
     local config_path="$1"
     local cryptos_path="$2"
 
-    echoc "==================" dark cyan
-    echoc "Generating cryptos" dark cyan
-    echoc "==================" dark cyan
+    log "==================" info
+    log "Generating cryptos" info
+    log "==================" info
     echo
-    echoc "Config path: $config_path" light cyan
-    echoc "Cryptos path: $cryptos_path" light cyan
+    log "Config path: $config_path" debug
+    log "Cryptos path: $cryptos_path" debug
 
     if [ -d "${cryptos_path}" ]; then
-        echoc "crypto-config already exists" light yellow
+        log "crypto-config already exists" warning
 		read -p "Do you wish to remove crypto-config and generate new ones? [yes/no=default] " yn
 		case $yn in
 			[Yy]* ) __delete_path ${cryptos_path} ;;
@@ -643,14 +611,14 @@ generate_cryptos() {
                         hyperledger/fabric-tools:${FABRIC_VERSION} \
                         cryptogen generate --config=/crypto-config.yaml --output=/crypto-config
         if [ "$?" -ne 0 ]; then
-            echoc "Failed to generate crypto material..." dark red
+            log "Failed to generate crypto material..." error
             exit 1
         fi
     fi
     
     # copy cryptos into a shared folder available for client applications (sdk)
     if [ -d "${CRYPTOS_SHARED_PATH}" ]; then
-        echoc "Shared crypto-config directory ${CRYPTOS_SHARED_PATH} already exists" light yellow
+        log "Shared crypto-config directory ${CRYPTOS_SHARED_PATH} already exists" warning
 		read -p "Do you want to overwrite this shared data with your local crypto-config directory? [yes/no=default] " yn
 		case $yn in
 			[Yy]* ) 
@@ -673,10 +641,10 @@ set_certs ()  {
     CORE_PEER_MSPCONFIGPATH=${CONTAINER_PEER_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/users/Admin@org${1}.example.com/msp
     ORDERER_CA=${CONTAINER_PEER_BASEPATH}/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
 
-    echoc "===========================================" light cyan
-    echoc "Peer address: ${CORE_PEER_ADDRESS}" light cyan
-    echoc "Peer cert: ${CORE_PEER_TLS_CERT_FILE}" light cyan
-    echoc "===========================================" light cyan
+    log "===========================================" info
+    log "Peer address: ${CORE_PEER_ADDRESS}" info
+    log "Peer cert: ${CORE_PEER_TLS_CERT_FILE}" info
+    log "===========================================" info
     echo
 }
 
@@ -693,13 +661,13 @@ set_peer_exec() {
 
 create_channel() {
 	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
-		echoc "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" dark red
+		log "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" error
 		exit 1
 	fi
 
-    echoc "===============" dark cyan
-    echoc "Channel: create" dark cyan
-    echoc "===============" dark cyan
+    log "===============" info
+    log "Channel: create" info
+    log "===============" info
     echo
 
 	local channel_name="$1"
@@ -709,7 +677,7 @@ create_channel() {
     set_certs $org $peer
     set_peer_exec
 
-	echoc "Creating channel ${channel_name} using configuration file ${CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}_tx.pb" light cyan
+	log "Creating channel ${channel_name} using configuration file ${CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}_tx.pb" info
     
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
         peer_exec+="peer channel create -o $ORDERER_ADDRESS -c ${channel_name} -f $CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}_tx.pb --outputBlock $CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}.block || exit 1"
@@ -724,13 +692,13 @@ create_channel() {
 
 join_channel() {
  	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
-		echoc "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" dark red
+		log "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" error
 		exit 1
 	fi
 
-    echoc "=============" dark cyan
-    echoc "Channel: join" dark cyan
-    echoc "=============" dark cyan
+    log "=============" info
+    log "Channel: join" info
+    log "=============" info
     echo
 
 	local channel_name="$1"
@@ -740,7 +708,7 @@ join_channel() {
     set_certs $org $peer
     set_peer_exec
 
-	echoc "Joining channel ${channel_name}" light cyan
+	log "Joining channel ${channel_name}" info
     
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
         peer_exec+="peer channel join -b ${CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}.block || exit 1"
@@ -755,13 +723,13 @@ join_channel() {
 
 update_channel() {
 	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ]; then
-		echoc "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" dark red
+		log "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" error
 		exit 1
 	fi
 
-    echoc "===============" dark cyan
-    echoc "Channel: update" dark cyan
-    echoc "===============" dark cyan
+    log "===============" info
+    log "Channel: update" info
+    log "===============" info
     echo
 
 	local channel_name="$1"
@@ -772,7 +740,7 @@ update_channel() {
     set_certs $org $peer
     set_peer_exec
 
-	echoc "Updating anchors peers ${channel_name} using configuration file ${CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors.tx" light cyan
+	log "Updating anchors peers ${channel_name} using configuration file ${CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors.tx" info
     
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
         peer_exec+="peer channel update -o $ORDERER_ADDRESS -c ${channel_name} -f ${CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors_tx.pb || exit 1"
@@ -791,13 +759,13 @@ test_chaincode() {
 
     # avoid "found no test suites" ginkgo error
     if [ ! `find ${CHAINCODE_PATH}/${chaincode_name} -type f -name "*_test*" ! -path "**/node_modules/*" ! -path "**/vendor/*"` ]; then
-        echoc "No test suites found. Skipping tests..." light yellow
+        log "No test suites found. Skipping tests..." warning
         return 
     fi
 
-    echoc "===============" dark cyan
-	echoc "Chaincode: test" dark cyan
-    echoc "===============" dark cyan
+    log "===============" info
+	log "Chaincode: test" info
+    log "===============" info
     echo
 
     __check_test_deps
@@ -809,12 +777,12 @@ test_chaincode() {
 	    (cd ${CHAINCODE_PATH}/${chaincode_name} && CORE_CHAINCODE_LOGGING_LEVEL=debug CGO_ENABLED=0 ginkgo -r -v) || exit 1
     fi
 
-    echoc "Test passed!" light green
+    log "Test passed!" success
 }
 
 __check_test_deps() {
     type ginkgo >/dev/null 2>&1 || { 
-        echoc >&2 "Ginkgo module missing. Going to install..." light yellow
+        log >&2 "Ginkgo module missing. Going to install..." warning
         GO111MODULE=off go get -u github.com/onsi/ginkgo/ginkgo
         GO111MODULE=off go get -u github.com/onsi/gomega/...
     }
@@ -824,9 +792,9 @@ build_chaincode() {
     local chaincode_name="${1}"
     __check_chaincode ${chaincode_name}
 
-    echoc "================" dark cyan
-	echoc "Chaincode: build" dakr cyan
-    echoc "================" dark cyan
+    log "================" info
+	log "Chaincode: build" info
+    log "================" info
     echo
 
     __init_go_mod install ${chaincode_name}
@@ -837,25 +805,25 @@ build_chaincode() {
 	    (cd ${CHAINCODE_PATH}/${chaincode_name} && CGO_ENABLED=0 go build -a -installsuffix nocgo ./... && rm -rf ./${chaincode_name} 2>/dev/null) || exit 1
     fi
 
-    echoc "Build passed!" light green
+    log "Build passed!" success
 }
 
 __check_chaincode() {
     if [ -z "$1" ]; then
-		echoc "Chaincode name missing" dark red
+		log "Chaincode name missing" error
 		exit 1
 	fi
 }
 
 install_chaincode() {
 	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] ||  [ -z "$5" ]; then
-		echoc "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" dark red
+		log "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" error
 		exit 1
 	fi
 
-    echoc "==================" dark cyan
-    echoc "Chaincode: install" dark cyan
-    echoc "==================" dark cyan
+    log "==================" info
+    log "Chaincode: install" info
+    log "==================" info
     echo
 
 	local chaincode_name="$1"
@@ -876,7 +844,7 @@ install_chaincode() {
         install_path+="/cmd"
     fi
     
-    echoc "Installing chaincode $chaincode_name version $chaincode_version from path ${install_path}" light cyan
+    log "Installing chaincode $chaincode_name version $chaincode_version from path ${install_path}" info
 
     # fabric-samples does not use tls for installing (and it won't work with), however this flag is listed in the install command on the official fabric documentation 
     # https://hyperledger-fabric.readthedocs.io/en/release-1.4/commands/peerchaincode.html#peer-chaincode-install
@@ -889,13 +857,13 @@ install_chaincode() {
 
 instantiate_chaincode() {
 	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ]; then
-		echoc "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" dark red
+		log "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" error
 		exit 1
 	fi
 
-    echoc "======================" dark cyan
-    echoc "Chaincode: instantiate" dark cyan
-    echoc "======================" dark cyan
+    log "======================" info
+    log "Chaincode: instantiate" info
+    log "======================" info
     echo
 
 	local chaincode_name="$1"
@@ -908,7 +876,7 @@ instantiate_chaincode() {
     set_certs $org $peer
     set_peer_exec
 
-    echoc "Instantiating chaincode $chaincode_name version $chaincode_version into channel ${channel_name}" light cyan
+    log "Instantiating chaincode $chaincode_name version $chaincode_version into channel ${channel_name}" info
     
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
         peer_exec+="peer chaincode instantiate -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -C ${channel_name} -c '{\"Args\":[]}' \"$@\" || exit 1"
@@ -923,13 +891,13 @@ instantiate_chaincode() {
 
 upgrade_chaincode() {
 	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ]; then
-		echoc "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" dark red
+		log "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" error
 		exit 1
 	fi
 
-    echoc "==================" dark cyan
-    echoc "Chaincode: upgrade" dark cyan
-    echoc "==================" dark cyan
+    log "==================" info
+    log "Chaincode: upgrade" info
+    log "==================" info
     echo
 
 	local chaincode_name="$1"
@@ -942,7 +910,7 @@ upgrade_chaincode() {
     set_certs $org $peer
     set_peer_exec
 
-    echoc "Upgrading chaincode $chaincode_name to version $chaincode_version into channel ${channel_name}" light cyan
+    log "Upgrading chaincode $chaincode_name to version $chaincode_version into channel ${channel_name}" info
     
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
         peer_exec+="peer chaincode upgrade -n $chaincode_name -v $chaincode_version -C ${channel_name} -c '{\"Args\":[]}' \"$@\" || exit 1"
@@ -956,12 +924,12 @@ upgrade_chaincode() {
 }
 
 zip_chaincode() {
-    type zip >/dev/null 2>&1 || { echoc >&2 "zip required but it is not installed. Aborting." light red; exit 1; }
-    type rsync >/dev/null 2>&1 || { echoc >&2 "rsync required but it is not installed. Aborting." light red; exit 1; }
+    type zip >/dev/null 2>&1 || { log >&2 "zip required but it is not installed. Aborting." error; exit 1; }
+    type rsync >/dev/null 2>&1 || { log >&2 "rsync required but it is not installed. Aborting." error; exit 1; }
    
-    echoc "==============" dark cyan
-    echoc "Chaincode: zip" dark cyan
-    echoc "==============" dark cyan
+    log "==============" info
+    log "Chaincode: zip" info
+    log "==============" info
     echo
 
     local chaincode_name="${1}"
@@ -976,25 +944,25 @@ zip_chaincode() {
     local timestamp=$(date +%Y-%m-%d-%H-%M-%S)
 
     # trick to allow chaincode packed as modules to work when deployed against remote environments
-    echoc "Copying chaincode files into vendor..." light cyan
-    mkdir -p ./vendor/${CHAINCODE_REMOTE_PATH}/${chaincode_name} && rsync -ar --exclude='vendor' --exclude='META-INF' . ./vendor/${CHAINCODE_REMOTE_PATH}/${chaincode_name} || { echoc >&2 "Error copying chaincode into vendor directory." light red; exit 1; }
+    log "Copying chaincode files into vendor..." info
+    mkdir -p ./vendor/${CHAINCODE_REMOTE_PATH}/${chaincode_name} && rsync -ar --exclude='vendor' --exclude='META-INF' . ./vendor/${CHAINCODE_REMOTE_PATH}/${chaincode_name} || { log >&2 "Error copying chaincode into vendor directory." error; exit 1; }
 
-    zip -rq ${DIST_PATH}/${chaincode_name}_${timestamp}.zip . || { echoc >&2 "Error creating chaincode archive." light red; exit 1; }
+    zip -rq ${DIST_PATH}/${chaincode_name}_${timestamp}.zip . || { log >&2 "Error creating chaincode archive." error; exit 1; }
 
-    echoc "Chaincode archive created in: ${DIST_PATH}/${chaincode_name}.${timestamp}.zip" light green
+    log "Chaincode archive created in: ${DIST_PATH}/${chaincode_name}.${timestamp}.zip" success
 }
 
 pack_chaincode() {
     if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] ||  [ -z "$5" ]; then
-		echoc "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" dark red
+		log "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" error
 		exit 1
 	fi
 
-    type rsync >/dev/null 2>&1 || { echoc >&2 "rsync required but it is not installed. Aborting." light red; exit 1; }
+    type rsync >/dev/null 2>&1 || { log >&2 "rsync required but it is not installed. Aborting." error; exit 1; }
 
-    echoc "==================" dark cyan
-    echoc "Chaincode: package" dark cyan
-    echoc "==================" dark cyan
+    log "==================" info
+    log "Chaincode: package" info
+    log "==================" info
     echo
 
     local chaincode_name="$1"
@@ -1012,10 +980,10 @@ pack_chaincode() {
     local timestamp=$(date +%Y-%m-%d-%H-%M-%S)
 
     # trick to allow chaincode packed as modules to work when deployed against remote environments
-    echoc "Copying chaincode files into vendor..." light cyan
-    mkdir -p ./vendor/${CHAINCODE_REMOTE_PATH}/${chaincode_name} && rsync -ar --exclude='vendor' --exclude='META-INF' . ./vendor/${CHAINCODE_REMOTE_PATH}/${chaincode_name} || { echoc >&2 "Error copying chaincode into vendor directory." light red; exit 1; }
+    log "Copying chaincode files into vendor..." info
+    mkdir -p ./vendor/${CHAINCODE_REMOTE_PATH}/${chaincode_name} && rsync -ar --exclude='vendor' --exclude='META-INF' . ./vendor/${CHAINCODE_REMOTE_PATH}/${chaincode_name} || { log >&2 "Error copying chaincode into vendor directory." error; exit 1; }
 
-    echoc "Packing chaincode $chaincode_name version $chaincode_version from path ${install_path}" light cyan
+    log "Packing chaincode $chaincode_name version $chaincode_version from path ${install_path}" info
     
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
         peer_exec+="peer chaincode package dist/${chaincode_name}_${chaincode_version}_${timestamp}.cc -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -p ${install_path} -s -S || exit 1"
@@ -1027,18 +995,18 @@ pack_chaincode() {
     eval ${peer_exec}
     set +x
 
-    echoc "Chaincode package created in: ${DIST_PATH}/${chaincode_name}_${chaincode_version}_${timestamp}.cc" light green
+    log "Chaincode package created in: ${DIST_PATH}/${chaincode_name}_${chaincode_version}_${timestamp}.cc" success
 }
 
 invoke() {
 	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ]; then
-		echoc "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" dark red
+		log "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" error
 		exit 1
 	fi
 
-    echoc "==================" dark cyan
-    echoc "Chaincode: invoke" dark cyan
-    echoc "==================" dark cyan
+    log "==================" info
+    log "Chaincode: invoke" info
+    log "==================" info
     echo
 
 	local channel_name="$1"
@@ -1051,7 +1019,7 @@ invoke() {
     set_certs $org $peer
     set_peer_exec
 
-    echoc "Invoking chaincode $chaincode_name on channel ${channel_name} as org${org} and peer${peer} with the following params $request" light cyan
+    log "Invoking chaincode $chaincode_name on channel ${channel_name} as org${org} and peer${peer} with the following params $request" info
     
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
         peer_exec+="peer chaincode invoke -o $ORDERER_ADDRESS -C ${channel_name} -n $chaincode_name -c '$request' '$@' || exit 1"
@@ -1066,13 +1034,13 @@ invoke() {
 
 query() {
 	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ]; then
-		echoc "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" dark red
+		log "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" error
 		exit 1
 	fi
 
-    echoc "==================" dark cyan
-    echoc "Chaincode: query" dark cyan
-    echoc "==================" dark cyan
+    log "==================" info
+    log "Chaincode: query" info
+    log "==================" info
     echo
 
 	local channel_name="$1"
@@ -1085,7 +1053,7 @@ query() {
     set_certs $org $peer
     set_peer_exec
 
-    echoc "Querying chaincode $chaincode_name on channel ${channel_name} as org${org} and peer${peer} with the following params $request $@" light cyan
+    log "Querying chaincode $chaincode_name on channel ${channel_name} as org${org} and peer${peer} with the following params $request $@" info
     
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
         peer_exec+="peer chaincode query -o $ORDERER_ADDRESS -C ${channel_name} -n $chaincode_name -c '$request' '$@' || exit 1"
@@ -1099,9 +1067,9 @@ query() {
 }
 
 register_user() {
-    echoc "=================" dark cyan
-    echoc "CA User: register" dark cyan
-    echoc "=================" dark cyan
+    log "=================" info
+    log "CA User: register" info
+    log "=================" info
     echo
 
     __ca_setup register
@@ -1123,13 +1091,13 @@ register_user() {
             --id.type $user_type
          "
 
-    echoc "!! IMPORTANT: Note down these lines containing the information of the registered user" light green
+    log "!! IMPORTANT: Note down these lines containing the information of the registered user" success
 }
 
 enroll_user() {
-    echoc "===============" dark cyan
-    echoc "CA User: enroll" dark cyan
-    echoc "===============" dark cyan
+    log "===============" info
+    log "CA User: enroll" info
+    log "===============" info
     echo
 
     __ca_setup enroll
@@ -1152,9 +1120,9 @@ enroll_user() {
 }
 
 reenroll_user() {
-    echoc "=================" dark cyan
-    echoc "CA User: reenroll" dark cyan
-    echoc "=================" dark cyan
+    log "=================" info
+    log "CA User: reenroll" info
+    log "=================" info
     echo
 
     __ca_setup enroll
@@ -1177,9 +1145,9 @@ reenroll_user() {
 }
 
 revoke_user() {
-    echoc "===============" dark cyan
-    echoc "CA User: revoke" dark cyan
-    echoc "===============" dark cyan
+    log "===============" info
+    log "CA User: revoke" info
+    log "===============" info
     echo
 
     __ca_setup revoke
@@ -1198,8 +1166,8 @@ revoke_user() {
     10: aacompromise"
 
     while [ -z "$reason" ]; do
-        echoc "Select one of the reason for the revoke from this list: " light blue
-        echoc "${reason_list}" light blue
+        log "Select one of the reason for the revoke from this list: " info
+        log "${reason_list}" info
         read -p "Select a number from the list above: [1] " reason
         case $reason in 
             1) reason="unspecified" ;;
@@ -1212,10 +1180,10 @@ revoke_user() {
             8) reason="removefromcrl" ;;
             9) reason="privilegewithdrawn" ;;
             10) reason="aacompromise" ;;
-            *) echoc "Please select any of the reason from the list by typying in the corresponding number" light yellow;;
+            *) log "Please select any of the reason from the list by typying in the corresponding number" warning;;
         esac
     done
-    echoc ${reason} light green
+    log ${reason} success
     echo
 
     docker run --rm \
@@ -1234,15 +1202,15 @@ revoke_user() {
 }
 
 __ca_setup() {
-    echoc "Creating docker network..." light blue
+    log "Creating docker network..." info
     docker network create ${DOCKER_NETWORK} 2>/dev/null 
 
-    echoc "Insert the organization name of the user to register/enroll" light blue
+    log "Insert the organization name of the user to register/enroll" info
     while [ -z "$org" ]; do
         read -p "Organization: [] " org
     done
     export org
-    echoc $org light green
+    log $org success
     echo
 
     users_dir="${CRYPTOS_PATH}/${org}/users"
@@ -1252,19 +1220,19 @@ __ca_setup() {
     if [ "$1" == "register" ]; then
         # set admin msp path
         while [ ! -d "${admin_msp}" ]; do
-            echoc "Set the root Admin MSP path containing admincert, signcert, etc. directories" light blue
-            echoc "You can drag&drop in the terminal the top admin directory - e.g. if the certs are in ./admin/msp, simply drag in the ./admin folder " light blue
+            log "Set the root Admin MSP path containing admincert, signcert, etc. directories" info
+            log "You can drag&drop in the terminal the top admin directory - e.g. if the certs are in ./admin/msp, simply drag in the ./admin folder " info
             admin_path_default=$(find $NETWORK_PATH -path "*/peerOrganizations/*/Admin*org1*" | head -n 1)
             read -p "Admin name/path: [${admin_path_default}] " admin_path
             admin_path=${admin_path:-${admin_path_default}}
-            echoc "admin path: $admin_path" light green
+            log "admin path: $admin_path" success
             export admin=$(basename ${admin_path})
-            echoc "admin: $admin" light green
+            log "admin: $admin" success
             admin_msp=$(dirname $(find ${admin_path} -type d -name signcert* 2>/dev/null) 2>/dev/null)
-            echoc "admin msp: $admin_msp" light green
+            log "admin msp: $admin_msp" success
 
             if [ ! -d "${admin_msp}" ]; then
-                echoc "Admin MSP signcerts directory not found in: ${admin_path}. Please be sure the selected Admin MSP directory exists." light yellow
+                log "Admin MSP signcerts directory not found in: ${admin_path}. Please be sure the selected Admin MSP directory exists." warning
             fi
         done
 
@@ -1276,91 +1244,91 @@ __ca_setup() {
             # mv ${users_dir}/${admin}/signcert*/* ${users_dir}/${admin}/signcert*/cert.pem
             cp -r ${users_dir}/${admin}/signcert*/ ${users_dir}/${admin}/admincerts/
         else
-            echoc "Admin MSP directory is already in place under ${users_dir}/${admin}. Be sure the certificate are up to date or remove that directory and restart this process." light yellow
+            log "Admin MSP directory is already in place under ${users_dir}/${admin}. Be sure the certificate are up to date or remove that directory and restart this process." warning
         fi
     fi
 
-    echoc "Insert the correct Hyperledger Fabric CA version to use (read Troubleshooting section)" light blue
-    echoc "This should be the same used by your CA server (i.e. at the time of writing, IBPv1 is using 1.1.0)" light blue
+    log "Insert the correct Hyperledger Fabric CA version to use (read Troubleshooting section)" info
+    log "This should be the same used by your CA server (i.e. at the time of writing, IBPv1 is using 1.1.0)" info
     read -p "CA Version: [${FABRIC_VERSION}] " fabric_version
     export fabric_version=${fabric_version:-${FABRIC_VERSION}}
-    echoc $fabric_version light green
+    log $fabric_version success
     echo
 
-    echoc "Insert the username of the user to register/enroll" light blue
+    log "Insert the username of the user to register/enroll" info
     username_default="user_"$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 5; echo)
     read -p "Username: [${username_default}] " username
     export username=${username:-${username_default}}
     mkdir -p ${users_dir}/${username}
-    echoc $username light green
+    log $username success
     echo
 
-    echoc "Insert password of the user. It will be used by the CA as secret to generate the user certificate and key" light blue
+    log "Insert password of the user. It will be used by the CA as secret to generate the user certificate and key" info
     password_default=$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 20; echo)
     read -p "Password: [${password_default}] " password
     export password=${password:-${password_default}}
-    echoc $password light green
-    echoc "!! IMPORTANT: Take note of this password before continuing. If you loose this password you will not be able to manage the credentials of this user any longer." light yellow
+    log $password success
+    log "!! IMPORTANT: Take note of this password before continuing. If you loose this password you will not be able to manage the credentials of this user any longer." warning
     echo
 
-    echoc "CA secure connection (https)" light blue
+    log "CA secure connection (https)" info
     read -p "Using TLS secure connection? (if your CA address starts with https)? [yes/no=default] " yn
     case $yn in
         [Yy]* ) 
             export ca_protocol="https://"
-            echoc "Secure TLS connection: enabled" light green
+            log "Secure TLS connection: enabled" success
             ;;
         * ) 
             export ca_protocol="http://" 
-            echoc "Secure TLS connection: disabled" light green
+            log "Secure TLS connection: disabled" success
             ;;
     esac
     echo
 
-    echoc "Set CA TLS certificate path" light blue
+    log "Set CA TLS certificate path" info
     ca_cert_default=$(find $NETWORK_PATH -name "tlsca*.pem" | head -n 1)
     read -p "CA cert: [${ca_cert_default}] " ca_cert
     ca_cert=${ca_cert:-${ca_cert_default}}
-    echoc $ca_cert light green
+    log $ca_cert success
     # copy the CA certificate to the main cryptos directory
     mkdir -p ${CRYPTOS_PATH}/${org}
     cp $ca_cert ${CRYPTOS_PATH}/${org}/cert.pem
     export ca_cert=$(basename ${CRYPTOS_PATH}/${org}/cert.pem)
     echo
 
-    echoc "Insert CA hostname and port only (e.g. ca.example.com:7054)" light blue
+    log "Insert CA hostname and port only (e.g. ca.example.com:7054)" info
     ca_url_default="ca.example.com:7054"
     read -p "CA hostname and port: [${ca_url_default}] " ca_url
     export ca_url=${ca_url:-${ca_url_default}}
-    echoc ${ca_url} light green
+    log ${ca_url} success
     echo
 
     if [ "$1" == "register" ] || [ "$1" == "enroll" ]; then
-        echoc "Insert user attributes (e.g. admin=false:ecert)" light blue
-        echoc "Wiki: https://hyperledger-fabric-ca.readthedocs.io/en/latest/users-guide.html#registering-a-new-identity" light blue
+        log "Insert user attributes (e.g. admin=false:ecert)" info
+        log "Wiki: https://hyperledger-fabric-ca.readthedocs.io/en/latest/users-guide.html#registering-a-new-identity" info
         echo
-        echoc "A few examples:" light blue
-        echoc "If enrolling an admin: 'hf.Registrar.Roles,hf.Registrar.Attributes,hf.AffiliationMgr'" light yellow
-        echoc "If registering a user: 'admin=false:ecert,email=provapi@everledger.io:ecert,application=provapi'" light yellow
-        echoc "If enrolling a user: 'admin:opt,email:opt,application:opt'" light yellow
+        log "A few examples:" info
+        log "If enrolling an admin: 'hf.Registrar.Roles,hf.Registrar.Attributes,hf.AffiliationMgr'" warning
+        log "If registering a user: 'admin=false:ecert,email=provapi@everledger.io:ecert,application=provapi'" warning
+        log "If enrolling a user: 'admin:opt,email:opt,application:opt'" warning
         read -p "User attributes: [admin=false:ecert] " user_attributes
         export user_attributes=${user_attributes:-"admin=false:ecert"}
-        echoc $user_attributes light green
+        log $user_attributes success
         echo
     fi
 
     # registering a user requires additional information
     if [ "$1" == "register" ]; then
-        echoc "Insert user type (e.g. client, peer, orderer)" light blue
+        log "Insert user type (e.g. client, peer, orderer)" info
         read -p "User type: [client] " user_type
         export user_type=${user_type:-client}
-        echoc $user_type light green
+        log $user_type success
         echo
 
-        echoc "Insert user affiliation (default value is usually enough)" light blue
+        log "Insert user affiliation (default value is usually enough)" info
         read -p "User affiliation: [${org}] " user_affiliation
         export user_affiliation=${user_affiliation:-${org}}
-        echoc $user_affiliation light green
+        log $user_affiliation success
         echo
     fi
 }
@@ -1378,15 +1346,15 @@ __exec_jobs() {
         exit 1
     fi
 
-    echoc "==================" dark cyan
-    echoc "Network: benchmark" dark cyan
-    echoc "==================" dark cyan
+    log "==================" info
+    log "Network: benchmark" info
+    log "==================" info
     echo
 
-    echoc "Running in parallel:
+    log "Running in parallel:
     Jobs: $jobs
     Entries: $entries
-    " light cyan
+    " info
 
     start_time="$(date -u +%s)"
     
@@ -1401,9 +1369,9 @@ __exec_jobs() {
     end_time="$(date -u +%s)"
 
     elapsed="$(($end_time - $start_time))"
-    echoc "Total of $elapsed seconds elapsed for process" light yellow
+    log "Total of $elapsed seconds elapsed for process" warning
 
-    echoc "$(( $jobs * $entries )) entries added" light green
+    log "$(( $jobs * $entries )) entries added" success
 }
 
 __loader() {
@@ -1416,13 +1384,13 @@ __loader() {
 }
 
 tostring() {
-    type jq >/dev/null 2>&1 || { echoc >&2 "jq required but it is not installed. Aborting." light red; exit 1; }
+    type jq >/dev/null 2>&1 || { log >&2 "jq required but it is not installed. Aborting." error; exit 1; }
 
     echo "$@" | jq tostring
 }
 
 tojson() {
-    type jq >/dev/null 2>&1 || { echoc >&2 "jq required but it is not installed. Aborting." light red; exit 1; }
+    type jq >/dev/null 2>&1 || { log >&2 "jq required but it is not installed. Aborting." error; exit 1; }
 
     echo "$@" | jq .
 }
