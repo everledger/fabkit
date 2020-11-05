@@ -481,16 +481,6 @@ Error: Invalid option in attribute request specification at 'admin=false:ecert';
 
 When asked to provide enrollment attributes be sure you are either using a correct list of attributes (check existing attributes querying the CA) or you can simply pass an empty string `""`
 
-## Cleanup the environment
-
-### Tear blockchain network down
-
-It will stop and remove all the blockchain network containers including the `dev-peer*` tagged chaincode ones.
-
-```bash
-./run.sh network stop
-```
-
 #### Issue scenario
 
 - You running Docker on a Mac
@@ -506,6 +496,16 @@ Error: could not assemble transaction, err proposal response was not successful,
 #### Possible solutions
 
 - Uncheck “Use gRPC FUSE for file sharing” option in the Docker "Preferences > Experimental Features" and restart your daemon
+
+## Cleanup the environment
+
+### Tear blockchain network down
+
+It will stop and remove all the blockchain network containers including the `dev-peer*` tagged chaincode ones.
+
+```bash
+./run.sh network stop
+```
 
 ## Cleanup the environment
 
