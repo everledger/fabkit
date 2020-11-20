@@ -7,23 +7,14 @@ networks:
       name: ${DOCKER_NETWORK}
 
 services:
-  ca.example.com:
-    container_name: ca.example.com
-    extends:
-      file: network/base/base.yaml
-      service: ca-base
-    environment: 
-      - FABRIC_CA_SERVER_CA_NAME=ca.example.com
-    volumes:
-      - ./network/cryptos/peerOrganizations/org1.example.com/ca/:/etc/hyperledger/fabric-ca-server-config
-    ports:
-      - 7054:7054
-
   orderer.example.com:
     container_name: orderer.example.com
     extends:
       file: network/base/base.yaml
       service: orderer-base
+    environment:
+      - GRPC_VERBOSITY=info
+      - FABRIC_LOGGING_SPEC=info
     volumes:
         - ./network/channels/orderer-system-channel/genesis_block.pb:/var/hyperledger/orderer/orderer.genesis.block
         - ./network/cryptos/ordererOrganizations/example.com/orderers/orderer.example.com/msp:/var/hyperledger/orderer/msp
@@ -32,12 +23,27 @@ services:
     ports:
       - 7050:7050
 
+  ca.org1.example.com:
+    container_name: ca.org1.example.com
+    extends:
+      file: network/base/base.yaml
+      service: ca-base
+    environment: 
+      - FABRIC_CA_SERVER_CA_NAME=ca.org1.example.com
+    volumes:
+      - ./network/cryptos/peerOrganizations/org1.example.com/ca/:/etc/hyperledger/fabric-ca-server-config
+    ports:
+      - 7054:7054
+
   peer0.org1.example.com:
     container_name: peer0.org1.example.com
     extends:
       file: network/base/base.yaml
       service: peer-base
     environment:
+      - FABRIC_LOGGING_SPEC=info
+      - CORE_CHAINCODE_LOGGING_SHIM=debug
+      - CORE_CHAINCODE_LOGGING_LEVEL=debug
       # Change this value aligning with the defined docker network name
       - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=${DOCKER_NETWORK}
       - CORE_PEER_ID=peer0.org1.example.com
@@ -45,7 +51,7 @@ services:
       - CORE_PEER_LISTENADDRESS=0.0.0.0:7051
       - CORE_PEER_CHAINCODEADDRESS=peer0.org1.example.com:7052
       - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:7052
-      # - CORE_PEER_GOSSIP_BOOTSTRAP=peer1.org1.example.com:8051
+      # - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.org2.example.com:8051
       - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.org1.example.com:7051
       - CORE_PEER_LOCALMSPID=Org1MSP
       - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp
@@ -59,6 +65,7 @@ services:
       # match the username and password set for the associated CouchDB.
       - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=
       - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=
+      - GODEBUG=netdns=go
     volumes:
         # trick: for security reasons some services such as Bitbucket Pipeline will not allow to mount volumes 
         # which are sitting outside the cloned/project directory
@@ -85,7 +92,7 @@ services:
       - ./data/peer0.org1.example.com-couchdb:/opt/couchdb/data
     ports:
       - 5984:5984
-
+      
   fabric-cli:
     container_name: ${CHAINCODE_UTIL_CONTAINER}
     extends:
@@ -93,22 +100,26 @@ services:
       service: tools-base
     tty: true
     environment:
+      - FABRIC_LOGGING_SPEC=info
+      - GODEBUG=netdns=go
       - CORE_PEER_ID=fabric-cli
       - CORE_PEER_ADDRESS=peer0.org1.example.com:7051
       - CORE_PEER_LOCALMSPID=Org1MSP
-      - CORE_PEER_TLS_ENABLED=false
-      - CORE_PEER_TLS_CERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/server.crt
-      - CORE_PEER_TLS_KEY_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/server.key
-      - CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
-      - CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
+      - CORE_PEER_TLS_ENABLED=true
+      - CORE_PEER_TLS_CERT_FILE=${CONTAINER_PEER_BASEPATH}/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=${CONTAINER_PEER_BASEPATH}/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=${CONTAINER_PEER_BASEPATH}/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+      - CORE_PEER_MSPCONFIGPATH=${CONTAINER_PEER_BASEPATH}/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
     volumes:
         # trick: for security reasons some services such as Bitbucket Pipeline will not allow to mount volumes 
         # which are sitting outside the cloned/project directory
       - ./docker.sock/:/host/var/run/
       - ./chaincode:/opt/gopath/src/${CHAINCODE_REMOTE_PATH}
-      - ./network/cryptos:/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto
-      - ./network/channels:/opt/gopath/src/github.com/hyperledger/fabric/peer/channels
+      - ./network/cryptos:${CONTAINER_PEER_BASEPATH}/crypto
+      - ./network/channels:${CONTAINER_PEER_BASEPATH}/channels
+      - ./dist:${CONTAINER_PEER_BASEPATH}/dist
     depends_on:
-      - ca.example.com
+      - ca.org1.example.com
       - orderer.example.com
       - peer0.org1.example.com
+

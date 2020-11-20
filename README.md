@@ -32,6 +32,8 @@ The following command will spin a Hyperledger Fabric network up, generating _cha
 
 ```bash
 ./run.sh network start
+# or
+./run.sh network start --org=1
 ```
 
 It will execute the following functions:
@@ -50,9 +52,43 @@ Afterwards, the network will be ready to accept `invoke` and `query` functions.
 
 Run `./run.sh help` for the complete list of functionalities.
 
+### Run the network with different configurations
+
+You may want to run the network with multiple organisations or by using customised network and channel profiles.
+
+To run the network in multi-org setup, you can use the `--org=<number>` flag, where `number` is a numeric integer:
+
+```bash
+./run.sh network start --org=<number>
+```
+
+Note: **The maximum number of organisations supported at the time of writing is 3.**
+
+The consensus mechanism for the Ordering Service so far fully supported by this repo is `SOLO`, however, there is a 1-org configuration made available for `Raft` as well and it can be used by replacing the following variable in the `.env` file:
+
+```bash
+CONFIGTX_PROFILE_NETWORK=OneOrgOrdererEtcdRaft
+```
+
+Then simply run the network with a single organisation:
+
+```bash
+./run.sh network start
+```
+
+All network available configurations can be found under `network/config`. Users can extend them on their own need.
+
+## Stop a running network
+
+The following command will stop all the components of your running network while preserving all the stored data into the _data_ directory by default:
+
+```bash
+./run.sh network stop
+```
+
 ## Restart a previously running network
 
-The following command will restart a Hyperledgre Fabric network only if a _data_ directory is found:
+The following command will restart a network with the configuration of your last run only if a _data_ directory is found:
 
 ```bash
 ./run.sh network restart
@@ -64,8 +100,12 @@ Run the following commands in order to install and commit a newer version of an 
 
 ```bash
 # run the install only if you are upgrading the chaincode binaries
-./run.sh chaincode install [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [sequence_nr]
-./run.sh chaincode upgrade [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [sequence_nr]
+./run.sh chaincode install [chaincode_name] [chaincode_version] [chaincode_path] [sequence_nr] [org_no] [peer_no]
+./run.sh chaincode upgrade [chaincode_name] [chaincode_version] [channel_name] [sequence_nr] [org_no] [peer_no]
+
+# e.g.
+./run.sh chaincode install mychaincode 1.1 mychaincode 1 1 0
+./run.sh chaincode upgrade mychaincode 1.1 mychannel 1 1 0
 ```
 
 >If you are upgrading the chaincode binaries, you need to update the chaincode version and the package ID in the chaincode definition. You can also update your chaincode endorsement policy without having to repackage your chaincode binaries. Channel members simply need to approve a definition with the new policy. The new definition needs to increment the sequence variable in the definition by one.
@@ -74,15 +114,25 @@ Be sure the `chaincode_version` is unique and never used before (otherwise an er
 
 More details here: [Chaincode Lifecyle - Upgrade](https://hyperledger-fabric.readthedocs.io/en/release-2.0/chaincode4noah.html#upgrade-a-chaincode)
 
-## Pack chaincode for deployment
+## Archive chaincode for deployment
 
 Run the following command in order to create an archive for the selected chaincode including all the required dependencies:
 
 ```bash
-./run.sh chaincode pack [chaincode_name]
+./run.sh chaincode zip [chaincode_name]
 ```
 
 Follow the output message in console to see where the archive has been created.
+
+## Package and sign chaincode for deployment
+
+Some platforms, like IBPv2, do not accept `.zip` or archives which are not packaged and signed using the `peer chaincode package` Fabric functionality. In this specific cases you can use the following command:
+
+```bash
+./run.sh chaincode package [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no]
+```
+
+Follow the output message in console to see where the package has been created.
 
 ## Invoke and query
 
@@ -93,20 +143,96 @@ It is possible to use the CLI to run and test functionalities via invoke and que
 ### Invoke
 
 ```bash
-./run.sh chaincode invoke [channel_name] [chaincode_name] [request] [additional flags]
+./run.sh chaincode invoke [channel_name] [chaincode_name] [org_no] [peer_no] [request]
 
 # e.g.
-./run.sh chaincode invoke mychannel mychaincode '{"Args":["put","key1","10"]}'
+./run.sh chaincode invoke mychannel mychaincode 1 0 '{"Args":["put","key1","10"]}'
 ```
 
 ### Query
 
 ```bash
-./run.sh chaincode query [channel_name] [chaincode_name] [request] [additional flags]
+./run.sh chaincode query [channel_name] [chaincode_name] [org_no] [peer_no] [request]
 
 # e.g.
-./run.sh chaincode query mychannel mychaincode '{"Args":["get","key1"]}'
+./run.sh chaincode query mychannel mychaincode 1 0 '{"Args":["get","key1"]}'
 ```
+
+## Private Data Collections
+
+Starting from v1.2, Fabric offers the ability to create [private data collections](https://hyperledger-fabric.readthedocs.io/en/release-1.4/private-data/private-data.html), which allow a defined subset of organizations on a channel the ability to endorse, commit, or query private data without having to create a separate channel.
+
+This boilerplate propose a sample chaincode, `pdc`, exported from the [fabric-samples]([fabri](https://github.com/hyperledger/fabric-samples)) official repository, which includes a `collections_config.json` file with the following configuration:
+
+- `collectionMarbles`: Org1MSP, Org2MSP
+- `collectionMarblePrivateDetails`: Org1MSP
+
+In order to provide with a basic demonstration of how private data collections work, it is recommended to run the network with the **3-orgs setup** (2-orgs will also work).
+
+```bash
+# start the network with 3-orgs setup
+./run.sh network start --org=3
+```
+
+The network will be initialised with the following components:
+
+- orderer
+- ca.org1
+- peer0.org1 (mychaincode installed)
+- peer0.org1-couchdb
+- ca.org2
+- peer0.org2
+- peer0.org2-couchdb
+- ca.org3
+- peer0.org3
+- peer0.org3-couchdb
+- cli
+
+Then complete your network setup adding the other organisations to the channel:
+
+```bash
+# join org2 peer0 to mychannel
+./run.sh channel join mychannel 2 0
+# join org3 peer0 to mychannel
+./run.sh channel join mychannel 3 0
+```
+
+Install and instantiate the `pdc` chaincode:
+
+```bash
+# install the pdc chaincode on all the organisations' peer0
+./run.sh chaincode install pdc 1.0 pdc 1 0
+./run.sh chaincode install pdc 1.0 pdc 2 0
+./run.sh chaincode install pdc 1.0 pdc 3 0
+
+# instantiate pdc chaincode on mychannel using org1 peer0
+./run.sh chaincode instantiate pdc 1.0 mychannel 1 0 --collections-config /opt/gopath/src/${CHAINCODE_REMOTE_PATH}/chaincode/pdc/collections_config.json -P "OR('Org1MSP.member','Org2MSP.member','Org3MSP.member')"
+```
+
+Execute some actions:
+
+```bash
+# create a new marble as org1 peer0
+export MARBLE=$(echo -n "{\"name\":\"marble1\",\"color\":\"blue\",\"size\":35,\"owner\":\"tom\",\"price\":99}" | base64 | tr -d \\n)
+./run.sh chaincode invoke mychannel pdc 1 0 '{"Args":["initMarble"]}' --transient "{\"marble\":\"$MARBLE\"}"
+
+# query marble as org2 peer0 (successful)
+./run.sh chaincode query mychannel pdc 2 0 '{"Args":["readMarble","marble1"]}'
+
+# query marble as org3 peer0 (fail, as org3 is not part of this collection)
+./run.sh chaincode query mychannel pdc 3 0 '{"Args":["readMarble","marble1"]}'
+```
+
+You can access the CouchDB UI for each organisation's peer to inspect the data which gets effectively stored and its format.
+
+For each private collection your StateDB will create 2 databases, one public to the channel and one private. e.g.:
+
+- `mychannel_pdc$$hcollection$marbles`: it refers to `collectionMarbles` where the `h` in front stands for `hash`. This will contain only the hash of the data and it is shared publicly across the channel.
+- `mychannel_pdc$$pcollection$marbles`: it refers to `collectionMarbles` where the `p` in front stands for `private`. This will contain the data in clear.
+
+A few more examples of commands are available in the main chaincode file `./chaincode/pdc/main.go` commented out in the header.
+
+For a full overview about collections properties and definitions check the official documentation at [this page](https://hyperledger-fabric.readthedocs.io/en/release-1.4/private-data-arch.html).
 
 ## Blockchain Explorer
 
@@ -156,43 +282,25 @@ Hyperledger Fabric CA consists of both a server and a client component.
 
 This section is meant to discuss the basic interactions a client can perform with either local or remote server which may sit on-prem or on a BaaS, such as Oracle Blockchain Platform (OBP) or IBM Blockchain Platform (IBP).
 
-### Oracle Blockchain Platform
-
-**Note: At the time of writing, Oracle Blockchain Platform uses Oracle Identity Cloud service as its identity provider, therefore you will not be able to perform these operations directly via CLI.**
-
-- In order to register new user on OBP, please refer to the official Oracle documentation - [Set users and application roles](https://docs.oracle.com/en/cloud/paas/blockchain-cloud/administer/set-users-and-application-roles.html)
-
-- In order to enroll a registered user on OBP, please refer to this section on the documentation - [Add enrollments to the REST Proxy](https://docs.oracle.com/en/cloud/paas/blockchain-cloud/user/manage-rest-proxy-nodes.html#GUID-D24E018A-58B0-43FE-AFE1-B297A791D4EB)
-
-**Oracle provides only one certificate per service (the admin certificate) which can be used by any user registered and enrolled on that organization**
-
-The OBP configuration and cryptos can be downloaded from `Developer Tools > Application Development > OBP`.
-
-### IBM Blockchain Platform
-
-At the time of writing, IBM provides two version of their BaaS. In both cases, we are able to register and enroll users directly via UI, but we will not be able to download those certificates from there.
-
-If we want to use a specific user certificate and key, we need first to download the connection profile and cryptos from the platform dashboard and then perform the steps listed in this section in order to retrieve those credentials.
-
 ### Base Prerequisites
 
 To perform any of the below procedures you need to have satisfied the following prerequisites:
 
 - Downloaded locally the CA root certificate (for IBP, that is usually available directly in the connection profile, but it needs to be converted from string to file without \n and other escape characters)
 
-- Downloaded the connection profile if available or be sure you have on your hands the following informations
+- Downloaded the connection profile if available or be sure you have on your hands the following information
 
-    - Admin username (commonly `admin`) and password. This user needs to have the right permissions in order to perform any of the operations below.
-    
-    - Organization name
-
-    - CA hostname and port
+  - Admin username (commonly `admin`) and password. This user needs to have the right permissions in order to perform any of the operations below.
+  
+  - Organization name
+  
+  - CA hostname and port
 
 ### Register and enroll a new user
 
 #### Prerequisites
 
-- Fullfilled all the base prerequisites
+- Fulfilled all the base prerequisites
 
 - Username and password of the new user to register and enroll
 
@@ -223,7 +331,7 @@ This final command will generate a new certificate for the user under `network/c
 ### Renew an expired certificate
 
 Hyperledger Fabric certificates do not last forever and they usually have an expiration date which is set by default to **1 year**.
-That means, after such period, any oepration made by a blockchain identity with an expired certificate will not work, causing possible disruptions on the system.
+That means, after such period, any operation made by a blockchain identity with an expired certificate will not work, causing possible disruptions on the system.
 
 The procedure to renew a certificate follows a few steps but it is not that banal, so please read these lines below very carefully and be sure you are running these commands on a machine you trust and you have access to the output log (in console should be sufficient).
 
@@ -255,7 +363,7 @@ For example, a revoker with affiliation `orgs.org1` and `hf.Registrar.Roles=peer
 
 #### Prerequisites
 
-- Fullfilled all the base prerequisites
+- Fulfilled all the base prerequisites
 
 - Username and password of the user whom we want to revoke the certificate
 
@@ -264,6 +372,28 @@ For example, a revoker with affiliation `orgs.org1` and `hf.Registrar.Roles=peer
 ```bash
 ./run.sh ca revoke
 ```
+
+### Registering and enrolling users on PaaS
+
+#### Oracle Blockchain Platform
+
+We have two way of registering and enrolling users in OBP:
+
+1. using Oracle Identity Cloud service, which, however, locks the user key and certificate to be used internally by any of the restproxy service. **Pick this option if you think you will only operate via Oracle restproxy service and you do not need to have these certificates at your hand** (not recommended)
+
+   - In order to register new user on OBP, please refer to the official Oracle documentation - [Set users and application roles](https://docs.oracle.com/en/cloud/paas/blockchain-cloud/administer/set-users-and-application-roles.html)
+
+   - In order to enroll a registered user on OBP via Identity Management, please refer to this section on the documentation - [Add enrollments to the REST Proxy](https://docs.oracle.com/en/cloud/paas/blockchain-cloud/user/manage-rest-proxy-nodes.html#GUID-D24E018A-58B0-43FE-AFE1-B297A791D4EB)
+
+2. via normal Fabric CA CLI interaction. See section below. **Note that during enrollment you will need to insert the correct list of attributes attached to the user during the registration step, otherwise, a workaround is to pass an empty string `""` (but only if you do want to set any attributes)**
+
+The OBP configuration and cryptos can be downloaded from `Developer Tools > Application Development > OBP`.
+
+#### IBM Blockchain Platform
+
+At the time of writing, IBM provides two version of their BaaS. In both cases, we are able to register and enroll users directly via UI, but we will not be able to download those certificates from there.
+
+If we want to use a specific user certificate and key, we need first to download the connection profile and cryptos from the platform dashboard and then perform the steps listed in this section in order to retrieve those credentials.
 
 ### Troubleshooting
 
@@ -322,7 +452,65 @@ Error: Response from server: Error Code: 0 - Registration of 'user_bdp1Z' failed
 
 #### Possible solutions
 
-- Be sure you are using an existing affiliation attribute (e.g. for sample setup with `org1.example.com` the affilition attributes to use are `org1.department1` and `org1.department2`)
+- Be sure you are using an existing affiliation attribute (e.g. for sample setup with `org1.example.com` the affiliation attributes to use are `org1.department1` and `org1.department2`)
+
+#### Issue scenario
+
+While installing a chaincode the following (or similar) error occurs
+
+```bash
+Error: error getting chaincode code pdc: error getting chaincode package bytes: Error writing src/github.com/hyperledger/fabric/peer/chaincode/pdc/vendor/golang.org/x/net/http/httpguts/guts.go to tar: Error copy (path: /opt/gopath/src/github.com/hyperledger/fabric/peer/chaincode/pdc/vendor/golang.org/x/net/http/httpguts/guts.go, oldname:guts.go,newname:src/github.com/hyperledger/fabric/peer/chaincode/pdc/vendor/golang.org/x/net/http/httpguts/guts.go,sz:1425) : archive/tar: write too long
+```
+
+#### Possible solutions
+
+It is a common error in environments running under low resources (or not-Linux machines).
+
+If your docker is running on less than half of your available CPU and RAM, try to reallocate more resources.
+
+It could also be related to mismatched references between packages in `vendor` and the ones written in `go.sum`. **Try to delete the ./chaincode/[chaincode]/go.sum** file.
+
+Keep refiring the same command.
+
+#### Issue scenario
+
+While enrolling a user via Fabric CA CLI towards a network running on Oracle Blockchain Platform, the following error occurs:
+
+```bash
+Error: Response from server: Error Code: 0 - The following required attributes are missing: [hf.Registrar.Attributes hf.AffiliationMgr]
+# or
+Error: Invalid option in attribute request specification at 'admin=false:ecert'; the value after the colon must be 'opt'
+```
+
+#### Possible solutions
+
+When asked to provide enrollment attributes be sure you are either using a correct list of attributes (check existing attributes querying the CA) or you can simply pass an empty string `""`
+
+#### Issue scenario
+
+- You running Docker on a Mac
+
+- Your version of Docker is > 2.3.x
+
+While running the app with `./run.sh network start` or trying to instantiate a chaincode, the following error occurs:
+
+```bash
+Error: could not assemble transaction, err proposal response was not successful, error code 500, msg error starting container: error starting container: Post http://unix.sock/containers/create?name=dev-peer0.org1.example.com-mychaincode-1.0: dial unix /host/var/run/docker.sock: connect: no such file or directory
+```
+
+#### Possible solutions
+
+- Uncheck “Use gRPC FUSE for file sharing” option in the Docker "Preferences > Experimental Features" and restart your daemon
+
+## Cleanup the environment
+
+### Tear blockchain network down
+
+It will stop and remove all the blockchain network containers including the `dev-peer*` tagged chaincode ones.
+
+```bash
+./run.sh network stop
+```
 
 ## Cleanup the environment
 
