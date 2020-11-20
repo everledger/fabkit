@@ -190,8 +190,8 @@ start_network() {
 
         stop_network
 
-        # chaincode_build $CHAINCODE_NAME
-        # chaincode_test $CHAINCODE_NAME
+        chaincode_build $CHAINCODE_NAME
+        chaincode_test $CHAINCODE_NAME
     fi
 
     log "==============" info
