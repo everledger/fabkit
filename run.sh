@@ -1207,9 +1207,9 @@ lc_chaincode_approve() {
     # TODO: make this command to work with multiple installed chaincodes
     set_peer_exec
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
-        peer_exec+="peer lifecycle chaincode queryinstalled 2>&1 | awk -F \"[, ]+\" '/Label: /{print $3}' || exit 1"
+        peer_exec+="peer lifecycle chaincode queryinstalled --output json | jq -r '.installed_chaincodes[0].package_id' || exit 1"
     else
-        peer_exec+="peer lifecycle chaincode queryinstalled --tls $TLS_ENABLED --cafile $ORDERER_CA 2>&1 | awk -F \"[, ]+\" '/Label: /{print $3}' || exit 1"
+        peer_exec+="peer lifecycle chaincode queryinstalled --tls $TLS_ENABLED --cafile $ORDERER_CA --output json | jq -r '.installed_chaincodes[0].package_id' || exit 1"
     fi
 
     set -x
@@ -1221,9 +1221,9 @@ lc_chaincode_approve() {
     # TODO: policy to be passed as input argument
     set_peer_exec
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
-        peer_exec+="peer lifecycle chaincode approveformyorg --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --package-id $PACKAGE_ID --sequence $sequence_no --waitForEvent --signature-policy \"OR('Org1MSP.member','Org2MSP.member')\" || exit 1"
+        peer_exec+="peer lifecycle chaincode approveformyorg --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --package-id $PACKAGE_ID --sequence $sequence_no --waitForEvent --signature-policy \"OR('Org1MSP.member','Org2MSP.member','Org3MSP.member')\" || exit 1"
     else
-        peer_exec+="peer lifecycle chaincode approveformyorg --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --package-id $PACKAGE_ID --sequence $sequence_no --waitForEvent --signature-policy \"OR('Org1MSP.member','Org2MSP.member')\" --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
+        peer_exec+="peer lifecycle chaincode approveformyorg --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --package-id $PACKAGE_ID --sequence $sequence_no --waitForEvent --signature-policy \"OR('Org1MSP.member','Org2MSP.member','Org3MSP.member')\" --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
     fi
 
     set -x
@@ -1261,9 +1261,9 @@ lc_chaincode_commit() {
     log "Check whether the chaincode definition is ready to be committed" info
     set_peer_exec
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
-        peer_exec+="peer lifecycle chaincode checkcommitreadiness --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --sequence $sequence_no --output json --signature-policy \"OR('Org1MSP.member','Org2MSP.member')\" || exit 1"
+        peer_exec+="peer lifecycle chaincode checkcommitreadiness --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --sequence $sequence_no --output json --signature-policy \"OR('Org1MSP.member','Org2MSP.member','Org3MSP.member')\" || exit 1"
     else
-        peer_exec+="peer lifecycle chaincode checkcommitreadiness --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --sequence $sequence_no --output json --signature-policy \"OR('Org1MSP.member','Org2MSP.member')\" --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
+        peer_exec+="peer lifecycle chaincode checkcommitreadiness --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --sequence $sequence_no --output json --signature-policy \"OR('Org1MSP.member','Org2MSP.member','Org3MSP.member')\" --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
     fi
     set -x
     eval ${peer_exec}
@@ -1272,9 +1272,9 @@ lc_chaincode_commit() {
     log "Commit the definition the channel" info
     set_peer_exec
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
-        peer_exec+="peer lifecycle chaincode commit --channelID $channel_name --name $chaincode_name --version $chaincode_version --sequence $sequence_no --init-required --peerAddresses $CORE_PEER_ADDRESS --signature-policy \"OR('Org1MSP.member','Org2MSP.member')\" || exit 1"
+        peer_exec+="peer lifecycle chaincode commit --channelID $channel_name --name $chaincode_name --version $chaincode_version --sequence $sequence_no --init-required --peerAddresses $CORE_PEER_ADDRESS --signature-policy \"OR('Org1MSP.member','Org2MSP.member','Org3MSP.member')\" || exit 1"
     else
-        peer_exec+="peer lifecycle chaincode commit --channelID $channel_name --name $chaincode_name --version $chaincode_version --sequence $sequence_no --init-required --peerAddresses $CORE_PEER_ADDRESS --signature-policy \"OR('Org1MSP.member','Org2MSP.member')\" --tls $TLS_ENABLED --cafile $ORDERER_CA --tlsRootCertFiles $CORE_PEER_TLS_ROOTCERT_FILE || exit 1"
+        peer_exec+="peer lifecycle chaincode commit --channelID $channel_name --name $chaincode_name --version $chaincode_version --sequence $sequence_no --init-required --peerAddresses $CORE_PEER_ADDRESS --signature-policy \"OR('Org1MSP.member','Org2MSP.member','Org3MSP.member')\" --tls $TLS_ENABLED --cafile $ORDERER_CA --tlsRootCertFiles $CORE_PEER_TLS_ROOTCERT_FILE || exit 1"
     fi
     set -x
     eval ${peer_exec}
@@ -1285,7 +1285,7 @@ lc_chaincode_commit() {
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
         peer_exec+="peer lifecycle chaincode querycommitted --channelID $channel_name --name $chaincode_name --peerAddresses $CORE_PEER_ADDRESS --output json || exit 1"
     else
-        peer_exec+="peer lifecycle chaincode querycommitted --channelID $channel_name --name $chaincode_name --peerAddresses $CORE_PEER_ADDRESS --output json --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
+        peer_exec+="peer lifecycle chaincode querycommitted --channelID $channel_name --name $chaincode_name --peerAddresses $CORE_PEER_ADDRESS --output json --tls $TLS_ENABLED --cafile $ORDERER_CA --tlsRootCertFiles $CORE_PEER_TLS_ROOTCERT_FILE || exit 1"
     fi
     set -x
     eval ${peer_exec}
@@ -1296,7 +1296,7 @@ lc_chaincode_commit() {
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
         peer_exec+="peer chaincode invoke -o $ORDERER_ADDRESS --isInit --channelID $channel_name --name $chaincode_name --peerAddresses $CORE_PEER_ADDRESS --waitForEvent -c '{\"Args\":[]}' || exit 1"
     else
-        peer_exec+="peer chaincode invoke -o $ORDERER_ADDRESS --isInit --channelID $channel_name --name $chaincode_name --peerAddresses $CORE_PEER_ADDRESS --waitForEvent -c '{\"Args\":[]} --tls $TLS_ENABLED --cafile $ORDERER_CA' || exit 1"
+        peer_exec+="peer chaincode invoke -o $ORDERER_ADDRESS --isInit --channelID $channel_name --name $chaincode_name --peerAddresses $CORE_PEER_ADDRESS --tlsRootCertFiles $CORE_PEER_TLS_ROOTCERT_FILE --tls $TLS_ENABLED --cafile $ORDERER_CA -c '{\"Args\":[]}' --waitForEvent || exit 1"
     fi
     set -x
     eval ${peer_exec}
