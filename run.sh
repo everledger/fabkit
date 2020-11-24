@@ -141,35 +141,44 @@ install_network() {
     echo
 
 	__docker_fabric_pull
-    __docker_fabric_ca_pull
 	__docker_third_party_images_pull
 }
 
 __docker_fabric_pull() {
     for image in peer orderer ccenv tools; do
-        log "==> FABRIC IMAGE: $image" info
+        log "==> FABRIC IMAGE: hyperledger/fabric-$image:${FABRIC_VERSION}" info
         echo
         docker pull hyperledger/fabric-$image:${FABRIC_VERSION} || exit 1
         docker tag hyperledger/fabric-$image:${FABRIC_VERSION} hyperledger/fabric-$image:latest
-    done
-}
-
-__docker_fabric_ca_pull() {
-    for image in ca; do
-        log "==> FABRIC CA IMAGE: $image" info
         echo
-        docker pull hyperledger/fabric-$image:$FABRIC_CA_VERSION || exit 1
-        docker tag hyperledger/fabric-$image:$FABRIC_CA_VERSION hyperledger/fabric-$image:latest
     done
+
+    log "==> FABRIC CA IMAGE: hyperledger/fabric-ca:${FABRIC_CA_VERSION}" info
+    echo
+    docker pull hyperledger/fabric-ca:${FABRIC_CA_VERSION} || exit 1
+    docker tag hyperledger/fabric-ca:${FABRIC_CA_VERSION} hyperledger/fabric-ca:latest
+    echo
+
+    log "==> COUCHDB IMAGE: hyperledger/fabric-couchdb:${FABRIC_THIRDPARTY_IMAGE_VERSION}" info
+    echo
+    docker pull hyperledger/fabric-couchdb:${FABRIC_THIRDPARTY_IMAGE_VERSION} || exit 1
+    docker tag hyperledger/fabric-couchdb:${FABRIC_THIRDPARTY_IMAGE_VERSION} hyperledger/fabric-couchdb:latest
+    echo
 }
 
 __docker_third_party_images_pull() {
-    for image in couchdb; do
-        log "==> THIRDPARTY DOCKER IMAGE: $image" info
-        echo
-        docker pull hyperledger/fabric-$image:$FABRIC_THIRDPARTY_IMAGE_VERSION || exit 1
-        docker tag hyperledger/fabric-$image:$FABRIC_THIRDPARTY_IMAGE_VERSION hyperledger/fabric-$image:latest
-    done
+    log "==> GOLANG IMAGE: ${GOLANG_DOCKER_IMAGE}" info
+    echo
+    docker pull ${GOLANG_DOCKER_IMAGE}
+    echo
+    log "==> JQ IMAGE: ${JQ_DOCKER_IMAGE}" info
+    echo
+    docker pull ${JQ_DOCKER_IMAGE}
+    echo
+    log "==> YQ IMAGE: ${YQ_DOCKER_IMAGE}" info
+    echo
+    docker pull ${YQ_DOCKER_IMAGE}
+    echo
 }
 
 start_network() {
