@@ -46,7 +46,8 @@ It will execute the following functions:
 - Add default peer to join the channel
 - Update the channel with anchor peers
 - Install the default chaincode into the default peer
-- Commit the chaincode on the default peer and organisation
+- (v1.x) Instantiate the chaincode on the default peer
+- (v2.x) Approve, commit and init the chaincode on the default peer and organization
 
 Afterwards, the network will be ready to accept `invoke` and `query` functions.
 
@@ -54,7 +55,7 @@ Run `./run.sh help` for the complete list of functionalities.
 
 ### Run the network with different configurations
 
-You may want to run the network with multiple organisations or by using customised network and channel profiles.
+You may want to run the network with multiple organizations or by using customized network and channel profiles.
 
 To run the network in multi-org setup, you can use the `--org=<number>` flag, where `number` is a numeric integer:
 
@@ -62,7 +63,7 @@ To run the network in multi-org setup, you can use the `--org=<number>` flag, wh
 ./run.sh network start --org=<number>
 ```
 
-Note: **The maximum number of organisations supported at the time of writing is 3.**
+Note: **The maximum number of organizations supported at the time of writing is 3.**
 
 The consensus mechanism for the Ordering Service so far fully supported by this repo is `SOLO`, however, there is a 1-org configuration made available for `Raft` as well and it can be used by replacing the following variable in the `.env` file:
 
@@ -70,7 +71,7 @@ The consensus mechanism for the Ordering Service so far fully supported by this 
 CONFIGTX_PROFILE_NETWORK=OneOrgOrdererEtcdRaft
 ```
 
-Then simply run the network with a single organisation:
+Then simply run the network with a single organization:
 
 ```bash
 ./run.sh network start
@@ -174,7 +175,7 @@ In order to provide with a basic demonstration of how private data collections w
 ./run.sh network start --org=3
 ```
 
-The network will be initialised with the following components:
+The network will be initialized with the following components:
 
 - orderer
 - ca.org1
@@ -188,7 +189,7 @@ The network will be initialised with the following components:
 - peer0.org3-couchdb
 - cli
 
-Then complete your network setup adding the other organisations to the channel:
+Then complete your network setup adding the other organizations to the channel:
 
 ```bash
 # join org2 peer0 to mychannel
@@ -200,7 +201,7 @@ Then complete your network setup adding the other organisations to the channel:
 Install and instantiate the `pdc` chaincode:
 
 ```bash
-# install the pdc chaincode on all the organisations' peer0
+# install the pdc chaincode on all the organizations' peer0
 ./run.sh chaincode install pdc 1.0 pdc 1 0
 ./run.sh chaincode install pdc 1.0 pdc 2 0
 ./run.sh chaincode install pdc 1.0 pdc 3 0
@@ -223,7 +224,7 @@ export MARBLE=$(echo -n "{\"name\":\"marble1\",\"color\":\"blue\",\"size\":35,\"
 ./run.sh chaincode query mychannel pdc 3 0 '{"Args":["readMarble","marble1"]}'
 ```
 
-You can access the CouchDB UI for each organisation's peer to inspect the data which gets effectively stored and its format.
+You can access the CouchDB UI for each organization's peer to inspect the data which gets effectively stored and its format.
 
 For each private collection your StateDB will create 2 databases, one public to the channel and one private. e.g.:
 
@@ -347,7 +348,7 @@ The procedure to renew a certificate follows a few steps but it is not that bana
 ./run.sh ca enroll
 ```
 
-- Reenroll the user with the expired certificate
+- Re-enroll the user with the expired certificate
 
 ```bash
 ./run.sh ca reenroll
@@ -535,7 +536,7 @@ The repository provides also a simple implementation of a bulk load function in 
 
 The example above will do a bulk load of 1000 entries times 5 parallel jobs, for a total of 5000 entries. At the completion of all the jobs it will be prompted on screen the elapsed time of the total task.
 
-**Note: Maintain the number of jobs not superior to your CPU cores in order to obtain the best results. This implementation does not provides a complete parallelisation.**
+**Note: Maintain the number of jobs not superior to your CPU cores in order to obtain the best results. This implementation does not provides a complete parallelization.**
 
 To achieve the optimal result it is recommended to install [Gnu Parallel](https://www.gnu.org/software/parallel/) and use as it follows:
 

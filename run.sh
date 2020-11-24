@@ -78,6 +78,14 @@ help() {
     log "$help" info
 }
 
+__yq() {
+    docker run --rm -i -v "${PWD}":/workdir ${YQ_DOCKER_IMAGE} yq "$@"
+}
+
+__jq() {
+    docker run --rm -i -v "${PWD}":/workdir ${JQ_DOCKER_IMAGE} "$@"
+}
+
 __check_fabric_version() {
     if [[ ! "${FABRIC_VERSION}" =~ ${1}.* ]]; then
         log "This command is not enabled on Fabric v${FABRIC_VERSION}. In order to run, update the FABRIC_VERSION value in .env file" error
@@ -129,8 +137,6 @@ install_network() {
 	log "Network: install" info
     log "================" info
     echo
-	log "Pulling Go docker image" info
-	docker pull ${GOLANG_DOCKER_IMAGE}:${GOLANG_DOCKER_TAG}
 
 	__docker_fabric_pull
     __docker_fabric_ca_pull
@@ -354,12 +360,11 @@ start_explorer() {
     fi
 
     # replacing private key path in connection profile
-    type jq >/dev/null 2>&1 || { log >&2 "jq required but it is not installed. Aborting." error; exit 1; }
     config=${EXPLORER_PATH}/connection-profile/first-network
     admin_key_path="peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/keystore"
     private_key="/tmp/crypto/${admin_key_path}/$(ls ${CRYPTOS_PATH}/${admin_key_path})"
-    cat ${config}.base.json | jq -r --arg private_key "$private_key" '.organizations.Org1MSP.adminPrivateKey.path = $private_key' | \
-    jq -r --argjson TLS_ENABLED "$TLS_ENABLED" '.client.tlsEnable = $TLS_ENABLED' > ${config}.json
+    cat ${config}.base.json | __jq -r --arg private_key "$private_key" '.organizations.Org1MSP.adminPrivateKey.path = $private_key' | \
+    __jq -r --argjson TLS_ENABLED "$TLS_ENABLED" '.client.tlsEnable = $TLS_ENABLED' > ${config}.json
 
     # considering tls enabled as default in base
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
@@ -428,19 +433,19 @@ __init_go_mod() {
 __replace_config_capabilities() {
     configtx=${CONFIG_PATH}/configtx
     if [[ "${FABRIC_VERSION}" =~ 2.* ]]; then
-        cat ${configtx}.base.yaml | yq w - 'Capabilities.Channel.V2_0' true | \
-        yq w - 'Capabilities.Channel.V1_4_3' false | \
-        yq w - 'Capabilities.Orderer.V2_0' true | \
-        yq w - 'Capabilities.Orderer.V1_4_2' false | \
-        yq w - 'Capabilities.Application.V2_0' true | \
-        yq w - 'Capabilities.Application.V1_4_2' false > ${configtx}.yaml
+        cat ${configtx}.base.yaml | __yq w - 'Capabilities.Channel.V2_0' true | \
+        __yq w - 'Capabilities.Channel.V1_4_3' false | \
+        __yq w - 'Capabilities.Orderer.V2_0' true | \
+        __yq w - 'Capabilities.Orderer.V1_4_2' false | \
+        __yq w - 'Capabilities.Application.V2_0' true | \
+        __yq w - 'Capabilities.Application.V1_4_2' false > ${configtx}.yaml
     else
-        cat ${configtx}.base.yaml |  yq w - 'Capabilities.Channel.V2_0' false | \
-        yq w - 'Capabilities.Channel.V1_4_3' true | \
-        yq w - 'Capabilities.Orderer.V2_0' false | \
-        yq w - 'Capabilities.Orderer.V1_4_2' true | \
-        yq w - 'Capabilities.Application.V2_0' false | \
-        yq w - 'Capabilities.Application.V1_4_2' true > ${configtx}.yaml
+        cat ${configtx}.base.yaml | __yq w - 'Capabilities.Channel.V2_0' false | \
+        __yq w - 'Capabilities.Channel.V1_4_3' true | \
+        __yq w - 'Capabilities.Orderer.V2_0' false | \
+        __yq w - 'Capabilities.Orderer.V1_4_2' true | \
+        __yq w - 'Capabilities.Application.V2_0' false | \
+        __yq w - 'Capabilities.Application.V1_4_2' true > ${configtx}.yaml
     fi
 }
 
@@ -826,7 +831,7 @@ chaincode_test() {
     __init_go_mod install ${chaincode_name}
 
     if [[ $(__check_deps test) ]]; then
-        (docker run --rm  -v ${CHAINCODE_PATH}:/usr/src/myapp -w /usr/src/myapp/${chaincode_name} -e CGO_ENABLED=0 -e CORE_CHAINCODE_LOGGING_LEVEL=debug ${GOLANG_DOCKER_IMAGE}:${GOLANG_DOCKER_TAG} sh -c "ginkgo -r -v") || exit 1
+        (docker run --rm -v ${CHAINCODE_PATH}:/usr/src/myapp -w /usr/src/myapp/${chaincode_name} -e CGO_ENABLED=0 -e CORE_CHAINCODE_LOGGING_LEVEL=debug ${GOLANG_DOCKER_IMAGE} sh -c "ginkgo -r -v") || exit 1
     else
 	    (cd ${CHAINCODE_PATH}/${chaincode_name} && CORE_CHAINCODE_LOGGING_LEVEL=debug CGO_ENABLED=0 ginkgo -r -v) || exit 1
     fi
@@ -854,7 +859,7 @@ chaincode_build() {
     __init_go_mod install ${chaincode_name}
 
     if [[ $(__check_deps test) ]]; then
-        (docker run --rm -v ${CHAINCODE_PATH}:/usr/src/myapp -w /usr/src/myapp/${chaincode_name} -e CGO_ENABLED=0 ${GOLANG_DOCKER_IMAGE}:${GOLANG_DOCKER_TAG} sh -c "go build -a -installsuffix nocgo ./... && rm -rf ./${chaincode_name} 2>/dev/null") || exit 1
+        (docker run --rm -v ${CHAINCODE_PATH}:/usr/src/myapp -w /usr/src/myapp/${chaincode_name} -e CGO_ENABLED=0 ${GOLANG_DOCKER_IMAGE} sh -c "go build -a -installsuffix nocgo ./... && rm -rf ./${chaincode_name} 2>/dev/null") || exit 1
     else
 	    (cd ${CHAINCODE_PATH}/${chaincode_name} && CGO_ENABLED=0 go build -a -installsuffix nocgo ./... && rm -rf ./${chaincode_name} 2>/dev/null) || exit 1
     fi
@@ -1641,15 +1646,11 @@ __loader() {
 }
 
 tostring() {
-    type jq >/dev/null 2>&1 || { log >&2 "jq required but it is not installed. Aborting." error; exit 1; }
-
-    echo "$@" | jq tostring
+    echo "$@" | __jq tostring
 }
 
 tojson() {
-    type jq >/dev/null 2>&1 || { log >&2 "jq required but it is not installed. Aborting." error; exit 1; }
-
-    echo "$@" | jq .
+    echo "$@" | __jq .
 }
 
 readonly func="$1"
