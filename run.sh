@@ -19,8 +19,6 @@ readonly raft_one_org="OneOrgOrdererEtcdRaft"
 # DO NOT REMOVE
 # docker exec command
 peer_exec=""
-# enable/disable encrypted communication between components
-TLS_ENABLED="false"
 
 help() {
     local help="
@@ -85,11 +83,6 @@ __check_fabric_version() {
         log "This command is not enabled on Fabric v${FABRIC_VERSION}. In order to run, update the FABRIC_VERSION value in .env file" error
         exit 1
     fi
-}
-
-__set_tls() {
-    export TLS_ENABLED=$(docker inspect $CHAINCODE_UTIL_CONTAINER | grep "CORE_PEER_TLS_ENABLED" | sed 's/",//g' | awk '{split($0,a,"="); print a[2]}')
-    log "Encrypted communication enabled: $TLS_ENABLED" info
 }
 
 __check_deps() {
@@ -285,7 +278,7 @@ stop_network() {
     fi
 
     log "Cleaning docker leftovers containers and images" success
-    docker rm -f $(docker ps -a | awk '($2 ~ /fabric|dev-/) {print $1}') 2>/dev/null
+    docker rm -f $(docker ps -a | awk '($2 ~ /${DOCKER_NETWORK}|dev-/) {print $1}') 2>/dev/null
     docker rmi -f $(docker images -qf "dangling=true") 2>/dev/null
     docker rmi -f $(docker images | awk '($1 ~ /^<none>|dev-/) {print $3}') 2>/dev/null
     docker system prune -f 2>/dev/null
@@ -327,7 +320,7 @@ initialize_network() {
     log "=============" info
     echo
 
-    __set_tls
+    
 	create_channel $CHANNEL_NAME 1 0
 	join_channel $CHANNEL_NAME 1 0
 	update_channel $CHANNEL_NAME $ORG_MSP 1 0
@@ -362,10 +355,16 @@ start_explorer() {
 
     # replacing private key path in connection profile
     type jq >/dev/null 2>&1 || { log >&2 "jq required but it is not installed. Aborting." error; exit 1; }
-    config=$(ls -d ${EXPLORER_PATH}/connection-profile/*)
+    config=${EXPLORER_PATH}/connection-profile/first-network
     admin_key_path="peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/keystore"
     private_key="/tmp/crypto/${admin_key_path}/$(ls ${CRYPTOS_PATH}/${admin_key_path})"
-    cat $config | jq -r --arg private_key "$private_key" '.organizations.Org1MSP.adminPrivateKey.path = $private_key' > tmp && mv tmp $config
+    cat ${config}.base.json | jq -r --arg private_key "$private_key" '.organizations.Org1MSP.adminPrivateKey.path = $private_key' | \
+    jq -r --argjson TLS_ENABLED "$TLS_ENABLED" '.client.tlsEnable = $TLS_ENABLED' > ${config}.json
+
+    # considering tls enabled as default in base
+    if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
+        sed -i '' -e 's/grpcs/grpc/g' -e 's/https/http/g' ${config}.json
+    fi
 
     docker-compose -f ${EXPLORER_PATH}/docker-compose.yaml up --force-recreate -d || exit 1
 
@@ -426,6 +425,25 @@ __init_go_mod() {
     go mod vendor
 }
 
+__replace_config_capabilities() {
+    configtx=${CONFIG_PATH}/configtx
+    if [[ "${FABRIC_VERSION}" =~ 2.* ]]; then
+        cat ${configtx}.base.yaml | yq w - 'Capabilities.Channel.V2_0' true | \
+        yq w - 'Capabilities.Channel.V1_4_3' false | \
+        yq w - 'Capabilities.Orderer.V2_0' true | \
+        yq w - 'Capabilities.Orderer.V1_4_2' false | \
+        yq w - 'Capabilities.Application.V2_0' true | \
+        yq w - 'Capabilities.Application.V1_4_2' false > ${configtx}.yaml
+    else
+        cat ${configtx}.base.yaml |  yq w - 'Capabilities.Channel.V2_0' false | \
+        yq w - 'Capabilities.Channel.V1_4_3' true | \
+        yq w - 'Capabilities.Orderer.V2_0' false | \
+        yq w - 'Capabilities.Orderer.V1_4_2' true | \
+        yq w - 'Capabilities.Application.V2_0' false | \
+        yq w - 'Capabilities.Application.V1_4_2' true > ${configtx}.yaml
+    fi
+}
+
 # generate genesis block
 # $1: base path
 # $2: config path
@@ -479,6 +497,7 @@ generate_genesis() {
         mkdir -p $channel_dir
     fi
 
+    __replace_config_capabilities
    
     # generate genesis block for orderer
     docker run --rm -v ${config_path}/configtx.yaml:/configtx.yaml \
@@ -571,6 +590,8 @@ generate_channeltx() {
 	if [ ! -d "$channel_dir" ]; then
         mkdir -p $channel_dir
     fi
+
+    __replace_config_capabilities
     
     # generate channel configuration transaction
     docker run --rm -v ${config_path}/configtx.yaml:/configtx.yaml \
@@ -587,7 +608,6 @@ generate_channeltx() {
         log "Failed to generate channel configuration transaction..." error
         exit 1
     fi
-    
 
 	# generate anchor peer transaction
 	docker run --rm -v ${config_path}/configtx.yaml:/configtx.yaml \
@@ -1686,22 +1706,18 @@ elif [ "$func" == "chaincode" ]; then
         if [ "$param" == "package" ]; then
             __check_deps deploy
             __check_docker_daemon
-            __set_tls
             lc_chaincode_package "$@"
         elif [ "$param" == "install" ]; then
             __check_deps deploy
             __check_docker_daemon
-            __set_tls
             lc_chaincode_install "$@"
         elif [ "$param" == "approve" ]; then
             __check_deps deploy
             __check_docker_daemon
-            __set_tls
             lc_chaincode_approve "$@"
         elif [ "$param" == "commit" ]; then
             __check_deps deploy
             __check_docker_daemon
-            __set_tls
             lc_chaincode_commit "$@"
         else
             help
@@ -1711,19 +1727,16 @@ elif [ "$func" == "chaincode" ]; then
         __check_fabric_version 1
         __check_deps deploy
         __check_docker_daemon
-        __set_tls
         chaincode_install "$@"
     elif [ "$param" == "instantiate" ]; then
         __check_fabric_version 1
         __check_deps deploy
         __check_docker_daemon
-        __set_tls
         chaincode_instantiate "$@"
     elif [ "$param" == "upgrade" ]; then
         __check_fabric_version 1
         __check_deps deploy
         __check_docker_daemon
-        __set_tls
         chaincode_upgrade "$@"
     elif [ "$param" == "test" ]; then
         chaincode_test "$@"
@@ -1733,19 +1746,16 @@ elif [ "$func" == "chaincode" ]; then
         __check_fabric_version 1
         __check_deps deploy
         __check_docker_daemon
-        __set_tls
         chaincode_pack "$@"
     elif [ "$param" == "zip" ]; then
         chaincode_zip "$@"
     elif [ "$param" == "query" ]; then
         __check_deps deploy
         __check_docker_daemon
-        __set_tls
         query "$@"
     elif [ "$param" == "invoke" ]; then
         __check_deps deploy
         __check_docker_daemon
-        __set_tls
         invoke "$@"
     else
         help
@@ -1787,7 +1797,6 @@ elif [ "$func" == "ca" ]; then
 elif [ "$func" == "channel" ]; then
     __check_deps deploy
     __check_docker_daemon
-    __set_tls
     param="$1"
     shift
     if [ "$param" == "create" ]; then

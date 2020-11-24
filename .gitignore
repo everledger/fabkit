@@ -20,3 +20,4 @@ binary_test
 go.sum
 *.pem
 explorer/connection-profile/first-network.json
+network/config/configtx.yaml
