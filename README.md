@@ -97,21 +97,44 @@ The following command will restart a network with the configuration of your last
 
 ## Upgrade chaincode
 
-Run the following commands in order to install and commit a newer version of an existing chaincode:
+### v1.x
+
+Run the following commands in order to install and instantiate a newer version of an existing chaincode:
 
 ```bash
-# run the install only if you are upgrading the chaincode binaries
-./run.sh chaincode install [chaincode_name] [chaincode_version] [chaincode_path] [sequence_nr] [org_no] [peer_no]
-./run.sh chaincode upgrade [chaincode_name] [chaincode_version] [channel_name] [sequence_nr] [org_no] [peer_no]
-
+./run.sh chaincode install [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no]
+./run.sh chaincode upgrade [chaincode_name] [chaincode_version] [channel_name] [org_no] [peer_no]
 # e.g.
-./run.sh chaincode install mychaincode 1.1 mychaincode 1 1 0
-./run.sh chaincode upgrade mychaincode 1.1 mychannel 1 1 0
+./run.sh chaincode install mychaincode 1.1 mychaincode 1 0
+./run.sh chaincode upgrade mychaincode 1.1 mychannel 1 0
+```
+
+Be sure the `chaincode_version` is unique and never used before (otherwise an error will be prompted).
+
+### v2.x
+
+Run the following in order to install, approve, commit and init a newer version of an existing chaincode by using the newest chaincode lifecycle commands:
+
+```bash
+./run.sh chaincode lifecycle package [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no]
+# run the install only if you are upgrading the chaincode binaries
+./run.sh chaincode lifecycle install [chaincode_name] [chaincode_version] [org_no] [peer_no]
+./run.sh chaincode lifecycle approve [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [sequence_no] [org_no] [peer_no]
+./run.sh chaincode lifecycle commit [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [sequence_no] [org_no] [peer_no]
+# or simply by
+./run.sh chaincode lifecycle upgrade [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [sequence_no] [org_no] [peer_no]
+# e.g.
+./run.sh chaincode lifecycle package mychaincode 1.1 mychaincode 1 0
+./run.sh chaincode lifecycle install mychaincode 1.1 1 0
+./run.sh chaincode lifecycle approve mychaincode 1.1 mychaincode mychannel 2 1 0
+./run.sh chaincode lifecycle commit mychaincode 1.1 mychaincode mychannel 2 1 0
+# or
+./run.sh chaincode lifecycle upgrade mychaincode 1.1 mychaincode mychannel 2 1 0
 ```
 
 >If you are upgrading the chaincode binaries, you need to update the chaincode version and the package ID in the chaincode definition. You can also update your chaincode endorsement policy without having to repackage your chaincode binaries. Channel members simply need to approve a definition with the new policy. The new definition needs to increment the sequence variable in the definition by one.
 
-Be sure the `chaincode_version` is unique and never used before (otherwise an error will be prompted) and the `sequence_nr` as an incremental value.
+Be sure the `chaincode_version` is unique and never used before (otherwise an error will be prompted) and the `sequence_nr` has an incremental value.
 
 More details here: [Chaincode Lifecyle - Upgrade](https://hyperledger-fabric.readthedocs.io/en/release-2.0/chaincode4noah.html#upgrade-a-chaincode)
 
