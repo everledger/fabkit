@@ -14,9 +14,9 @@ The codebase of this repository is meant to serve the following scopes:
 
 ## Prerequisites
 
-- [Go](https://golang.org/dl/)
-- [Docker](https://www.docker.com/get-started)
-- [Docker-compose](https://www.docker.com/get-started)
+- [Go](https://golang.org/dl/) [>= 1.12]
+- [Docker](https://www.docker.com/get-started) [>= 18.05]
+- [Docker-compose](https://www.docker.com/get-started) [>= 1.25]
 
 ## Install
 
@@ -113,28 +113,36 @@ Be sure the `chaincode_version` is unique and never used before (otherwise an er
 
 ### v2.x
 
-Run the following in order to install, approve, commit and init a newer version of an existing chaincode by using the newest chaincode lifecycle commands:
+The new chaincode lifecycle flow implemented in v2.x decentralizes much more the way in which a chaincode gets deployed into the network, enforcing security and empowering governance. However, this choice comes with an increase in complexity at the full expense of user experience.
+
+Fabkit offers a simplified all-in-one command to perform this process. 
+
+The commands below will install, approve, commit and initialize a newer version of an existing chaincode.
+
+```bash
+./run.sh chaincode lifecycle upgrade [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [sequence_no] [org_no] [peer_no]
+# e.g. considering previous chaincode_version was 1.0 and sequence_no was 1 (using default peer)
+./run.sh chaincode lifecycle upgrade mychaincode 1.1 mychaincode mychannel 2 1 0
+```
+
+However, if you want more control over the single command execution, you can reproduce the exact same results as above by splitting that into the following steps:
 
 ```bash
 ./run.sh chaincode lifecycle package [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no]
-# run the install only if you are upgrading the chaincode binaries
+# tip: run the install only if you are upgrading the chaincode binaries, otherwise no new container will be built (but also no errors will be thrown)
 ./run.sh chaincode lifecycle install [chaincode_name] [chaincode_version] [org_no] [peer_no]
 ./run.sh chaincode lifecycle approve [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [sequence_no] [org_no] [peer_no]
 ./run.sh chaincode lifecycle commit [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [sequence_no] [org_no] [peer_no]
-# or simply by
-./run.sh chaincode lifecycle upgrade [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [sequence_no] [org_no] [peer_no]
-# e.g.
+# e.g. considering previous chaincode_version was 1.0 and sequence_no was 1 (using default peer)
 ./run.sh chaincode lifecycle package mychaincode 1.1 mychaincode 1 0
 ./run.sh chaincode lifecycle install mychaincode 1.1 1 0
 ./run.sh chaincode lifecycle approve mychaincode 1.1 mychaincode mychannel 2 1 0
 ./run.sh chaincode lifecycle commit mychaincode 1.1 mychaincode mychannel 2 1 0
-# or
-./run.sh chaincode lifecycle upgrade mychaincode 1.1 mychaincode mychannel 2 1 0
 ```
 
 >If you are upgrading the chaincode binaries, you need to update the chaincode version and the package ID in the chaincode definition. You can also update your chaincode endorsement policy without having to repackage your chaincode binaries. Channel members simply need to approve a definition with the new policy. The new definition needs to increment the sequence variable in the definition by one.
 
-Be sure the `chaincode_version` is unique and never used before (otherwise an error will be prompted) and the `sequence_nr` has an incremental value.
+Be sure the `chaincode_version` is unique and never used before (otherwise an error will be prompted) and the `sequence_no` has an incremental value.
 
 More details here: [Chaincode Lifecyle - Upgrade](https://hyperledger-fabric.readthedocs.io/en/release-2.0/chaincode4noah.html#upgrade-a-chaincode)
 
@@ -419,6 +427,32 @@ At the time of writing, IBM provides two version of their BaaS. In both cases, w
 
 If we want to use a specific user certificate and key, we need first to download the connection profile and cryptos from the platform dashboard and then perform the steps listed in this section in order to retrieve those credentials.
 
+## Benchmarks
+
+The repository provides also a simple implementation of a bulk load function in order to benchmark the general speed of the network in terms of tps (transactions-per-second).
+
+```bash
+./run.sh benchmark load [jobs] [entries]
+
+# e.g.
+./run.sh benchmark load 5 1000
+```
+
+The example above will do a bulk load of 1000 entries times 5 parallel jobs, for a total of 5000 entries. At the completion of all the jobs it will be prompted on screen the elapsed time of the total task.
+
+**Note: Maintain the number of jobs not superior to your CPU cores in order to obtain the best results. This implementation does not provides a complete parallelization.**
+
+To achieve the optimal result it is recommended to install [Gnu Parallel](https://www.gnu.org/software/parallel/) and use as it follows:
+
+```bash
+time (parallel ./benchmarks.sh {} ::: [entries])
+
+# e.g.
+time (parallel ./benchmarks.sh {} ::: 20)
+# 8.613 total against 29.893 total
+# ~4 times lower than running jobs with "&"
+```
+
 ### Troubleshooting
 
 #### Issue scenario
@@ -525,113 +559,3 @@ Error: could not assemble transaction, err proposal response was not successful,
 #### Possible solutions
 
 - Uncheck “Use gRPC FUSE for file sharing” option in the Docker "Preferences > Experimental Features" and restart your daemon
-
-## Cleanup the environment
-
-### Tear blockchain network down
-
-It will stop and remove all the blockchain network containers including the `dev-peer*` tagged chaincode ones.
-
-```bash
-./run.sh network stop
-```
-
-## Cleanup the environment
-
-### Tear blockchain network down
-
-It will stop and remove all the blockchain network containers including the `dev-peer*` tagged chaincode ones.
-
-```bash
-./run.sh network stop
-```
-
-## Benchmarks
-
-The repository provides also a simple implementation of a bulk load function in order to benchmark the general speed of the network in terms of tps (transactions-per-second).
-
-```bash
-./run.sh benchmark load [jobs] [entries]
-
-# e.g.
-./run.sh benchmark load 5 1000
-```
-
-The example above will do a bulk load of 1000 entries times 5 parallel jobs, for a total of 5000 entries. At the completion of all the jobs it will be prompted on screen the elapsed time of the total task.
-
-**Note: Maintain the number of jobs not superior to your CPU cores in order to obtain the best results. This implementation does not provides a complete parallelization.**
-
-To achieve the optimal result it is recommended to install [Gnu Parallel](https://www.gnu.org/software/parallel/) and use as it follows:
-
-```bash
-time (parallel ./benchmarks.sh {} ::: [entries])
-
-# e.g.
-time (parallel ./benchmarks.sh {} ::: 20)
-# 8.613 total against 29.893 total
-# ~4 times lower than running jobs with "&"
-```
-
-## Forks
-
-There are a few changes to make to your new forked repository in order to make it work properly.
-
-- Replace all the occurrences of `bitbucket.org/everledger/fabric-chaincode-boilerplate` with your current go package
-
-- Create a new directory under the `./chaincode` path. It has to match with the name of your final binary install.
-
-- Run `./run.sh dep install [chaincode_path]` from your main project directory
-
-In `.env`:
-
-- Replace `CHAINCODE_NAME` with the correct directory name path of the chaincode you want to install
-
-```bash
-# e.g.
-CHAINCODE_NAME=wine
-```
-
-In `bitbucket-pipelines.yml`
-
-- Replace `mychaincode` with the chaincode name you have in `.env` at the right of `CHAINCODE_NAME`
-
-- If you want, you can add a link to this repository in your `README`, like:
-
-```markdown
-Forked from [fabric-chaincode-boilerplate](https://bitbucket.org/everledger/fabric-chaincode-boilerplate
-```
-
-Et voila'!
-
-## Sync up
-
-In order to sync your repository with the new changes coming from the `main` one, you can do the following:
-
-- Add the `main` repository to the list of your remotes with `git remote add main git@bitbucket.org:everledger/fabric-chaincode-boilerplate.git`
-
-- Check the repository has been added with `git remote -v`
-
-- Pull all the upcoming changes from `main` with `git pull main`
-
-- Merge (or rebase) these new changes into your current branch
-
-```bash
-git merge main/master
-```
-
-Merge will result with **a single commit**.
-
-or
-
-```bash
-git rebase main/master
-# after fixing the conflicts, keep on using the next 2 commands to register the changes and continue with the next commit to attach
-git add .
-git rebase --continue
-# use the following only when there are no changes to apply
-git rebase --skip
-# use the following only if you want to abort the rebasing
-git rebase --abort
-```
-
-Rebase will result with **the list of all the previous commits** applied.
