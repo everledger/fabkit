@@ -379,7 +379,7 @@ start_explorer() {
 
     # considering tls enabled as default in base
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
-        sed -i '' -e 's/grpcs/grpc/g' -e 's/https/http/g' ${config}.json
+        sed -i'.bak' -e 's/grpcs/grpc/g' -e 's/https/http/g' ${config}.json && rm ${config}.json.bak
     fi
 
     docker-compose -f ${EXPLORER_PATH}/docker-compose.yaml up --force-recreate -d || exit 1
