@@ -1319,7 +1319,7 @@ lc_chaincode_commit() {
     if [ -z "$PACKAGE_ID" ]; then
 		log "Package ID is not defined" warning
 		log "Querying chaincode package ID" info
-    # TODO: make this command to work with multiple installed chaincodes
+
         get_chaincode_package_id $chaincode_name $chaincode_version $org $peer
         if [ -z "$PACKAGE_ID" ]; then
             log "Chaincode not installed on peer" error
