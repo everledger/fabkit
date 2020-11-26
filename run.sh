@@ -11,14 +11,14 @@ export WORKSPACE=$(basename ${ROOT})
 # TODO: Set a default chaincode path and grab the name of the package instead
 export CHAINCODE_REMOTE_PATH=bitbucket.org/everledger/${WORKSPACE}/chaincode
 
-readonly one_org="OneOrgOrdererGenesis"
-readonly two_orgs="TwoOrgsOrdererGenesis"
-readonly three_orgs="ThreeOrgsOrdererGenesis"
-readonly raft_one_org="OneOrgOrdererEtcdRaft"
+readonly ONE_ORG="OneOrgOrdererGenesis"
+readonly TWO_ORGS="TwoOrgsOrdererGenesis"
+readonly THREE_ORGS="ThreeOrgsOrdererGenesis"
+readonly RAFT_ONE_ORG="OneOrgOrdererEtcdRaft"
 
 # DO NOT REMOVE
 # docker exec command
-peer_exec=""
+PEER_EXEC=""
 
 help() {
     local help="
@@ -36,7 +36,7 @@ help() {
         ca revoke                                                                                       : revoke a user's key/certificate providing a reason
             
         network install                                                                                 : install all the dependencies and docker images
-        network start [--org=<org_no>] (default = 1)                                                    : start the blockchain network and initialize it
+        network start                                                                                   : start the blockchain network and initialize it
         network restart                                                                                 : restart a previously running the blockchain network
         network stop                                                                                    : stop the blockchain network and remove all the docker containers
             
@@ -77,6 +77,7 @@ help() {
         utils tojson                                                                                    : transform a string format with escaped characters to a valid JSON format
         utils tostring                                                                                  : transform a valid JSON format to a string with escaped characters
         "
+    
     log "$help" info
 }
 
@@ -86,6 +87,50 @@ __yq() {
 
 __jq() {
     docker run --rm -i -v "${PWD}":/workdir ${JQ_DOCKER_IMAGE} "$@"
+}
+
+__set_params() {
+    while [[ $# -gt 0 ]]; do
+        param="${1}"
+
+        case $param in
+        -c|--ci)
+            CI=true
+            shift
+            ;;
+        -d|--debug)
+            DEBUG=true
+            shift
+            ;;
+        -r|--reset)
+            RESET=true
+            shift
+            ;;
+        -o|--orgs)
+            ORGS="${2}"
+            shift 2
+            ;;
+        -v|--version)
+            FABRIC_VERSION="${2}"
+            shift 2
+            ;;
+        *) 
+            log "${1} paramater not recognized. Please run the help." error
+            exit 1
+            ;;
+        esac
+    done
+}
+
+__log_setup() {
+    log "Setup" info
+    echo
+    log "FABRIC_VERSION=${FABRIC_VERSION}" info
+    log "ORGS=${ORGS:-1}" info
+    log "CI=${CI:-false}" info
+    log "DEBUG=${DEBUG:-false}" info
+    log "RESET=${RESET:-false}" info
+    echo
 }
 
 __check_fabric_version() {
@@ -118,15 +163,18 @@ log() {
     fi
 
     local message="${1}"
-    local colour=$(echo ${2} | awk '{print tolower($0)}')
+    local level=$(echo ${2} | awk '{print tolower($0)}')
     local default_colour="\033[0m"
 
-    case $colour in 
+    case $level in 
+        header ) colour_code="\033[1;35m" ;;
         error ) colour_code="\033[1;31m" ;;
         success ) colour_code="\033[1;32m" ;;
         warning ) colour_code="\033[1;33m" ;;
         info ) colour_code="\033[1;34m" ;;
-        debug ) colour_code="\033[1;36m" ;;
+        debug ) 
+            if [ -z "${DEBUG}" ] || [ "${DEBUG}" == "false" ]; then return; fi
+            colour_code="\033[1;36m" ;;
         * ) colour_code=${default_colour} ;;
     esac
 
@@ -185,8 +233,8 @@ start_network() {
     # Note: this trick may allow the network to work also in strict-security platform
     rm -rf ./docker.sock 2>/dev/null && ln -sf /var/run ./docker.sock
 
-    if [ ! "${1}" == "-ci" ]; then
-        if [ -d "$DATA_PATH" ]; then
+    if [ -z "${CI}" ] || [ "${CI}" == "false" ]; then
+        if [ -d "$DATA_PATH" ] && [ "${RESET}" != "true" ]; then
             log "Found data directory: ${DATA_PATH}" warning
             read -p "Do you wish to restart the network and reuse this data? [yes/no=default] " yn
             case $yn in
@@ -211,27 +259,16 @@ start_network() {
 
     local start_command="docker-compose -f ${ROOT}/docker-compose.yaml up -d || exit 1;"
 
-
-    for arg in "$@"
-    do
-        case $arg in
-            --org=*)
-            ORGS="${arg#*=}"
-            shift
-            ;;
-        esac
-    done
-
     # TODO: create raft profiles for different network topologies (multi-org support)
-    if [ "${CONFIGTX_PROFILE_NETWORK}" == "${raft_one_org}" ]; then
-        CONFIGTX_PROFILE_NETWORK=${raft_one_org}
+    if [ "${CONFIGTX_PROFILE_NETWORK}" == "${RAFT_ONE_ORG}" ]; then
+        CONFIGTX_PROFILE_NETWORK=${RAFT_ONE_ORG}
         start_command+="docker-compose -f ${ROOT}/docker-compose.etcdraft.yaml up -d || exit 1;"
-    elif [ "${ORGS}" == "2" ] || [ "${CONFIGTX_PROFILE_NETWORK}" == "${two_orgs}" ]; then
-        CONFIGTX_PROFILE_NETWORK=${two_orgs}
+    elif [ "${ORGS}" == "2" ] || [ "${CONFIGTX_PROFILE_NETWORK}" == "${TWO_ORGS}" ]; then
+        CONFIGTX_PROFILE_NETWORK=${TWO_ORGS}
         CONFIGTX_PROFILE_CHANNEL=TwoOrgsChannel
         start_command+="docker-compose -f ${ROOT}/docker-compose.org2.yaml up -d || exit 1;"
-    elif [ "${ORGS}" == "3" ] || [ "${CONFIGTX_PROFILE_NETWORK}" == "${three_orgs}" ]; then
-        CONFIGTX_PROFILE_NETWORK=${three_orgs}
+    elif [ "${ORGS}" == "3" ] || [ "${CONFIGTX_PROFILE_NETWORK}" == "${THREE_ORGS}" ]; then
+        CONFIGTX_PROFILE_NETWORK=${THREE_ORGS}
         CONFIGTX_PROFILE_CHANNEL=ThreeOrgsChannel
         start_command+="docker-compose -f ${ROOT}/docker-compose.org2.yaml up -d || exit 1;"
         start_command+="docker-compose -f ${ROOT}/docker-compose.org3.yaml up -d || exit 1;"
@@ -281,6 +318,7 @@ stop_network() {
     log "=============" info
 	log "Network: stop" info
     log "=============" info
+    echo
 
     docker-compose -f ${ROOT}/docker-compose.yaml down || exit 1
     if [ "$(find ${DATA_PATH} -type d -name 'peer*org2*' -maxdepth 1 2>/dev/null)" ]; then
@@ -299,6 +337,11 @@ stop_network() {
     docker rmi -f $(docker images -qf "dangling=true") 2>/dev/null
     docker rmi -f $(docker images | awk '($1 ~ /^<none>|dev-/) {print $3}') 2>/dev/null
     docker system prune -f 2>/dev/null
+
+    if [ "${RESET}" == "true" ]; then
+        __delete_path $DATA_PATH
+        return 0
+    fi
 
     if [ -d "${DATA_PATH}" ]; then
         log "!!!!! ATTENTION !!!!!" error
@@ -351,7 +394,6 @@ initialize_network() {
         
         for org in $(seq 1 ${ORGS})
         do 
-            
             lc_chaincode_install $CHAINCODE_NAME $CHAINCODE_VERSION $org 0
             lc_chaincode_approve $CHAINCODE_NAME $CHAINCODE_VERSION $CHAINCODE_NAME $CHANNEL_NAME 1 $org 0 
         done
@@ -499,6 +541,10 @@ generate_genesis() {
     local cryptos_path="$3"
     local network_profile="$4"
 
+    if [ "${RESET}" == "true" ]; then
+        __delete_path ${channel_dir}
+    fi
+
     if [ -d "$channel_dir" ]; then
         log "Channel directory ${channel_dir} already exists" warning
 		read -p "Do you wish to re-generate channel config? [yes/no=default] " yn
@@ -507,7 +553,6 @@ generate_genesis() {
 			* ) return 0
     	esac
         __delete_path $channel_dir
-        mkdir -p $channel_dir
     fi
 
     log "========================" info
@@ -589,6 +634,10 @@ generate_channeltx() {
     local channel_profile="$6"
     local org_msp="$7"
 
+    if [ "${RESET}" == "true" ]; then
+        __delete_path ${channel_dir}
+    fi
+
     if [ -d "$channel_dir" ]; then
         log "Channel directory ${channel_dir} already exists" warning
 		read -p "Do you wish to re-generate channel config? [yes/no=default] " yn
@@ -597,8 +646,7 @@ generate_channeltx() {
 			* ) return 0
     	esac
         __delete_path $channel_dir
-        mkdir -p $channel_dir
-    fi 
+    fi
 
     log "=========================" info
     log "Generating channel config" info
@@ -672,6 +720,11 @@ generate_cryptos() {
     log "Config path: $config_path" debug
     log "Cryptos path: $cryptos_path" debug
 
+    if [ "${RESET}" == "true" ]; then
+        __delete_path ${cryptos_path}
+        __delete_path ${CRYPTOS_SHARED_PATH}
+    fi
+
     if [ -d "${cryptos_path}" ]; then
         log "crypto-config already exists" warning
 		read -p "Do you wish to remove crypto-config and generate new ones? [yes/no=default] " yn
@@ -729,7 +782,7 @@ set_certs ()  {
 }
 
 set_peer_exec() {
-    peer_exec="docker exec -e CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
+    PEER_EXEC="docker exec -e CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
             -e CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID \
             -e CORE_PEER_TLS_ENABLED=$TLS_ENABLED \
             -e CORE_PEER_TLS_CERT_FILE=$CORE_PEER_TLS_CERT_FILE \
@@ -737,6 +790,17 @@ set_peer_exec() {
             -e CORE_PEER_TLS_ROOTCERT_FILE=$CORE_PEER_TLS_ROOTCERT_FILE \
             -e CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH \
             $CHAINCODE_UTIL_CONTAINER "
+}
+
+__exec_command() {
+    echo
+    log "Excecuting command: " debug
+    echo
+    message=${1%"|| exit 1"}
+    log "$message" debug
+    echo
+
+    eval ${1}
 }
 
 create_channel() {
@@ -760,14 +824,12 @@ create_channel() {
 	log "Creating channel ${channel_name} using configuration file ${CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}_tx.pb" info
     
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
-        peer_exec+="peer channel create -o $ORDERER_ADDRESS -c ${channel_name} -f $CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}_tx.pb --outputBlock $CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}.block || exit 1"
+        PEER_EXEC+="peer channel create -o $ORDERER_ADDRESS -c ${channel_name} -f $CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}_tx.pb --outputBlock $CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}.block || exit 1"
     else
-        peer_exec+="peer channel create -o $ORDERER_ADDRESS -c ${channel_name} -f $CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}_tx.pb --outputBlock $CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}.block --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
+        PEER_EXEC+="peer channel create -o $ORDERER_ADDRESS -c ${channel_name} -f $CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}_tx.pb --outputBlock $CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}.block --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
     fi
          
-    set -x
-    eval ${peer_exec}
-    set +x
+    __exec_command "${PEER_EXEC}"
 }
 
 join_channel() {
@@ -791,14 +853,12 @@ join_channel() {
 	log "Joining channel ${channel_name}" info
     
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
-        peer_exec+="peer channel join -b ${CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}.block || exit 1"
+        PEER_EXEC+="peer channel join -b ${CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}.block || exit 1"
     else
-        peer_exec+="peer channel join -b ${CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}.block --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
+        PEER_EXEC+="peer channel join -b ${CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}.block --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
     fi
 
-    set -x
-    eval ${peer_exec}
-    set +x
+    __exec_command "${PEER_EXEC}"
 }
 
 update_channel() {
@@ -820,17 +880,15 @@ update_channel() {
     set_certs $org $peer
     set_peer_exec
 
-	log "Updating anchors peers ${channel_name} using configuration file ${CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors.tx" info
+	log "Updating anchors peers on ${channel_name} using configuration file ${CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors.tx" info
     
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
-        peer_exec+="peer channel update -o $ORDERER_ADDRESS -c ${channel_name} -f ${CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors_tx.pb || exit 1"
+        PEER_EXEC+="peer channel update -o $ORDERER_ADDRESS -c ${channel_name} -f ${CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors_tx.pb || exit 1"
     else
-        peer_exec+="peer channel update -o $ORDERER_ADDRESS -c ${channel_name} -f ${CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors_tx.pb --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
+        PEER_EXEC+="peer channel update -o $ORDERER_ADDRESS -c ${channel_name} -f ${CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors_tx.pb --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
     fi
 
-    set -x
-    eval ${peer_exec}
-    set +x
+    __exec_command "${PEER_EXEC}"
 }
 
 chaincode_test() {
@@ -928,11 +986,9 @@ chaincode_install() {
 
     # fabric-samples does not use tls for installing (and it won't work with), however this flag is listed in the install command on the official fabric documentation 
     # https://hyperledger-fabric.readthedocs.io/en/release-1.4/commands/peerchaincode.html#peer-chaincode-install
-    peer_exec+="peer chaincode install -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -p ${install_path} || exit 1"
+    PEER_EXEC+="peer chaincode install -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -p ${install_path} || exit 1"
 
-    set -x
-    eval ${peer_exec}
-    set +x
+    __exec_command "${PEER_EXEC}"
 }
 
 chaincode_instantiate() {
@@ -959,14 +1015,12 @@ chaincode_instantiate() {
     log "Instantiating chaincode $chaincode_name version $chaincode_version into channel ${channel_name}" info
     
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
-        peer_exec+="peer chaincode instantiate -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -C ${channel_name} -c '{\"Args\":[]}' \"$@\" || exit 1"
+        PEER_EXEC+="peer chaincode instantiate -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -C ${channel_name} -c '{\"Args\":[]}' \"$@\" || exit 1"
     else
-        peer_exec+="peer chaincode instantiate -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -C ${channel_name} -c '{\"Args\":[]}' \"$@\" --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
+        PEER_EXEC+="peer chaincode instantiate -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -C ${channel_name} -c '{\"Args\":[]}' \"$@\" --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
     fi
 
-    set -x
-    eval ${peer_exec}
-    set +x
+    __exec_command "${PEER_EXEC}"
 }
 
 # TODO: to fix after upgrade to v2.0 (package id)
@@ -994,14 +1048,12 @@ chaincode_upgrade() {
     log "Upgrading chaincode $chaincode_name to version $chaincode_version into channel ${channel_name}" info
     
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
-        peer_exec+="peer chaincode upgrade -n $chaincode_name -v $chaincode_version -C ${channel_name} -c '{\"Args\":[]}' \"$@\" || exit 1"
+        PEER_EXEC+="peer chaincode upgrade -n $chaincode_name -v $chaincode_version -C ${channel_name} -c '{\"Args\":[]}' \"$@\" || exit 1"
     else
-        peer_exec+="peer chaincode upgrade -n $chaincode_name -v $chaincode_version -C ${channel_name} -c '{\"Args\":[]}' \"$@\" --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
+        PEER_EXEC+="peer chaincode upgrade -n $chaincode_name -v $chaincode_version -C ${channel_name} -c '{\"Args\":[]}' \"$@\" --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
     fi
 
-    set -x
-    eval ${peer_exec}
-    set +x
+    __exec_command "${PEER_EXEC}"
 }
 
 chaincode_zip() {
@@ -1067,14 +1119,12 @@ chaincode_pack() {
     log "Packing chaincode $chaincode_name version $chaincode_version from path ${install_path}" info
     
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
-        peer_exec+="peer chaincode package dist/${chaincode_name}_${chaincode_version}_${timestamp}.cc -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -p ${install_path} -s -S || exit 1"
+        PEER_EXEC+="peer chaincode package dist/${chaincode_name}_${chaincode_version}_${timestamp}.cc -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -p ${install_path} -s -S || exit 1"
     else
-        peer_exec+="peer chaincode package dist/${chaincode_name}_${chaincode_version}_${timestamp}.cc -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -p ${install_path} -s -S --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
+        PEER_EXEC+="peer chaincode package dist/${chaincode_name}_${chaincode_version}_${timestamp}.cc -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -p ${install_path} -s -S --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
     fi
 
-    set -x
-    eval ${peer_exec}
-    set +x
+    __exec_command "${PEER_EXEC}"
 
     log "Chaincode package created in: ${DIST_PATH}/${chaincode_name}_${chaincode_version}_${timestamp}.cc" success
 }
@@ -1103,14 +1153,12 @@ invoke() {
     log "Invoking chaincode $chaincode_name on channel ${channel_name} as org${org} and peer${peer} with the following params $request" info
     
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
-        peer_exec+="peer chaincode invoke -o $ORDERER_ADDRESS -C ${channel_name} -n $chaincode_name -c '$request' '$@' || exit 1"
+        PEER_EXEC+="peer chaincode invoke -o $ORDERER_ADDRESS -C ${channel_name} -n $chaincode_name -c '$request' '$@' || exit 1"
     else
-        peer_exec+="peer chaincode invoke -o $ORDERER_ADDRESS -C ${channel_name} -n $chaincode_name -c '$request' '$@' --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
+        PEER_EXEC+="peer chaincode invoke -o $ORDERER_ADDRESS -C ${channel_name} -n $chaincode_name -c '$request' '$@' --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
     fi
 
-    set -x
-    eval ${peer_exec}
-    set +x
+    __exec_command "${PEER_EXEC}"
 }
 
 query() {
@@ -1137,17 +1185,15 @@ query() {
     log "Querying chaincode $chaincode_name on channel ${channel_name} as org${org} and peer${peer} with the following params $request $@" info
     
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
-        peer_exec+="peer chaincode query -o $ORDERER_ADDRESS -C ${channel_name} -n $chaincode_name -c '$request' '$@' || exit 1"
+        PEER_EXEC+="peer chaincode query -o $ORDERER_ADDRESS -C ${channel_name} -n $chaincode_name -c '$request' '$@' || exit 1"
     else
-        peer_exec+="peer chaincode query -o $ORDERER_ADDRESS -C ${channel_name} -n $chaincode_name -c '$request' '$@' --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
+        PEER_EXEC+="peer chaincode query -o $ORDERER_ADDRESS -C ${channel_name} -n $chaincode_name -c '$request' '$@' --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
     fi
 
-    set -x
-    eval ${peer_exec}
-    set +x
+    __exec_command "${PEER_EXEC}"
 }
 
-get_chaincode_package_id(){
+lc_query_package_id(){
     local chaincode_name="$1"
 	local chaincode_version="$2"
     local org="$3"
@@ -1158,19 +1204,17 @@ get_chaincode_package_id(){
     set_peer_exec
 
     local chaincode_label="\"${chaincode_name}_${chaincode_version}\""
-    echo $chaincode_label
 
+    log "Chaincode label: $chaincode_label" debug
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
-        peer_exec+="peer lifecycle chaincode queryinstalled --output json | jq -r '.installed_chaincodes[] | select(.label == ${chaincode_label} ) ' | jq -r '.package_id' || exit 1"
+        PEER_EXEC+="peer lifecycle chaincode queryinstalled --output json | jq -r '.installed_chaincodes[] | select(.label == ${chaincode_label} ) ' | jq -r '.package_id' || exit 1"
     else
-        peer_exec+="peer lifecycle chaincode queryinstalled --tls $TLS_ENABLED --cafile $ORDERER_CA --output json | jq -r '.installed_chaincodes[] | select(.label == ${chaincode_label} ) ' | jq -r '.package_id' || exit 1"
+        PEER_EXEC+="peer lifecycle chaincode queryinstalled --tls $TLS_ENABLED --cafile $ORDERER_CA --output json | jq -r '.installed_chaincodes[] | select(.label == ${chaincode_label} ) ' | jq -r '.package_id' || exit 1"
     fi
 
-    set -x
-    export PACKAGE_ID=$(eval ${peer_exec})
-    set +x
+    export PACKAGE_ID=$(eval ${PEER_EXEC})
 
-    log "Package ID: $PACKAGE_ID" debug
+    log "Package ID: $PACKAGE_ID" info
 }
 
 lc_chaincode_package() {
@@ -1180,7 +1224,7 @@ lc_chaincode_package() {
 	fi
 
     log "============================" info
-    log "Chaincode Lyfecycle: package" info
+    log "Chaincode Lifecycle: package" info
     log "============================" info
     echo
 
@@ -1209,11 +1253,9 @@ lc_chaincode_package() {
     log "Packaging chaincode $chaincode_name version $chaincode_version from path $chaincode_path" info
     # TODO: explore issue which runs into deps error every so often
     set_peer_exec
-    peer_exec+="peer lifecycle chaincode package ${chaincode_name}_${chaincode_version}.tar.gz --path ${install_path} --label ${chaincode_name}_${chaincode_version} --lang ${cc_lang} || exit 1"
+    PEER_EXEC+="peer lifecycle chaincode package ${chaincode_name}_${chaincode_version}.tar.gz --path ${install_path} --label ${chaincode_name}_${chaincode_version} --lang ${cc_lang} || exit 1"
 
-    set -x
-    eval ${peer_exec}
-    set +x
+    __exec_command "${PEER_EXEC}"
 }
 
 lc_chaincode_install() {
@@ -1223,7 +1265,7 @@ lc_chaincode_install() {
 	fi
 
     log "============================" info
-    log "Chaincode Lyfecycle: install" info
+    log "Chaincode Lifecycle: install" info
     log "============================" info
     echo
 
@@ -1241,14 +1283,12 @@ lc_chaincode_install() {
     
     set_peer_exec
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
-        peer_exec+="peer lifecycle chaincode install ${chaincode_name}_${chaincode_version}.tar.gz || exit 1"
+        PEER_EXEC+="peer lifecycle chaincode install ${chaincode_name}_${chaincode_version}.tar.gz || exit 1"
     else
-        peer_exec+="peer lifecycle chaincode install ${chaincode_name}_${chaincode_version}.tar.gz --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
+        PEER_EXEC+="peer lifecycle chaincode install ${chaincode_name}_${chaincode_version}.tar.gz --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
     fi
 
-    set -x
-    eval ${peer_exec}
-    set +x
+    __exec_command "${PEER_EXEC}"
 }
 
 lc_chaincode_approve() {
@@ -1258,7 +1298,7 @@ lc_chaincode_approve() {
 	fi
 
     log "============================" info
-    log "Chaincode Lyfecycle: approve" info
+    log "Chaincode Lifecycle: approve" info
     log "============================" info
     echo
 
@@ -1276,7 +1316,7 @@ lc_chaincode_approve() {
     __init_go_mod install ${chaincode_name}
 
     log "Querying chaincode package ID" info
-    get_chaincode_package_id $chaincode_name $chaincode_version $org $peer
+    lc_query_package_id $chaincode_name $chaincode_version $org $peer
     if [ -z "$PACKAGE_ID" ]; then
         log "Package ID is not defined" warning
         return 
@@ -1286,14 +1326,12 @@ lc_chaincode_approve() {
     # TODO: policy to be passed as input argument
     set_peer_exec
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
-        peer_exec+="peer lifecycle chaincode approveformyorg --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --package-id $PACKAGE_ID --sequence $sequence_no --waitForEvent --signature-policy \"OR('Org1MSP.member','Org2MSP.member','Org3MSP.member')\" || exit 1"
+        PEER_EXEC+="peer lifecycle chaincode approveformyorg --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --package-id $PACKAGE_ID --sequence $sequence_no --waitForEvent --signature-policy \"OR('Org1MSP.member','Org2MSP.member','Org3MSP.member')\" || exit 1"
     else
-        peer_exec+="peer lifecycle chaincode approveformyorg --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --package-id $PACKAGE_ID --sequence $sequence_no --waitForEvent --signature-policy \"OR('Org1MSP.member','Org2MSP.member','Org3MSP.member')\" --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
+        PEER_EXEC+="peer lifecycle chaincode approveformyorg --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --package-id $PACKAGE_ID --sequence $sequence_no --waitForEvent --signature-policy \"OR('Org1MSP.member','Org2MSP.member','Org3MSP.member')\" --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
     fi
 
-    set -x
-    eval ${peer_exec}
-    set +x
+    __exec_command "${PEER_EXEC}"
 }
 
 lc_chaincode_commit() {
@@ -1303,7 +1341,7 @@ lc_chaincode_commit() {
 	fi
 
     log "===========================" info
-    log "Chaincode Lyfecycle: commit" info
+    log "Chaincode Lifecycle: commit" info
     log "===========================" info
     echo
     
@@ -1318,9 +1356,10 @@ lc_chaincode_commit() {
 
     if [ -z "$PACKAGE_ID" ]; then
 		log "Package ID is not defined" warning
-		log "Querying chaincode package ID" info
 
-        get_chaincode_package_id $chaincode_name $chaincode_version $org $peer
+		log "Querying chaincode package ID" info
+        lc_query_package_id $chaincode_name $chaincode_version $org $peer
+
         if [ -z "$PACKAGE_ID" ]; then
             log "Chaincode not installed on peer" error
         fi
@@ -1331,58 +1370,50 @@ lc_chaincode_commit() {
     log "Check whether the chaincode definition is ready to be committed" info
     set_peer_exec
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
-        peer_exec+="peer lifecycle chaincode checkcommitreadiness --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --sequence $sequence_no --output json --signature-policy \"OR('Org1MSP.member','Org2MSP.member','Org3MSP.member')\" || exit 1"
+        PEER_EXEC+="peer lifecycle chaincode checkcommitreadiness --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --sequence $sequence_no --output json --signature-policy \"OR('Org1MSP.member','Org2MSP.member','Org3MSP.member')\" || exit 1"
     else
-        peer_exec+="peer lifecycle chaincode checkcommitreadiness --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --sequence $sequence_no --output json --signature-policy \"OR('Org1MSP.member','Org2MSP.member','Org3MSP.member')\" --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
+        PEER_EXEC+="peer lifecycle chaincode checkcommitreadiness --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --sequence $sequence_no --output json --signature-policy \"OR('Org1MSP.member','Org2MSP.member','Org3MSP.member')\" --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
     fi
-    set -x
-    eval ${peer_exec}
-    set +x
+    __exec_command "${PEER_EXEC}"
 
-    log "Commit the definition the channel" info
+    log "Commit the chaincode definition to channel" info
     set_peer_exec
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
-        peer_exec+="peer lifecycle chaincode commit --channelID $channel_name --name $chaincode_name --version $chaincode_version --sequence $sequence_no --init-required --peerAddresses $CORE_PEER_ADDRESS --signature-policy \"OR('Org1MSP.member','Org2MSP.member','Org3MSP.member')\" || exit 1"
+        PEER_EXEC+="peer lifecycle chaincode commit --channelID $channel_name --name $chaincode_name --version $chaincode_version --sequence $sequence_no --init-required --peerAddresses $CORE_PEER_ADDRESS --signature-policy \"OR('Org1MSP.member','Org2MSP.member','Org3MSP.member')\" || exit 1"
     else
-        peer_exec+="peer lifecycle chaincode commit --channelID $channel_name --name $chaincode_name --version $chaincode_version --sequence $sequence_no --init-required  --signature-policy \"OR('Org1MSP.member','Org2MSP.member','Org3MSP.member')\" --tls $TLS_ENABLED --cafile $ORDERER_CA "
+        PEER_EXEC+="peer lifecycle chaincode commit --channelID $channel_name --name $chaincode_name --version $chaincode_version --sequence $sequence_no --init-required  --signature-policy \"OR('Org1MSP.member','Org2MSP.member','Org3MSP.member')\" --tls $TLS_ENABLED --cafile $ORDERER_CA "
+        cmd=${PEER_EXEC}
         for o in $(seq 1 ${ORGS})
         do 
             #TODO: Create from endorsement policy and make endorsement policy dynamic
-            get_chaincode_package_id $chaincode_name $chaincode_version $o $peer
-            if ![ -z "$PACKAGE_ID" ]; then
+            lc_query_package_id $chaincode_name $chaincode_version $o $peer
+            if [ ! -z "$PACKAGE_ID" ]; then
                 set_certs $o $peer
-                peer_exec+="--peerAddresses $CORE_PEER_ADDRESS --tlsRootCertFiles $CORE_PEER_TLS_ROOTCERT_FILE "
+                cmd+="--peerAddresses $CORE_PEER_ADDRESS --tlsRootCertFiles $CORE_PEER_TLS_ROOTCERT_FILE "
             fi
         done
-        peer_exec+="|| exit 1"
+        cmd+="|| exit 1"
     fi
-    set -x
-    eval ${peer_exec}
-    set +x
+    __exec_command "${cmd}"
 
-    log "Query the chaincode definitions that have been committed to a channel" info
+    log "Query the chaincode definitions that have been committed to the channel" info
     set_certs $org $peer
     set_peer_exec
-
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
-        peer_exec+="peer lifecycle chaincode querycommitted --channelID $channel_name --name $chaincode_name --peerAddresses $CORE_PEER_ADDRESS --output json || exit 1"
+        PEER_EXEC+="peer lifecycle chaincode querycommitted --channelID $channel_name --name $chaincode_name --peerAddresses $CORE_PEER_ADDRESS --output json || exit 1"
     else
-        peer_exec+="peer lifecycle chaincode querycommitted --channelID $channel_name --name $chaincode_name --peerAddresses $CORE_PEER_ADDRESS --output json --tls $TLS_ENABLED --cafile $ORDERER_CA --tlsRootCertFiles $CORE_PEER_TLS_ROOTCERT_FILE || exit 1"
+        PEER_EXEC+="peer lifecycle chaincode querycommitted --channelID $channel_name --name $chaincode_name --peerAddresses $CORE_PEER_ADDRESS --output json --tls $TLS_ENABLED --cafile $ORDERER_CA --tlsRootCertFiles $CORE_PEER_TLS_ROOTCERT_FILE || exit 1"
     fi
-    set -x
-    eval ${peer_exec}
-    set +x
+    __exec_command "${PEER_EXEC}"
 
     log "Init the chaincode" info
     set_peer_exec
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
-        peer_exec+="peer chaincode invoke -o $ORDERER_ADDRESS --isInit --channelID $channel_name --name $chaincode_name --peerAddresses $CORE_PEER_ADDRESS --waitForEvent -c '{\"Args\":[]}' || exit 1"
+        PEER_EXEC+="peer chaincode invoke -o $ORDERER_ADDRESS --isInit --channelID $channel_name --name $chaincode_name --peerAddresses $CORE_PEER_ADDRESS --waitForEvent -c '{\"Args\":[]}' || exit 1"
     else
-        peer_exec+="peer chaincode invoke -o $ORDERER_ADDRESS --isInit --channelID $channel_name --name $chaincode_name --peerAddresses $CORE_PEER_ADDRESS --tlsRootCertFiles $CORE_PEER_TLS_ROOTCERT_FILE --tls $TLS_ENABLED --cafile $ORDERER_CA -c '{\"Args\":[]}' --waitForEvent || exit 1"
+        PEER_EXEC+="peer chaincode invoke -o $ORDERER_ADDRESS --isInit --channelID $channel_name --name $chaincode_name --peerAddresses $CORE_PEER_ADDRESS --tlsRootCertFiles $CORE_PEER_TLS_ROOTCERT_FILE --tls $TLS_ENABLED --cafile $ORDERER_CA -c '{\"Args\":[]}' --waitForEvent || exit 1"
     fi
-    set -x
-    eval ${peer_exec}
-    set +x
+    __exec_command "${PEER_EXEC}"
 }
 
 lc_chaincode_upgrade() {
@@ -1733,6 +1764,8 @@ if [ "$func" == "network" ]; then
     if [ "$param" == "install" ]; then
         install_network
     elif [ "$param" == "start" ]; then
+        __set_params "$@"
+        __log_setup
         start_network "$@"
     elif [ "$param" == "restart" ]; then
         restart_network

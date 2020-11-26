@@ -2,16 +2,6 @@
 
 A basic and simple boilerplate which contains utilities for efficiently writing chaincode and test it in a running network.
 
-#### Note: If this is a fork, follow the special paragraph contained in this README
-
-## Purpose
-
-The codebase of this repository is meant to serve the following scopes:
-
-- as a starting point for any new project which will use a Hyperledger Fabric native chaincode
-- as an open project shared across all the development teams which are asked to participate and contribute following the common issue tracking system and merge request procedure
-- as a space where to define coding standards and best practices through a process of peer reviewing and features proposing (working as a discussion forum)
-
 ## Prerequisites
 
 - [Go](https://golang.org/dl/) [>= 1.12]
@@ -33,7 +23,7 @@ The following command will spin a Hyperledger Fabric network up, generating _cha
 ```bash
 ./run.sh network start
 # or
-./run.sh network start --org=1
+./run.sh network start --orgs=1
 ```
 
 It will execute the following functions:
@@ -57,10 +47,10 @@ Run `./run.sh help` for the complete list of functionalities.
 
 You may want to run the network with multiple organizations or by using customized network and channel profiles.
 
-To run the network in multi-org setup, you can use the `--org=<number>` flag, where `number` is a numeric integer:
+To run the network in multi-org setup, you can use the `-o|--orgs <number>` flag, where `number` is a numeric integer:
 
 ```bash
-./run.sh network start --org=<number>
+./run.sh network start --orgs <number>
 ```
 
 Note: **The maximum number of organizations supported at the time of writing is 3.**
@@ -121,6 +111,7 @@ The commands below will install, approve, commit and initialize a newer version 
 
 ```bash
 ./run.sh chaincode lifecycle upgrade [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [sequence_no] [org_no] [peer_no]
+
 # e.g. considering previous chaincode_version was 1.0 and sequence_no was 1 (using default peer)
 ./run.sh chaincode lifecycle upgrade mychaincode 1.1 mychaincode mychannel 2 1 0
 ```
@@ -133,6 +124,7 @@ However, if you want more control over the single command execution, you can rep
 ./run.sh chaincode lifecycle install [chaincode_name] [chaincode_version] [org_no] [peer_no]
 ./run.sh chaincode lifecycle approve [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [sequence_no] [org_no] [peer_no]
 ./run.sh chaincode lifecycle commit [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [sequence_no] [org_no] [peer_no]
+
 # e.g. considering previous chaincode_version was 1.0 and sequence_no was 1 (using default peer)
 ./run.sh chaincode lifecycle package mychaincode 1.1 mychaincode 1 0
 ./run.sh chaincode lifecycle install mychaincode 1.1 1 0
@@ -194,7 +186,7 @@ It is possible to use the CLI to run and test functionalities via invoke and que
 
 Starting from v1.2, Fabric offers the ability to create [private data collections](https://hyperledger-fabric.readthedocs.io/en/release-1.4/private-data/private-data.html), which allow a defined subset of organizations on a channel the ability to endorse, commit, or query private data without having to create a separate channel.
 
-This boilerplate propose a sample chaincode, `pdc`, exported from the [fabric-samples]([fabri](https://github.com/hyperledger/fabric-samples)) official repository, which includes a `collections_config.json` file with the following configuration:
+This boilerplate propose a sample chaincode, `pdc`, exported from the [fabric-samples]([fabric](https://github.com/hyperledger/fabric-samples)) official repository, which includes a `collections_config.json` file with the following configuration:
 
 - `collectionMarbles`: Org1MSP, Org2MSP
 - `collectionMarblePrivateDetails`: Org1MSP
@@ -203,7 +195,7 @@ In order to provide with a basic demonstration of how private data collections w
 
 ```bash
 # start the network with 3-orgs setup
-./run.sh network start --org=3
+./run.sh network start --orgs 3
 ```
 
 The network will be initialized with the following components:
@@ -219,15 +211,6 @@ The network will be initialized with the following components:
 - peer0.org3
 - peer0.org3-couchdb
 - cli
-
-Then complete your network setup adding the other organizations to the channel:
-
-```bash
-# join org2 peer0 to mychannel
-./run.sh channel join mychannel 2 0
-# join org3 peer0 to mychannel
-./run.sh channel join mychannel 3 0
-```
 
 Install and instantiate the `pdc` chaincode:
 
