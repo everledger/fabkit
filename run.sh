@@ -339,14 +339,24 @@ initialize_network() {
 
     
 	create_channel $CHANNEL_NAME 1 0
-	join_channel $CHANNEL_NAME 1 0
-	update_channel $CHANNEL_NAME $ORG_MSP 1 0
+    for org in $(seq 1 ${ORGS})
+    do 
+        join_channel $CHANNEL_NAME $org 0
+    done
+    #TODO: Create txns for all orgs and place below command in above
+    update_channel $CHANNEL_NAME $ORG_MSP 1 0
 
     if [[ "${FABRIC_VERSION}" =~ 2.* ]]; then
         lc_chaincode_package $CHAINCODE_NAME $CHAINCODE_VERSION $CHAINCODE_NAME 1 0
-        lc_chaincode_install $CHAINCODE_NAME $CHAINCODE_VERSION 1 0
-	    lc_chaincode_approve $CHAINCODE_NAME $CHAINCODE_VERSION $CHAINCODE_NAME $CHANNEL_NAME 1 1 0 
-	    lc_chaincode_commit $CHAINCODE_NAME $CHAINCODE_VERSION $CHAINCODE_NAME $CHANNEL_NAME 1 1 0 
+        
+        for org in $(seq 1 ${ORGS})
+        do 
+            
+            lc_chaincode_install $CHAINCODE_NAME $CHAINCODE_VERSION $org 0
+            lc_chaincode_approve $CHAINCODE_NAME $CHAINCODE_VERSION $CHAINCODE_NAME $CHANNEL_NAME 1 $org 0 
+        done
+        
+        lc_chaincode_commit $CHAINCODE_NAME $CHAINCODE_VERSION $CHAINCODE_NAME $CHANNEL_NAME 1 1 0
     else
         chaincode_install $CHAINCODE_NAME $CHAINCODE_VERSION $CHAINCODE_NAME 1 0
         chaincode_instantiate $CHAINCODE_NAME $CHAINCODE_VERSION $CHANNEL_NAME 1 0 
@@ -1137,6 +1147,32 @@ query() {
     set +x
 }
 
+get_chaincode_package_id(){
+    local chaincode_name="$1"
+	local chaincode_version="$2"
+    local org="$3"
+    local peer="$4"
+    shift 4
+
+    set_certs $org $peer
+    set_peer_exec
+
+    local chaincode_label="\"${chaincode_name}_${chaincode_version}\""
+    echo $chaincode_label
+
+    if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
+        peer_exec+="peer lifecycle chaincode queryinstalled --output json | jq -r '.installed_chaincodes[] | select(.label == ${chaincode_label} ) ' | jq -r '.package_id' || exit 1"
+    else
+        peer_exec+="peer lifecycle chaincode queryinstalled --tls $TLS_ENABLED --cafile $ORDERER_CA --output json | jq -r '.installed_chaincodes[] | select(.label == ${chaincode_label} ) ' | jq -r '.package_id' || exit 1"
+    fi
+
+    set -x
+    export PACKAGE_ID=$(eval ${peer_exec})
+    set +x
+
+    log "Package ID: $PACKAGE_ID" debug
+}
+
 lc_chaincode_package() {
 	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] ||  [ -z "$5" ]; then
 		log "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" error
@@ -1240,19 +1276,12 @@ lc_chaincode_approve() {
     __init_go_mod install ${chaincode_name}
 
     log "Querying chaincode package ID" info
-    # TODO: make this command to work with multiple installed chaincodes
-    set_peer_exec
-    if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
-        peer_exec+="peer lifecycle chaincode queryinstalled --output json | jq -r '.installed_chaincodes[0].package_id' || exit 1"
-    else
-        peer_exec+="peer lifecycle chaincode queryinstalled --tls $TLS_ENABLED --cafile $ORDERER_CA --output json | jq -r '.installed_chaincodes[0].package_id' || exit 1"
+    get_chaincode_package_id $chaincode_name $chaincode_version $org $peer
+    if [ -z "$PACKAGE_ID" ]; then
+        log "Package ID is not defined" warning
+        return 
     fi
-
-    set -x
-    export PACKAGE_ID=$(eval ${peer_exec})
-    set +x
-    log "Package ID: $PACKAGE_ID" debug
-   
+    
     log "Approve chaincode for my organization" info
     # TODO: policy to be passed as input argument
     set_peer_exec
@@ -1277,13 +1306,8 @@ lc_chaincode_commit() {
     log "Chaincode Lyfecycle: commit" info
     log "===========================" info
     echo
-
-    if [ -z "$PACKAGE_ID" ]; then
-		log "Package ID is not defined. Be sure you are running an install command first." error
-		exit 1
-	fi
-
-	local chaincode_name="$1"
+    
+    local chaincode_name="$1"
 	local chaincode_version="$2"
 	local chaincode_path="$3"
 	local channel_name="$4"
@@ -1291,6 +1315,16 @@ lc_chaincode_commit() {
     local org="$6"
     local peer="$7"
     shift 7
+
+    if [ -z "$PACKAGE_ID" ]; then
+		log "Package ID is not defined" warning
+		log "Querying chaincode package ID" info
+    # TODO: make this command to work with multiple installed chaincodes
+        get_chaincode_package_id $chaincode_name $chaincode_version $org $peer
+        if [ -z "$PACKAGE_ID" ]; then
+            log "Chaincode not installed on peer" error
+        fi
+	fi
 
     set_certs $org $peer
 
@@ -1310,14 +1344,26 @@ lc_chaincode_commit() {
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
         peer_exec+="peer lifecycle chaincode commit --channelID $channel_name --name $chaincode_name --version $chaincode_version --sequence $sequence_no --init-required --peerAddresses $CORE_PEER_ADDRESS --signature-policy \"OR('Org1MSP.member','Org2MSP.member','Org3MSP.member')\" || exit 1"
     else
-        peer_exec+="peer lifecycle chaincode commit --channelID $channel_name --name $chaincode_name --version $chaincode_version --sequence $sequence_no --init-required --peerAddresses $CORE_PEER_ADDRESS --signature-policy \"OR('Org1MSP.member','Org2MSP.member','Org3MSP.member')\" --tls $TLS_ENABLED --cafile $ORDERER_CA --tlsRootCertFiles $CORE_PEER_TLS_ROOTCERT_FILE || exit 1"
+        peer_exec+="peer lifecycle chaincode commit --channelID $channel_name --name $chaincode_name --version $chaincode_version --sequence $sequence_no --init-required  --signature-policy \"OR('Org1MSP.member','Org2MSP.member','Org3MSP.member')\" --tls $TLS_ENABLED --cafile $ORDERER_CA "
+        for o in $(seq 1 ${ORGS})
+        do 
+            #TODO: Create from endorsement policy and make endorsement policy dynamic
+            get_chaincode_package_id $chaincode_name $chaincode_version $o $peer
+            if ![ -z "$PACKAGE_ID" ]; then
+                set_certs $o $peer
+                peer_exec+="--peerAddresses $CORE_PEER_ADDRESS --tlsRootCertFiles $CORE_PEER_TLS_ROOTCERT_FILE "
+            fi
+        done
+        peer_exec+="|| exit 1"
     fi
     set -x
     eval ${peer_exec}
     set +x
 
     log "Query the chaincode definitions that have been committed to a channel" info
+    set_certs $org $peer
     set_peer_exec
+
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
         peer_exec+="peer lifecycle chaincode querycommitted --channelID $channel_name --name $chaincode_name --peerAddresses $CORE_PEER_ADDRESS --output json || exit 1"
     else
