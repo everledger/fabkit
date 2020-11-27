@@ -105,15 +105,15 @@ Be sure the `chaincode_version` is unique and never used before (otherwise an er
 
 The new chaincode lifecycle flow implemented in v2.x decentralizes much more the way in which a chaincode gets deployed into the network, enforcing security and empowering governance. However, this choice comes with an increase in complexity at the full expense of user experience.
 
-Fabkit offers a simplified all-in-one command to perform this process. 
+Fabkit offers a simplified all-in-once command to perform this process.
 
 The commands below will install, approve, commit and initialize a newer version of an existing chaincode.
 
 ```bash
-./run.sh chaincode lifecycle upgrade [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [sequence_no] [org_no] [peer_no]
+./run.sh chaincode lifecycle deploy [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [sequence_no] [org_no] [peer_no]
 
 # e.g. considering previous chaincode_version was 1.0 and sequence_no was 1 (using default peer)
-./run.sh chaincode lifecycle upgrade mychaincode 1.1 mychaincode mychannel 2 1 0
+./run.sh chaincode lifecycle deploy mychaincode 1.1 mychaincode mychannel 2 1 0
 ```
 
 However, if you want more control over the single command execution, you can reproduce the exact same results as above by splitting that into the following steps:
