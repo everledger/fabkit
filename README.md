@@ -23,7 +23,7 @@ The following command will spin a Hyperledger Fabric network up, generating _cha
 ```bash
 ./run.sh network start
 # or
-./run.sh network start --orgs=1
+./run.sh network start --orgs 1
 ```
 
 It will execute the following functions:
@@ -186,7 +186,7 @@ It is possible to use the CLI to run and test functionalities via invoke and que
 
 Starting from v1.2, Fabric offers the ability to create [private data collections](https://hyperledger-fabric.readthedocs.io/en/release-1.4/private-data/private-data.html), which allow a defined subset of organizations on a channel the ability to endorse, commit, or query private data without having to create a separate channel.
 
-This boilerplate propose a sample chaincode, `pdc`, exported from the [fabric-samples]([fabric](https://github.com/hyperledger/fabric-samples)) official repository, which includes a `collections_config.json` file with the following configuration:
+This boilerplate propose a sample chaincode, `pdc`, exported from the [fabric-samples]((https://github.com/hyperledger/fabric-samples)) official repository, which includes a `collections_config.json` file with the following configuration:
 
 - `collectionMarbles`: Org1MSP, Org2MSP
 - `collectionMarblePrivateDetails`: Org1MSP
