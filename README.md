@@ -2,21 +2,11 @@
 
 A basic and simple boilerplate which contains utilities for efficiently writing chaincode and test it in a running network.
 
-#### Note: If this is a fork, follow the special paragraph contained in this README
-
-## Purpose
-
-The codebase of this repository is meant to serve the following scopes:
-
-- as a starting point for any new project which will use a Hyperledger Fabric native chaincode
-- as an open project shared across all the development teams which are asked to participate and contribute following the common issue tracking system and merge request procedure
-- as a space where to define coding standards and best practices through a process of peer reviewing and features proposing (working as a discussion forum)
-
 ## Prerequisites
 
-- [Go](https://golang.org/dl/)
-- [Docker](https://www.docker.com/get-started)
-- [Docker-compose](https://www.docker.com/get-started)
+- [Go](https://golang.org/dl/) [>= 1.12]
+- [Docker](https://www.docker.com/get-started) [>= 18.05]
+- [Docker-compose](https://www.docker.com/get-started) [>= 1.25]
 
 ## Install
 
@@ -33,7 +23,7 @@ The following command will spin a Hyperledger Fabric network up, generating _cha
 ```bash
 ./run.sh network start
 # or
-./run.sh network start --org=1
+./run.sh network start --orgs 1
 ```
 
 It will execute the following functions:
@@ -46,7 +36,8 @@ It will execute the following functions:
 - Add default peer to join the channel
 - Update the channel with anchor peers
 - Install the default chaincode into the default peer
-- Instantiate the chaincode on the default peer
+- (v1.x) Instantiate the chaincode on the default peer
+- (v2.x) Approve, commit and init the chaincode on the default peer and organization
 
 Afterwards, the network will be ready to accept `invoke` and `query` functions.
 
@@ -54,15 +45,15 @@ Run `./run.sh help` for the complete list of functionalities.
 
 ### Run the network with different configurations
 
-You may want to run the network with multiple organisations or by using customised network and channel profiles.
+You may want to run the network with multiple organizations or by using customized network and channel profiles.
 
-To run the network in multi-org setup, you can use the `--org=<number>` flag, where `number` is a numeric integer:
+To run the network in multi-org setup, you can use the `-o|--orgs <number>` flag, where `number` is a numeric integer:
 
 ```bash
-./run.sh network start --org=<number>
+./run.sh network start --orgs <number>
 ```
 
-Note: **The maximum number of organisations supported at the time of writing is 3.**
+Note: **The maximum number of organizations supported at the time of writing is 3.**
 
 The consensus mechanism for the Ordering Service so far fully supported by this repo is `SOLO`, however, there is a 1-org configuration made available for `Raft` as well and it can be used by replacing the following variable in the `.env` file:
 
@@ -70,7 +61,7 @@ The consensus mechanism for the Ordering Service so far fully supported by this 
 CONFIGTX_PROFILE_NETWORK=OneOrgOrdererEtcdRaft
 ```
 
-Then simply run the network with a single organisation:
+Then simply run the network with a single organization:
 
 ```bash
 ./run.sh network start
@@ -96,18 +87,56 @@ The following command will restart a network with the configuration of your last
 
 ## Upgrade chaincode
 
+### v1.x
+
 Run the following commands in order to install and instantiate a newer version of an existing chaincode:
 
 ```bash
 ./run.sh chaincode install [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no]
 ./run.sh chaincode upgrade [chaincode_name] [chaincode_version] [channel_name] [org_no] [peer_no]
-
 # e.g.
 ./run.sh chaincode install mychaincode 1.1 mychaincode 1 0
 ./run.sh chaincode upgrade mychaincode 1.1 mychannel 1 0
 ```
 
 Be sure the `chaincode_version` is unique and never used before (otherwise an error will be prompted).
+
+### v2.x
+
+The new chaincode lifecycle flow implemented in v2.x decentralizes much more the way in which a chaincode gets deployed into the network, enforcing security and empowering governance. However, this choice comes with an increase in complexity at the full expense of user experience.
+
+Fabkit offers a simplified all-in-once command to perform this process.
+
+The commands below will install, approve, commit and initialize a newer version of an existing chaincode.
+
+```bash
+./run.sh chaincode lifecycle deploy [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [sequence_no] [org_no] [peer_no]
+
+# e.g. considering previous chaincode_version was 1.0 and sequence_no was 1 (using default peer)
+./run.sh chaincode lifecycle deploy mychaincode 1.1 mychaincode mychannel 2 1 0
+```
+
+However, if you want more control over the single command execution, you can reproduce the exact same results as above by splitting that into the following steps:
+
+```bash
+./run.sh chaincode lifecycle package [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no]
+# tip: run the install only if you are upgrading the chaincode binaries, otherwise no new container will be built (but also no errors will be thrown)
+./run.sh chaincode lifecycle install [chaincode_name] [chaincode_version] [org_no] [peer_no]
+./run.sh chaincode lifecycle approve [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [sequence_no] [org_no] [peer_no]
+./run.sh chaincode lifecycle commit [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [sequence_no] [org_no] [peer_no]
+
+# e.g. considering previous chaincode_version was 1.0 and sequence_no was 1 (using default peer)
+./run.sh chaincode lifecycle package mychaincode 1.1 mychaincode 1 0
+./run.sh chaincode lifecycle install mychaincode 1.1 1 0
+./run.sh chaincode lifecycle approve mychaincode 1.1 mychaincode mychannel 2 1 0
+./run.sh chaincode lifecycle commit mychaincode 1.1 mychaincode mychannel 2 1 0
+```
+
+>If you are upgrading the chaincode binaries, you need to update the chaincode version and the package ID in the chaincode definition. You can also update your chaincode endorsement policy without having to repackage your chaincode binaries. Channel members simply need to approve a definition with the new policy. The new definition needs to increment the sequence variable in the definition by one.
+
+Be sure the `chaincode_version` is unique and never used before (otherwise an error will be prompted) and the `sequence_no` has an incremental value.
+
+More details here: [Chaincode Lifecyle - Upgrade](https://hyperledger-fabric.readthedocs.io/en/release-2.0/chaincode4noah.html#upgrade-a-chaincode)
 
 ## Archive chaincode for deployment
 
@@ -131,7 +160,7 @@ Follow the output message in console to see where the package has been created.
 
 ## Invoke and query
 
-It is possible to use the CLI to run and test functionalities.
+It is possible to use the CLI to run and test functionalities via invoke and query.
 
 **Note:** The function appearing as a string in the first place of the array `Args` needs to be defined in the chaincode and the `request` should be provided as a JSON wrapped into single quotes `'`.
 
@@ -157,7 +186,7 @@ It is possible to use the CLI to run and test functionalities.
 
 Starting from v1.2, Fabric offers the ability to create [private data collections](https://hyperledger-fabric.readthedocs.io/en/release-1.4/private-data/private-data.html), which allow a defined subset of organizations on a channel the ability to endorse, commit, or query private data without having to create a separate channel.
 
-This boilerplate propose a sample chaincode, `pdc`, exported from the [fabric-samples]([fabri](https://github.com/hyperledger/fabric-samples)) official repository, which includes a `collections_config.json` file with the following configuration:
+This boilerplate propose a sample chaincode, `pdc`, exported from the [fabric-samples]((https://github.com/hyperledger/fabric-samples)) official repository, which includes a `collections_config.json` file with the following configuration:
 
 - `collectionMarbles`: Org1MSP, Org2MSP
 - `collectionMarblePrivateDetails`: Org1MSP
@@ -166,10 +195,10 @@ In order to provide with a basic demonstration of how private data collections w
 
 ```bash
 # start the network with 3-orgs setup
-./run.sh network start --org=3
+./run.sh network start --orgs 3
 ```
 
-The network will be initialised with the following components:
+The network will be initialized with the following components:
 
 - orderer
 - ca.org1
@@ -183,19 +212,10 @@ The network will be initialised with the following components:
 - peer0.org3-couchdb
 - cli
 
-Then complete your network setup adding the other organisations to the channel:
-
-```bash
-# join org2 peer0 to mychannel
-./run.sh channel join mychannel 2 0
-# join org3 peer0 to mychannel
-./run.sh channel join mychannel 3 0
-```
-
 Install and instantiate the `pdc` chaincode:
 
 ```bash
-# install the pdc chaincode on all the organisations' peer0
+# install the pdc chaincode on all the organizations' peer0
 ./run.sh chaincode install pdc 1.0 pdc 1 0
 ./run.sh chaincode install pdc 1.0 pdc 2 0
 ./run.sh chaincode install pdc 1.0 pdc 3 0
@@ -218,7 +238,7 @@ export MARBLE=$(echo -n "{\"name\":\"marble1\",\"color\":\"blue\",\"size\":35,\"
 ./run.sh chaincode query mychannel pdc 3 0 '{"Args":["readMarble","marble1"]}'
 ```
 
-You can access the CouchDB UI for each organisation's peer to inspect the data which gets effectively stored and its format.
+You can access the CouchDB UI for each organization's peer to inspect the data which gets effectively stored and its format.
 
 For each private collection your StateDB will create 2 databases, one public to the channel and one private. e.g.:
 
@@ -342,7 +362,7 @@ The procedure to renew a certificate follows a few steps but it is not that bana
 ./run.sh ca enroll
 ```
 
-- Reenroll the user with the expired certificate
+- Re-enroll the user with the expired certificate
 
 ```bash
 ./run.sh ca reenroll
@@ -389,6 +409,32 @@ The OBP configuration and cryptos can be downloaded from `Developer Tools > Appl
 At the time of writing, IBM provides two version of their BaaS. In both cases, we are able to register and enroll users directly via UI, but we will not be able to download those certificates from there.
 
 If we want to use a specific user certificate and key, we need first to download the connection profile and cryptos from the platform dashboard and then perform the steps listed in this section in order to retrieve those credentials.
+
+## Benchmarks
+
+The repository provides also a simple implementation of a bulk load function in order to benchmark the general speed of the network in terms of tps (transactions-per-second).
+
+```bash
+./run.sh benchmark load [jobs] [entries]
+
+# e.g.
+./run.sh benchmark load 5 1000
+```
+
+The example above will do a bulk load of 1000 entries times 5 parallel jobs, for a total of 5000 entries. At the completion of all the jobs it will be prompted on screen the elapsed time of the total task.
+
+**Note: Maintain the number of jobs not superior to your CPU cores in order to obtain the best results. This implementation does not provides a complete parallelization.**
+
+To achieve the optimal result it is recommended to install [Gnu Parallel](https://www.gnu.org/software/parallel/) and use as it follows:
+
+```bash
+time (parallel ./benchmarks.sh {} ::: [entries])
+
+# e.g.
+time (parallel ./benchmarks.sh {} ::: 20)
+# 8.613 total against 29.893 total
+# ~4 times lower than running jobs with "&"
+```
 
 ### Troubleshooting
 
@@ -496,113 +542,3 @@ Error: could not assemble transaction, err proposal response was not successful,
 #### Possible solutions
 
 - Uncheck “Use gRPC FUSE for file sharing” option in the Docker "Preferences > Experimental Features" and restart your daemon
-
-## Cleanup the environment
-
-### Tear blockchain network down
-
-It will stop and remove all the blockchain network containers including the `dev-peer*` tagged chaincode ones.
-
-```bash
-./run.sh network stop
-```
-
-## Cleanup the environment
-
-### Tear blockchain network down
-
-It will stop and remove all the blockchain network containers including the `dev-peer*` tagged chaincode ones.
-
-```bash
-./run.sh network stop
-```
-
-## Benchmarks
-
-The repository provides also a simple implementation of a bulk load function in order to benchmark the general speed of the network in terms of tps (transactions-per-second).
-
-```bash
-./run.sh benchmark load [jobs] [entries]
-
-# e.g.
-./run.sh benchmark load 5 1000
-```
-
-The example above will do a bulk load of 1000 entries times 5 parallel jobs, for a total of 5000 entries. At the completion of all the jobs it will be prompted on screen the elapsed time of the total task.
-
-**Note: Maintain the number of jobs not superior to your CPU cores in order to obtain the best results. This implementation does not provides a complete parallelisation.**
-
-To achieve the optimal result it is recommended to install [Gnu Parallel](https://www.gnu.org/software/parallel/) and use as it follows:
-
-```bash
-time (parallel ./benchmarks.sh {} ::: [entries])
-
-# e.g.
-time (parallel ./benchmarks.sh {} ::: 20)
-# 8.613 total against 29.893 total
-# ~4 times lower than running jobs with "&"
-```
-
-## Forks
-
-There are a few changes to make to your new forked repository in order to make it work properly.
-
-- Replace all the occurrences of `bitbucket.org/everledger/fabric-chaincode-boilerplate` with your current go package
-
-- Create a new directory under the `./chaincode` path. It has to match with the name of your final binary install.
-
-- Run `./run.sh dep install [chaincode_path]` from your main project directory
-
-In `.env`:
-
-- Replace `CHAINCODE_NAME` with the correct directory name path of the chaincode you want to install
-
-```bash
-# e.g.
-CHAINCODE_NAME=wine
-```
-
-In `bitbucket-pipelines.yml`
-
-- Replace `mychaincode` with the chaincode name you have in `.env` at the right of `CHAINCODE_NAME`
-
-- If you want, you can add a link to this repository in your `README`, like:
-
-```markdown
-Forked from [fabric-chaincode-boilerplate](https://bitbucket.org/everledger/fabric-chaincode-boilerplate
-```
-
-Et voila'!
-
-## Sync up
-
-In order to sync your repository with the new changes coming from the `main` one, you can do the following:
-
-- Add the `main` repository to the list of your remotes with `git remote add main git@bitbucket.org:everledger/fabric-chaincode-boilerplate.git`
-
-- Check the repository has been added with `git remote -v`
-
-- Pull all the upcoming changes from `main` with `git pull main`
-
-- Merge (or rebase) these new changes into your current branch
-
-```bash
-git merge main/master
-```
-
-Merge will result with **a single commit**.
-
-or
-
-```bash
-git rebase main/master
-# after fixing the conflicts, keep on using the next 2 commands to register the changes and continue with the next commit to attach
-git add .
-git rebase --continue
-# use the following only when there are no changes to apply
-git rebase --skip
-# use the following only if you want to abort the rebasing
-git rebase --abort
-```
-
-Rebase will result with **the list of all the previous commits** applied.
