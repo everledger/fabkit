@@ -16,6 +16,11 @@ readonly two_orgs="TwoOrgsOrdererGenesis"
 readonly three_orgs="ThreeOrgsOrdererGenesis"
 readonly raft_one_org="OneOrgOrdererEtcdRaft"
 
+# Auto Complete
+source ./scripts/bash_autocomplete.sh
+AutoComplete
+
+
 # DO NOT REMOVE
 # peer exec command
 peer_exec=""
