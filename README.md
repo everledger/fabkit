@@ -93,10 +93,10 @@ Run the following commands in order to install and instantiate a newer version o
 
 ```bash
 ./run.sh chaincode install [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no]
-./run.sh chaincode upgrade [chaincode_name] [chaincode_version] [channel_name] [org_no] [peer_no]
+./run.sh chaincode upgrade [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [org_no] [peer_no]
 # e.g.
-./run.sh chaincode install mychaincode 1.1 mychaincode 1 0
-./run.sh chaincode upgrade mychaincode 1.1 mychannel 1 0
+./run.sh chaincode install mychaincode 1.1 golang/mychaincode 1 0
+./run.sh chaincode upgrade mychaincode 1.1 golang/mychaincode mychannel 1 0
 ```
 
 Be sure the `chaincode_version` is unique and never used before (otherwise an error will be prompted).
@@ -105,7 +105,7 @@ Be sure the `chaincode_version` is unique and never used before (otherwise an er
 
 The new chaincode lifecycle flow implemented in v2.x decentralizes much more the way in which a chaincode gets deployed into the network, enforcing security and empowering governance. However, this choice comes with an increase in complexity at the full expense of user experience.
 
-Fabkit offers a simplified all-in-one command to perform this process. 
+Fabkit offers a simplified all-in-one command to perform this process.
 
 The commands below will install, approve, commit and initialize a newer version of an existing chaincode.
 
@@ -132,7 +132,7 @@ However, if you want more control over the single command execution, you can rep
 ./run.sh chaincode lifecycle commit mychaincode 1.1 mychaincode mychannel 2 1 0
 ```
 
->If you are upgrading the chaincode binaries, you need to update the chaincode version and the package ID in the chaincode definition. You can also update your chaincode endorsement policy without having to repackage your chaincode binaries. Channel members simply need to approve a definition with the new policy. The new definition needs to increment the sequence variable in the definition by one.
+> If you are upgrading the chaincode binaries, you need to update the chaincode version and the package ID in the chaincode definition. You can also update your chaincode endorsement policy without having to repackage your chaincode binaries. Channel members simply need to approve a definition with the new policy. The new definition needs to increment the sequence variable in the definition by one.
 
 Be sure the `chaincode_version` is unique and never used before (otherwise an error will be prompted) and the `sequence_no` has an incremental value.
 
@@ -186,7 +186,7 @@ It is possible to use the CLI to run and test functionalities via invoke and que
 
 Starting from v1.2, Fabric offers the ability to create [private data collections](https://hyperledger-fabric.readthedocs.io/en/release-1.4/private-data/private-data.html), which allow a defined subset of organizations on a channel the ability to endorse, commit, or query private data without having to create a separate channel.
 
-This boilerplate propose a sample chaincode, `pdc`, exported from the [fabric-samples]((https://github.com/hyperledger/fabric-samples)) official repository, which includes a `collections_config.json` file with the following configuration:
+This boilerplate propose a sample chaincode, `pdc`, exported from the [fabric-samples](<(https://github.com/hyperledger/fabric-samples)>) official repository, which includes a `collections_config.json` file with the following configuration:
 
 - `collectionMarbles`: Org1MSP, Org2MSP
 - `collectionMarblePrivateDetails`: Org1MSP
@@ -306,9 +306,9 @@ To perform any of the below procedures you need to have satisfied the following 
 - Downloaded the connection profile if available or be sure you have on your hands the following information
 
   - Admin username (commonly `admin`) and password. This user needs to have the right permissions in order to perform any of the operations below.
-  
+
   - Organization name
-  
+
   - CA hostname and port
 
 ### Register and enroll a new user

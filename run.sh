@@ -7,7 +7,8 @@ export GOPRIVATE=bitbucket.org/everledger/*
 
 # name of the working directory/project
 export WORKSPACE=$(basename ${ROOT})
-# it should be under GOPATH (automatically added in front of this path)
+# if chaincode is written it should be under GOPATH (automatically added in front of this path) 
+# else set absolute path within cli container
 # TODO: Set a default chaincode path and grab the name of the package instead
 export CHAINCODE_REMOTE_PATH=bitbucket.org/everledger/${WORKSPACE}/chaincode
 
@@ -19,6 +20,8 @@ readonly RAFT_ONE_ORG="OneOrgOrdererEtcdRaft"
 # DO NOT REMOVE
 # docker exec command
 PEER_EXEC=""
+# chaincocode language
+CHAINCODE_LANGUAGE=""
 
 help() {
     local help="
@@ -248,8 +251,8 @@ start_network() {
 
         stop_network
 
-        chaincode_build $CHAINCODE_NAME
-        chaincode_test $CHAINCODE_NAME
+        chaincode_build $CHAINCODE_RELATIVE_PATH
+        chaincode_test $CHAINCODE_RELATIVE_PATH
     fi
 
     log "==============" info
@@ -400,8 +403,8 @@ initialize_network() {
         
         lc_chaincode_commit $CHAINCODE_NAME $CHAINCODE_VERSION $CHAINCODE_NAME $CHANNEL_NAME 1 1 0
     else
-        chaincode_install $CHAINCODE_NAME $CHAINCODE_VERSION $CHAINCODE_NAME 1 0
-        chaincode_instantiate $CHAINCODE_NAME $CHAINCODE_VERSION $CHANNEL_NAME 1 0 
+        chaincode_install $CHAINCODE_NAME $CHAINCODE_VERSION $CHAINCODE_RELATIVE_PATH 1 0
+        chaincode_instantiate $CHAINCODE_NAME $CHAINCODE_VERSION $CHAINCODE_RELATIVE_PATH $CHANNEL_NAME 1 0 
     fi
 }
 
@@ -451,31 +454,31 @@ stop_explorer() {
 
 dep_install() {
     __check_chaincode $1
-    local chaincode_name="${1}"
+    local chaincode_relative_path="${1}"
 
     log "=====================" info
     log "Dependencies: install" info
     log "=====================" info
     echo
 
-    __init_go_mod install ${chaincode_name}
+    __init_go_mod install ${chaincode_relative_path}
 }
 
 dep_update() {
     __check_chaincode $1
-    local chaincode_name="${1}"
+    local chaincode_relative_path="${1}"
 
     log "====================" info
     log "Dependencies: update" info
     log "====================" info
     echo
 
-    __init_go_mod update ${chaincode_name}
+    __init_go_mod update ${chaincode_relative_path}
 }
 
 __init_go_mod() {
-    local chaincode_name="${2}"
-    cd ${CHAINCODE_PATH}/${chaincode_name} >/dev/null 2>&1 || { log >&2 "${CHAINCODE_PATH}/${chaincode_name} path does not exist" error; exit 1; }
+    local chaincode_relative_path="${2}"
+    cd ${CHAINCODE_PATH}/${chaincode_relative_path} >/dev/null 2>&1 || { log >&2 "${CHAINCODE_PATH}/${chaincode_relative_path} path does not exist" error; exit 1; }
 
     if [ ! -f "./go.mod" ]; then
         go mod init
@@ -892,11 +895,11 @@ update_channel() {
 }
 
 chaincode_test() {
-    local chaincode_name="${1}"
-    __check_chaincode ${chaincode_name}
+    local chaincode_relative_path="${1}"
+    __check_chaincode ${chaincode_relative_path}
 
     # avoid "found no test suites" ginkgo error
-    if [ ! `find ${CHAINCODE_PATH}/${chaincode_name} -type f -name "*_test*" ! -path "**/node_modules/*" ! -path "**/vendor/*"` ]; then
+    if [ ! `find ${CHAINCODE_PATH}/${chaincode_relative_path} -type f -name "*_test*" ! -path "**/node_modules/*" ! -path "**/vendor/*"` ]; then
         log "No test suites found. Skipping tests..." warning
         return 
     fi
@@ -907,12 +910,12 @@ chaincode_test() {
     echo
 
     __check_test_deps
-    __init_go_mod install ${chaincode_name}
+    __init_go_mod install ${chaincode_relative_path}
 
     if [[ $(__check_deps test) ]]; then
-        (docker run --rm -v ${CHAINCODE_PATH}:/usr/src/myapp -w /usr/src/myapp/${chaincode_name} -e CGO_ENABLED=0 -e CORE_CHAINCODE_LOGGING_LEVEL=debug ${GOLANG_DOCKER_IMAGE} sh -c "ginkgo -r -v") || exit 1
+        (docker run --rm -v ${CHAINCODE_PATH}:/usr/src/myapp -w /usr/src/myapp/${chaincode_relative_path} -e CGO_ENABLED=0 -e CORE_CHAINCODE_LOGGING_LEVEL=debug ${GOLANG_DOCKER_IMAGE} sh -c "ginkgo -r -v") || exit 1
     else
-	    (cd ${CHAINCODE_PATH}/${chaincode_name} && CORE_CHAINCODE_LOGGING_LEVEL=debug CGO_ENABLED=0 ginkgo -r -v) || exit 1
+	    (cd ${CHAINCODE_PATH}/${chaincode_relative_path} && CORE_CHAINCODE_LOGGING_LEVEL=debug CGO_ENABLED=0 ginkgo -r -v) || exit 1
     fi
 
     log "Test passed!" success
@@ -927,20 +930,24 @@ __check_test_deps() {
 }
 
 chaincode_build() {
-    local chaincode_name="${1}"
-    __check_chaincode ${chaincode_name}
+    local chaincode_relative_path="${1}"
+    __check_chaincode ${chaincode_relative_path}
 
     log "================" info
 	log "Chaincode: build" info
     log "================" info
     echo
 
-    __init_go_mod install ${chaincode_name}
+    __init_go_mod install ${chaincode_relative_path}
 
-    if [[ $(__check_deps test) ]]; then
-        (docker run --rm -v ${CHAINCODE_PATH}:/usr/src/myapp -w /usr/src/myapp/${chaincode_name} -e CGO_ENABLED=0 ${GOLANG_DOCKER_IMAGE} sh -c "go build -a -installsuffix nocgo ./... && rm -rf ./${chaincode_name} 2>/dev/null") || exit 1
-    else
-	    (cd ${CHAINCODE_PATH}/${chaincode_name} && CGO_ENABLED=0 go build -a -installsuffix nocgo ./... && rm -rf ./${chaincode_name} 2>/dev/null) || exit 1
+    __get_chaincode_language ${chaincode_relative_path}
+
+    if [ ${CHAINCODE_LANGUAGE} == "golang" ]; then
+        if [[ $(__check_deps test) ]]; then
+        (docker run --rm -v ${CHAINCODE_PATH}:/usr/src/myapp -w /usr/src/myapp/${chaincode_relative_path} -e CGO_ENABLED=0 ${GOLANG_DOCKER_IMAGE} sh -c "go build -a -installsuffix nocgo ./... && rm -rf ./${chaincode_relative_path} 2>/dev/null") || exit 1
+        else
+            (cd ${CHAINCODE_PATH}/${chaincode_relative_path} && CGO_ENABLED=0 go build -a -installsuffix nocgo ./... && rm -rf ./${chaincode_relative_path} 2>/dev/null) || exit 1
+        fi
     fi
 
     log "Build passed!" success
@@ -951,6 +958,49 @@ __check_chaincode() {
 		log "Chaincode name missing" error
 		exit 1
 	fi
+}
+
+__get_chaincode_language() {
+    if [ -z "$1" ]; then
+		log "Missing chaincode relative path in argument" error
+		exit 1
+	fi
+
+    if [ -z "$CHAINCODE_PATH" ]; then
+        log "CHAINCODE_PATH not set" error
+        exit 1
+    fi
+
+    local chaincode_relative_path="$1"
+    local golang_cc_identifier="func main"
+    local java_cc_identifier="public static void main"
+    local javascript_cc_identifier="require('fabric-shim')"
+
+    # check golang
+    if [ ! "$(grep --include=\*.go -rnw "${CHAINCODE_PATH}/${chaincode_relative_path}" -e ${golang_cc_identifier})" == "" ]; then
+        log "Chaincode language is golang" debug
+        CHAINCODE_LANGUAGE="golang"
+        return
+    fi
+
+    # check java
+    if [ ! "$(grep --include=\*.java -rnw "${CHAINCODE_PATH}/${chaincode_relative_path}" -e ${java_cc_identifier})" == "" ]; then
+        log "Chaincode language is java" debug
+        CHAINCODE_LANGUAGE="java"
+        return
+    fi
+
+     # check javascript 
+    if [ ! "$(grep --include=\*.js -rnw "${CHAINCODE_PATH}/${chaincode_relative_path}" -e ${javascript_cc_identifier})" == "" ]; then
+        log "Chaincode language is javascript" debug
+        CHAINCODE_LANGUAGE="node"
+        return
+    fi
+
+    if [ -z "$CHAINCODE_LANGUAGE" ]; then
+        log "Error cannot determine chaincode language" error 
+        exit 1
+    fi
 }
 
 chaincode_install() {
@@ -966,27 +1016,31 @@ chaincode_install() {
 
 	local chaincode_name="$1"
 	local chaincode_version="$2"
-	local chaincode_path="$3"
+	local chaincode_relative_path="$3"
     local org="$4"
     local peer="$5"
-    local install_path="${CHAINCODE_REMOTE_PATH}/${chaincode_path}"
+    local install_path="${CHAINCODE_REMOTE_PATH}/${chaincode_relative_path}"
+    shift 5
 
     set_certs $org $peer
     set_peer_exec
 
-    __init_go_mod install ${chaincode_name}
+    __get_chaincode_language ${chaincode_relative_path}
+    if [ ${CHAINCODE_LANGUAGE} == "golang" ]; then
+        __init_go_mod install ${chaincode_relative_path}
 
-    # Golang: workaround for chaincode written as modules
-    # make the install to work when main files are not in the main directory but in cmd
-    if [ ! "$(find ${install_path} -type f -name '*.go' -maxdepth 1 2>/dev/null)" ] && [ -d "${CHAINCODE_PATH}/${chaincode_path}/cmd" ]; then
-        install_path+="/cmd"
+        # Golang: workaround for chaincode written as modules
+        # make the install to work when main files are not in the main directory but in cmd
+        if [ ! "$(find ${install_path} -type f -name '*.go' -maxdepth 1 2>/dev/null)" ] && [ -d "${CHAINCODE_PATH}/${chaincode_relative_path}/cmd" ]; then
+            install_path+="/cmd"
+        fi
     fi
-    
+
     log "Installing chaincode $chaincode_name version $chaincode_version from path ${install_path}" info
 
     # fabric-samples does not use tls for installing (and it won't work with), however this flag is listed in the install command on the official fabric documentation 
     # https://hyperledger-fabric.readthedocs.io/en/release-1.4/commands/peerchaincode.html#peer-chaincode-install
-    PEER_EXEC+="peer chaincode install -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -p ${install_path} || exit 1"
+    PEER_EXEC+="peer chaincode install -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -p ${install_path} -l ${CHAINCODE_LANGUAGE} || exit 1"
 
     __exec_command "${PEER_EXEC}"
 }
@@ -1004,20 +1058,22 @@ chaincode_instantiate() {
 
 	local chaincode_name="$1"
 	local chaincode_version="$2"
-	local channel_name="$3"
-    local org="$4"
-    local peer="$5"
-    shift 5
+    local chaincode_relative_path="$3"
+	local channel_name="$4"
+    local org="$5"
+    local peer="$6"
+    shift 6
 
     set_certs $org $peer
     set_peer_exec
+    __get_chaincode_language $chaincode_relative_path
 
     log "Instantiating chaincode $chaincode_name version $chaincode_version into channel ${channel_name}" info
     
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
-        PEER_EXEC+="peer chaincode instantiate -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -C ${channel_name} -c '{\"Args\":[]}' \"$@\" || exit 1"
+        PEER_EXEC+="peer chaincode instantiate -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -C ${channel_name} -c '{\"Args\":[]}' \"$@\" -l $CHAINCODE_LANGUAGE || exit 1"
     else
-        PEER_EXEC+="peer chaincode instantiate -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -C ${channel_name} -c '{\"Args\":[]}' \"$@\" --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
+        PEER_EXEC+="peer chaincode instantiate -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -C ${channel_name} -c '{\"Args\":[]}' \"$@\" -l $CHAINCODE_LANGUAGE --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
     fi
 
     __exec_command "${PEER_EXEC}"
@@ -1065,10 +1121,10 @@ chaincode_zip() {
     log "==============" info
     echo
 
-    local chaincode_name="${1}"
-    __check_chaincode ${chaincode_name}
+    local chaincode_relative_path="${1}"
+    __check_chaincode ${chaincode_relative_path}
 
-    __init_go_mod install ${chaincode_name}
+    __init_go_mod install ${chaincode_relative_path}
 
     if [ ! -d "${DIST_PATH}" ]; then
         mkdir -p ${DIST_PATH}
@@ -1078,11 +1134,11 @@ chaincode_zip() {
 
     # trick to allow chaincode packed as modules to work when deployed against remote environments
     log "Copying chaincode files into vendor..." info
-    mkdir -p ./vendor/${CHAINCODE_REMOTE_PATH}/${chaincode_name} && rsync -ar --exclude='vendor' --exclude='META-INF' . ./vendor/${CHAINCODE_REMOTE_PATH}/${chaincode_name} || { log >&2 "Error copying chaincode into vendor directory." error; exit 1; }
+    mkdir -p ./vendor/${CHAINCODE_REMOTE_PATH}/${chaincode_relative_path} && rsync -ar --exclude='vendor' --exclude='META-INF' . ./vendor/${CHAINCODE_REMOTE_PATH}/${chaincode_relative_path} || { log >&2 "Error copying chaincode into vendor directory." error; exit 1; }
 
-    zip -rq ${DIST_PATH}/${chaincode_name}_${timestamp}.zip . || { log >&2 "Error creating chaincode archive." error; exit 1; }
+    zip -rq ${DIST_PATH}/${chaincode_relative_path}_${timestamp}.zip . || { log >&2 "Error creating chaincode archive." error; exit 1; }
 
-    log "Chaincode archive created in: ${DIST_PATH}/${chaincode_name}.${timestamp}.zip" success
+    log "Chaincode archive created in: ${DIST_PATH}/${chaincode_relative_path}.${timestamp}.zip" success
 }
 
 chaincode_pack() {
