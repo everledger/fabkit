@@ -1,4 +1,4 @@
-image: alpine:3.7
+image: everledgerio/golang:1.15.0-alpine3.12
 
 pipelines:
   default: # run pipeline for all branches
