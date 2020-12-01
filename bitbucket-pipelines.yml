@@ -7,6 +7,7 @@ pipelines:
             name: Run chaincode unit tests
             script:
               # do this to make go module work with private repo (e.g. evl-lib)
+              - grep --version
               - git config --global url."git@bitbucket.org:".insteadOf "https://bitbucket.org/"
               - sh run.sh chaincode test golang/mychaincode
         - step:
