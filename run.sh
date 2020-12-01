@@ -987,14 +987,14 @@ __get_chaincode_language() {
     fi
 
     # check java
-    if [ ! "$(grep --include='*.java' -rnw "${CHAINCODE_PATH}/${chaincode_relative_path}" -e ${java_cc_identifier})" == "" ]; then
+    if [ ! "$( grep --include='*.java' -rnw "${CHAINCODE_PATH}/${chaincode_relative_path}" -e "${java_cc_identifier}" )" == "" ]; then
         log "Chaincode language is java" debug
         CHAINCODE_LANGUAGE="java"
         return
     fi
 
      # check javascript 
-    if [ ! "$(grep --include='*.js' -rnw "${CHAINCODE_PATH}/${chaincode_relative_path}" -e ${javascript_cc_identifier})" == "" ]; then
+    if [ ! "$( grep --include='*.js' -rnw "${CHAINCODE_PATH}/${chaincode_relative_path}" -e "${javascript_cc_identifier}" )" == "" ]; then
         log "Chaincode language is javascript" debug
         CHAINCODE_LANGUAGE="node"
         return
