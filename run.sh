@@ -980,7 +980,7 @@ __get_chaincode_language() {
     local javascript_cc_identifier="require('fabric-shim')"
 
     # check golang
-    if [ ! "$(grep --include='*.go' -rnw "${CHAINCODE_PATH}/${chaincode_relative_path}" -e ${golang_cc_identifier})" == "" ]; then
+    if [ ! "$( grep --include='*.go' -rnw "${CHAINCODE_PATH}/${chaincode_relative_path}" -e "${golang_cc_identifier}" )" == "" ]; then
         log "Chaincode language is golang" debug
         CHAINCODE_LANGUAGE="golang"
         return
