@@ -897,25 +897,28 @@ update_channel() {
 chaincode_test() {
     local chaincode_relative_path="${1}"
     __check_chaincode ${chaincode_relative_path}
-
-    # avoid "found no test suites" ginkgo error
-    if [ ! `find ${CHAINCODE_PATH}/${chaincode_relative_path} -type f -name "*_test*" ! -path "**/node_modules/*" ! -path "**/vendor/*"` ]; then
-        log "No test suites found. Skipping tests..." warning
-        return 
-    fi
+    __get_chaincode_language ${chaincode_relative_path}
 
     log "===============" info
 	log "Chaincode: test" info
     log "===============" info
     echo
 
-    __check_test_deps
-    __init_go_mod install ${chaincode_relative_path}
+    if [ ${CHAINCODE_LANGUAGE} == "golang" ]; then
+         # avoid "found no test suites" ginkgo error
+        if [ ! `find ${CHAINCODE_PATH}/${chaincode_relative_path} -type f -name "*_test*" ! -path "**/node_modules/*" ! -path "**/vendor/*"` ]; then
+            log "No test suites found. Skipping tests..." warning
+            return 
+        fi
 
-    if [[ $(__check_deps test) ]]; then
-        (docker run --rm -v ${CHAINCODE_PATH}:/usr/src/myapp -w /usr/src/myapp/${chaincode_relative_path} -e CGO_ENABLED=0 -e CORE_CHAINCODE_LOGGING_LEVEL=debug ${GOLANG_DOCKER_IMAGE} sh -c "ginkgo -r -v") || exit 1
-    else
-	    (cd ${CHAINCODE_PATH}/${chaincode_relative_path} && CORE_CHAINCODE_LOGGING_LEVEL=debug CGO_ENABLED=0 ginkgo -r -v) || exit 1
+        __check_test_deps
+        __init_go_mod install ${chaincode_relative_path}
+
+        if [[ $(__check_deps test) ]]; then
+            (docker run --rm -v ${CHAINCODE_PATH}:/usr/src/myapp -w /usr/src/myapp/${chaincode_relative_path} -e CGO_ENABLED=0 -e CORE_CHAINCODE_LOGGING_LEVEL=debug ${GOLANG_DOCKER_IMAGE} sh -c "ginkgo -r -v") || exit 1
+        else
+            (cd ${CHAINCODE_PATH}/${chaincode_relative_path} && CORE_CHAINCODE_LOGGING_LEVEL=debug CGO_ENABLED=0 ginkgo -r -v) || exit 1
+        fi
     fi
 
     log "Test passed!" success
@@ -938,11 +941,11 @@ chaincode_build() {
     log "================" info
     echo
 
-    __init_go_mod install ${chaincode_relative_path}
-
     __get_chaincode_language ${chaincode_relative_path}
 
     if [ ${CHAINCODE_LANGUAGE} == "golang" ]; then
+        __init_go_mod install ${chaincode_relative_path}
+        
         if [[ $(__check_deps test) ]]; then
         (docker run --rm -v ${CHAINCODE_PATH}:/usr/src/myapp -w /usr/src/myapp/${chaincode_relative_path} -e CGO_ENABLED=0 ${GOLANG_DOCKER_IMAGE} sh -c "go build -a -installsuffix nocgo ./... && rm -rf ./${chaincode_relative_path} 2>/dev/null") || exit 1
         else
