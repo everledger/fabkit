@@ -8,12 +8,12 @@ pipelines:
             script:
               # do this to make go module work with private repo (e.g. evl-lib)
               - apk add --no-cache --upgrade grep
-              - grep --version
               - git config --global url."git@bitbucket.org:".insteadOf "https://bitbucket.org/"
               - sh run.sh chaincode test golang/mychaincode
         - step:
             name: Run chaincode build
             script:
               # do this to make go module work with private repo (e.g. evl-lib)
+              - apk add --no-cache --upgrade grep
               - git config --global url."git@bitbucket.org:".insteadOf "https://bitbucket.org/"
               - sh run.sh chaincode build golang/mychaincode
