@@ -1006,6 +1006,24 @@ __get_chaincode_language() {
     fi
 }
 
+__set_chaincode_remote_path() {
+    if [ ${CHAINCODE_LANGUAGE} == "golang" ]; then
+        case $CHAINCODE_MOUNT_PATH/ in
+            /opt/gopath/src/*) 
+                log "chaincode mounted in gopath" debug
+                CHAINCODE_REMOTE_PATH=${CHAINCODE_REMOTE_PATH#/opt/gopath/src}
+                return
+                ;;
+            *) 
+                log "chaincode not mounted in gopath" error
+                exit 1
+                ;;
+        esac
+    fi
+
+    CHAINCODE_REMOTE_PATH=${CHAINCODE_MOUNT_PATH}
+}
+
 chaincode_install() {
 	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] ||  [ -z "$5" ]; then
 		log "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" error
@@ -1022,21 +1040,25 @@ chaincode_install() {
 	local chaincode_relative_path="$3"
     local org="$4"
     local peer="$5"
-    local install_path="${CHAINCODE_REMOTE_PATH}/${chaincode_relative_path}"
+    
     shift 5
 
     set_certs $org $peer
     set_peer_exec
 
     __get_chaincode_language ${chaincode_relative_path}
+    __set_chaincode_remote_path
+    local install_path="${CHAINCODE_REMOTE_PATH}/${chaincode_relative_path}"
+
     if [ ${CHAINCODE_LANGUAGE} == "golang" ]; then
         __init_go_mod install ${chaincode_relative_path}
-
         # Golang: workaround for chaincode written as modules
         # make the install to work when main files are not in the main directory but in cmd
         if [ ! "$(find ${install_path} -type f -name '*.go' -maxdepth 1 2>/dev/null)" ] && [ -d "${CHAINCODE_PATH}/${chaincode_relative_path}/cmd" ]; then
             install_path+="/cmd"
         fi
+    else
+        install_path="${CHAINCODE_MOUNT_PATH}/${chaincode_relative_path}"
     fi
 
     log "Installing chaincode $chaincode_name version $chaincode_version from path ${install_path}" info
@@ -1065,6 +1087,7 @@ chaincode_instantiate() {
 	local channel_name="$4"
     local org="$5"
     local peer="$6"
+    local chaincode_args=""
     shift 6
 
     set_certs $org $peer
@@ -1072,12 +1095,20 @@ chaincode_instantiate() {
     __get_chaincode_language $chaincode_relative_path
 
     log "Instantiating chaincode $chaincode_name version $chaincode_version into channel ${channel_name}" info
+
+    if [ -z "$CHAINCODE_ARGS" ]; then
+        chaincode_args="'{\"Args\":[]}'"
+    else
+        chaincode_args="'${CHAINCODE_ARGS}'"
+    fi
     
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
-        PEER_EXEC+="peer chaincode instantiate -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -C ${channel_name} -c '{\"Args\":[]}' \"$@\" -l $CHAINCODE_LANGUAGE || exit 1"
+        PEER_EXEC+="peer chaincode instantiate -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -C ${channel_name} -c ${chaincode_args} \"$@\" -l $CHAINCODE_LANGUAGE || exit 1"
     else
-        PEER_EXEC+="peer chaincode instantiate -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -C ${channel_name} -c '{\"Args\":[]}' \"$@\" -l $CHAINCODE_LANGUAGE --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
+        PEER_EXEC+="peer chaincode instantiate -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -C ${channel_name} -c ${chaincode_args} \"$@\" -l $CHAINCODE_LANGUAGE --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
     fi
+
+    echo "${PEER_EXEC}"
 
     __exec_command "${PEER_EXEC}"
 }

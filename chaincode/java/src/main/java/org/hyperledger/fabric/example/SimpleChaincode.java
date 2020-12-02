@@ -3,11 +3,12 @@ Copyright IBM Corp., DTCC All Rights Reserved.
 
 SPDX-License-Identifier: Apache-2.0
 */
-package org.hyperledger.fabric_samples;
+package org.hyperledger.fabric.example;
 
 import java.util.List;
 
 import com.google.protobuf.ByteString;
+import io.netty.handler.ssl.OpenSsl;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.hyperledger.fabric.shim.ChaincodeBase;
@@ -15,14 +16,18 @@ import org.hyperledger.fabric.shim.ChaincodeStub;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-public class ABstore extends ChaincodeBase {
+public class SimpleChaincode extends ChaincodeBase {
 
-    private static Log _logger = LogFactory.getLog(ABstore.class);
+    private static Log _logger = LogFactory.getLog(SimpleChaincode.class);
 
     @Override
     public Response init(ChaincodeStub stub) {
         try {
             _logger.info("Init java simple chaincode");
+            String func = stub.getFunction();
+            if (!func.equals("init")) {
+                return newErrorResponse("function other than init is not supported");
+            }
             List<String> args = stub.getParameters();
             if (args.size() != 4) {
                 newErrorResponse("Incorrect number of arguments. Expecting 4");
@@ -130,7 +135,8 @@ public class ABstore extends ChaincodeBase {
     }
 
     public static void main(String[] args) {
-        new ABstore().start(args);
+        System.out.println("OpenSSL avaliable: " + OpenSsl.isAvailable());
+        new SimpleChaincode().start(args);
     }
 
 }
