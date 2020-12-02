@@ -6,7 +6,7 @@ A basic and simple boilerplate which contains utilities for efficiently writing 
 
 - [Go](https://golang.org/dl/) [>= 1.12]
 - [Docker](https://www.docker.com/get-started) [>= 18.05]
-- [Docker-compose](https://www.docker.com/get-started) [>= 1.25]
+- [Docker-compose](https://www.docker.com/get-started) [>= 1.24]
 
 ## Install
 
