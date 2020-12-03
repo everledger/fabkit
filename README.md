@@ -85,18 +85,38 @@ The following command will restart a network with the configuration of your last
 ./run.sh network restart
 ```
 
-## Upgrade chaincode
+## Chaincodes
+
+Fabkit currently supports _golang_, _node_ and _java_ chaincodes. To deploy a chaincode from your own directory, you must set the following env variables before starting the network:
+
+- `CHAINCODE_PATH` -Absolute path to the directory to be mounted
+- `CHAINCODE_MOUNT_PATH` - Mount path inside the cli container. _Golang chaincodes must be mounted inside `GOPATH` ( `/opt/gopath/src` )_
+- `CHAINCODE_RELATIVE_PATH` - Relative path to the chaincode package from the mount path
+- `CHAINCODE_ARGS`- Chaincode arguments if any. Can be left blank
+
+To deploy chaincode using FabKit's commands refer below.
 
 ### v1.x
+
+Run the following commands in order to install and instantiate a new chaincode:
+_Note `fabric_options` are an optional parameter_
+
+```bash
+./run.sh chaincode install [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no]
+./run.sh chaincode instantiate [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [org_no] [peer_no] [fabric_options]
+# e.g.
+./run.sh chaincode install mycc_javascript 1.0 javascript/mychaincode 1 0
+./run.sh chaincode instantiate mycc_javascript 1.0 javascipt/mychaincode mychannel 1 0 -c '"{\"Args\":[\"init\",\"a\",\"100\",\"b\",\"200\"]}"'
+```
 
 Run the following commands in order to install and instantiate a newer version of an existing chaincode:
 
 ```bash
 ./run.sh chaincode install [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no]
-./run.sh chaincode upgrade [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [org_no] [peer_no]
+./run.sh chaincode upgrade [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [org_no] [peer_no] [fabric_options]
 # e.g.
-./run.sh chaincode install mychaincode 1.1 golang/mychaincode 1 0
-./run.sh chaincode upgrade mychaincode 1.1 golang/mychaincode mychannel 1 0
+./run.sh chaincode install mycc_javascript 1.1 javascript/mychaincode 1 0
+./run.sh chaincode upgrade mycc_javascript 1.1 javascipt/mychaincode mychannel 1 0 -c '"{\"Args\":[\"init\",\"a\",\"100\",\"b\",\"200\"]}"'
 ```
 
 Be sure the `chaincode_version` is unique and never used before (otherwise an error will be prompted).
