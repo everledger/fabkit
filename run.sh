@@ -1010,7 +1010,7 @@ __set_chaincode_remote_path() {
     if [ ${CHAINCODE_LANGUAGE} == "golang" ]; then
         case $CHAINCODE_MOUNT_PATH/ in
             /opt/gopath/src/*) 
-                log "chaincode mounted in gopath" debug
+                log "Chaincode mounted in gopath" debug
                 CHAINCODE_REMOTE_PATH=${CHAINCODE_REMOTE_PATH#/opt/gopath/src}
                 return
                 ;;
@@ -1071,7 +1071,7 @@ chaincode_install() {
 }
 
 chaincode_instantiate() {
-	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ]; then
+	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ] || [ -z "$6" ]; then
 		log "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" error
 		exit 1
 	fi
@@ -1087,25 +1087,28 @@ chaincode_instantiate() {
 	local channel_name="$4"
     local org="$5"
     local peer="$6"
-    local chaincode_args=""
     shift 6
-
+    local options="$@"
+       
     set_certs $org $peer
     set_peer_exec
     __get_chaincode_language $chaincode_relative_path
 
-    log "Instantiating chaincode $chaincode_name version $chaincode_version into channel ${channel_name}" info
+    log "Instantiating chaincode $chaincode_name version $chaincode_version on channel: ${channel_name}" info
 
-    if [ -z "$CHAINCODE_ARGS" ]; then
-        chaincode_args="'{\"Args\":[]}'"
-    else
-        chaincode_args="'${CHAINCODE_ARGS}'"
+    if [[ ! "${options}" == *"-c"* ]]; then
+        if [ -z "${CHAINCODE_ARGS}" ]; then
+            options+=" -c '{\"Args\":[]}'"
+        else
+            options+=" -c '${CHAINCODE_ARGS}'"
+        fi
     fi
+   
     
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
-        PEER_EXEC+="peer chaincode instantiate -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -C ${channel_name} -c ${chaincode_args} \"$@\" -l $CHAINCODE_LANGUAGE || exit 1"
+        PEER_EXEC+="peer chaincode instantiate -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -C ${channel_name} ${options} -l $CHAINCODE_LANGUAGE || exit 1"
     else
-        PEER_EXEC+="peer chaincode instantiate -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -C ${channel_name} -c ${chaincode_args} \"$@\" -l $CHAINCODE_LANGUAGE --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
+        PEER_EXEC+="peer chaincode instantiate -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -C ${channel_name} ${options} -l $CHAINCODE_LANGUAGE --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
     fi
 
     echo "${PEER_EXEC}"
@@ -1127,20 +1130,31 @@ chaincode_upgrade() {
 
 	local chaincode_name="$1"
 	local chaincode_version="$2"
-	local channel_name="$3"
-    local org="$4"
-    local peer="$5"
-    shift 5
+    local chaincode_relative_path="$3"
+	local channel_name="$4"
+    local org="$5"
+    local peer="$6"
+    shift 6
+    local options="$@"
 
     set_certs $org $peer
     set_peer_exec
+    __get_chaincode_language $chaincode_relative_path
 
-    log "Upgrading chaincode $chaincode_name to version $chaincode_version into channel ${channel_name}" info
-    
+    log "Upgrading chaincode $chaincode_name to version $chaincode_version on channel: ${channel_name}" info
+
+   if [[ ! "${options}" == *"-c"* ]]; then
+        if [ -z "${CHAINCODE_ARGS}" ]; then
+            options+=" -c '{\"Args\":[]}'"
+        else
+            options+=" -c '${CHAINCODE_ARGS}'"
+        fi
+    fi
+
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
-        PEER_EXEC+="peer chaincode upgrade -n $chaincode_name -v $chaincode_version -C ${channel_name} -c '{\"Args\":[]}' \"$@\" || exit 1"
+        PEER_EXEC+="peer chaincode upgrade -n $chaincode_name -v $chaincode_version -C ${channel_name} ${options} || exit 1"
     else
-        PEER_EXEC+="peer chaincode upgrade -n $chaincode_name -v $chaincode_version -C ${channel_name} -c '{\"Args\":[]}' \"$@\" --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
+        PEER_EXEC+="peer chaincode upgrade -n $chaincode_name -v $chaincode_version -C ${channel_name} ${options} --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
     fi
 
     __exec_command "${PEER_EXEC}"
