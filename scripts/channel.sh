@@ -5,27 +5,27 @@ create_channel() {
         log "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" error
         exit 1
     fi
-    
+
     log "===============" info
     log "Channel: create" info
     log "===============" info
     echo
-    
+
     local channel_name="$1"
     local org="$2"
     local peer="$3"
-    
+
     __set_peer_certs $org $peer
-    set_peer_exec
-    
+    __set_peer_exec
+
     log "Creating channel ${channel_name} using configuration file ${CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}_tx.pb" info
-    
+
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
         PEER_EXEC+="peer channel create -o $ORDERER_ADDRESS -c ${channel_name} -f $CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}_tx.pb --outputBlock $CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}.block || exit 1"
     else
         PEER_EXEC+="peer channel create -o $ORDERER_ADDRESS -c ${channel_name} -f $CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}_tx.pb --outputBlock $CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}.block --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
     fi
-    
+
     __exec_command "${PEER_EXEC}"
 }
 
@@ -34,27 +34,27 @@ join_channel() {
         log "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" error
         exit 1
     fi
-    
+
     log "=============" info
     log "Channel: join" info
     log "=============" info
     echo
-    
+
     local channel_name="$1"
     local org="$2"
     local peer="$3"
-    
+
     __set_peer_certs $org $peer
-    set_peer_exec
-    
+    __set_peer_exec
+
     log "Joining channel ${channel_name}" info
-    
+
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
         PEER_EXEC+="peer channel join -b ${CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}.block || exit 1"
     else
         PEER_EXEC+="peer channel join -b ${CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}.block --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
     fi
-    
+
     __exec_command "${PEER_EXEC}"
 }
 
@@ -63,27 +63,27 @@ update_channel() {
         log "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" error
         exit 1
     fi
-    
+
     log "===============" info
     log "Channel: update" info
     log "===============" info
     echo
-    
+
     local channel_name="$1"
     local org_msp="$2"
     local org="$3"
     local peer="$4"
-    
+
     __set_peer_certs $org $peer
-    set_peer_exec
-    
+    __set_peer_exec
+
     log "Updating anchors peers on ${channel_name} using configuration file ${CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors.tx" info
-    
+
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
         PEER_EXEC+="peer channel update -o $ORDERER_ADDRESS -c ${channel_name} -f ${CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors_tx.pb || exit 1"
     else
         PEER_EXEC+="peer channel update -o $ORDERER_ADDRESS -c ${channel_name} -f ${CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors_tx.pb --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
     fi
-    
+
     __exec_command "${PEER_EXEC}"
 }

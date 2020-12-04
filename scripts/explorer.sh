@@ -1,45 +1,127 @@
 #!/usr/bin/env bash
 
-start_explorer() {
-    stop_explorer
-    
-    log "===============" info
-	log "Explorer: start" info
-    log "===============" info
-    echo
-
-    if [[ ! $(docker ps | grep fabric) ]]; then
-        log "No Fabric networks running. First launch ./run.sh start" error
-		exit 1
+__check_fabric_version() {
+    if [[ ! "${FABRIC_VERSION}" =~ ${1}.* ]]; then
+        log "This command is not enabled on Fabric v${FABRIC_VERSION}. In order to run, update the FABRIC_VERSION value in .env file" error
+        exit 1
     fi
-
-    if [ ! -d "${CRYPTOS_PATH}" ]; then
-        log "Cryptos path ${CRYPTOS_PATH} does not exist." error
-    fi
-
-    # replacing private key path in connection profile
-    config=${EXPLORER_PATH}/connection-profile/first-network
-    admin_key_path="peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/keystore"
-    private_key="/tmp/crypto/${admin_key_path}/$(ls ${CRYPTOS_PATH}/${admin_key_path})"
-    cat ${config}.base.json | __jq -r --arg private_key "$private_key" '.organizations.Org1MSP.adminPrivateKey.path = $private_key' | \
-    __jq -r --argjson TLS_ENABLED "$TLS_ENABLED" '.client.tlsEnable = $TLS_ENABLED' > ${config}.json
-
-    # considering tls enabled as default in base
-    if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
-        sed -i'.bak' -e 's/grpcs/grpc/g' -e 's/https/http/g' ${config}.json && rm ${config}.json.bak
-    fi
-
-    docker-compose -f ${EXPLORER_PATH}/docker-compose.yaml up --force-recreate -d || exit 1
-
-    log "Blockchain Explorer default user is exploreradmin/exploreradminpw" warning
-    log "Grafana default user is admin/admin" warning
 }
 
-stop_explorer() {
-    log "==============" info
-	log "Explorer: stop" info
-    log "==============" info
+__check_deps() {
+    if [ "${1}" == "deploy" ]; then
+        type docker >/dev/null 2>&1 || {
+            log >&2 "docker required but it is not installed. Aborting." error
+            exit 1
+        }
+        type docker-compose >/dev/null 2>&1 || {
+            log >&2 "docker-compose required but it is not installed. Aborting." error
+            exit 1
+        }
+    elif [ "${1}" == "test" ]; then
+        type go >/dev/null 2>&1 || {
+            log >&2 "Go binary is missing in your PATH. Running the dockerised version..." warning
+            echo $?
+        }
+    fi
+}
+
+__check_docker_daemon() {
+    if [ "$(docker info --format '{{json .}}' | grep "Cannot connect" 2>/dev/null)" ]; then
+        log "Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?" error
+        exit 1
+    fi
+}
+
+# delete path recursively and asks for root permissions if needed
+__delete_path() {
+    if [ ! -d "${1}" ]; then
+        log "Directory \"${1}\" does not exist. Skipping delete. All good :)" warning
+        return
+    fi
+
+    if [ -w "${1}" ]; then
+        rm -rf ${1}
+    else
+        log "!!!!! ATTENTION !!!!!" error
+        log "Directory \"${1}\" requires superuser permissions" error
+        read -p "Do you wish to continue? [yes/no=default] " yn
+        case $yn in
+        [Yy]*) sudo rm -rf ${1} ;;
+        *) return 0 ;;
+        esac
+    fi
+}
+
+__set_peer_certs() {
+    CORE_PEER_ADDRESS=peer${2}.org${1}.example.com:$((6 + ${1}))051
+    CORE_PEER_LOCALMSPID=Org${1}MSP
+    CORE_PEER_TLS_ENABLED=false
+    CORE_PEER_TLS_CERT_FILE=${CONTAINER_PEER_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/peers/peer${2}.org${1}.example.com/tls/server.crt
+    CORE_PEER_TLS_KEY_FILE=${CONTAINER_PEER_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/peers/peer${2}.org${1}.example.com/tls/server.key
+    CORE_PEER_TLS_ROOTCERT_FILE=${CONTAINER_PEER_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/peers/peer${2}.org${1}.example.com/tls/ca.crt
+    CORE_PEER_MSPCONFIGPATH=${CONTAINER_PEER_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/users/Admin@org${1}.example.com/msp
+    ORDERER_CA=${CONTAINER_PEER_BASEPATH}/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
+
+    log "===========================================" info
+    log "Peer address: ${CORE_PEER_ADDRESS}" info
+    log "Peer cert: ${CORE_PEER_TLS_CERT_FILE}" info
+    log "===========================================" info
+    echo
+}
+
+__set_peer_exec() {
+    PEER_EXEC="docker exec -e CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
+    -e CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID \
+    -e CORE_PEER_TLS_ENABLED=$TLS_ENABLED \
+    -e CORE_PEER_TLS_CERT_FILE=$CORE_PEER_TLS_CERT_FILE \
+    -e CORE_PEER_TLS_KEY_FILE=$CORE_PEER_TLS_KEY_FILE \
+    -e CORE_PEER_TLS_ROOTCERT_FILE=$CORE_PEER_TLS_ROOTCERT_FILE \
+    -e CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH \
+    $CHAINCODE_UTIL_CONTAINER "
+}
+
+__exec_command() {
+    echo
+    log "Excecuting command: " debug
+    echo
+    message=${1%"|| exit 1"}
+    log "$message" debug
     echo
 
-    docker-compose -f ${EXPLORER_PATH}/docker-compose.yaml down || exit 1
+    eval ${1}
+}
+
+log() {
+    if [[ ${#} != 2 ]]; then
+        echo "usage: ${FUNCNAME} <string> [debug|info|warning|error|success]"
+        exit 1
+    fi
+
+    local message="${1}"
+    local level=$(echo ${2} | awk '{print tolower($0)}')
+    local default_colour="\033[0m"
+
+    case $level in
+    header) colour_code="\033[1;35m" ;;
+    error) colour_code="\033[1;31m" ;;
+    success) colour_code="\033[1;32m" ;;
+    warning) colour_code="\033[1;33m" ;;
+    info) colour_code="\033[1;34m" ;;
+    debug)
+        if [ -z "${DEBUG}" ] || [ "${DEBUG}" == "false" ]; then return; fi
+        colour_code="\033[1;36m"
+        ;;
+    *) colour_code=${default_colour} ;;
+    esac
+
+    # Print out the message and reset
+    echo -e "${colour_code}${message}${default_colour}"
+}
+
+tostring() {
+    echo "$@" | __jq tostring
+}
+
+tojson() {
+    echo "$@" | __jq .
 }

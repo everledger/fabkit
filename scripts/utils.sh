@@ -9,15 +9,24 @@ __check_fabric_version() {
 
 __check_deps() {
     if [ "${1}" == "deploy" ]; then
-        type docker >/dev/null 2>&1 || { log >&2 "docker required but it is not installed. Aborting." error; exit 1; }
-        type docker-compose >/dev/null 2>&1 || { log >&2 "docker-compose required but it is not installed. Aborting." error; exit 1; }
+        type docker >/dev/null 2>&1 || {
+            log >&2 "docker required but it is not installed. Aborting." error
+            exit 1
+        }
+        type docker-compose >/dev/null 2>&1 || {
+            log >&2 "docker-compose required but it is not installed. Aborting." error
+            exit 1
+        }
     elif [ "${1}" == "test" ]; then
-        type go >/dev/null 2>&1 || { log >&2 "Go binary is missing in your PATH. Running the dockerised version..." warning; echo $?; }
+        type go >/dev/null 2>&1 || {
+            log >&2 "Go binary is missing in your PATH. Running the dockerised version..." warning
+            echo $?
+        }
     fi
 }
 
 __check_docker_daemon() {
-    if [ "$(docker info --format '{{json .}}' | grep "Cannot connect" 2>/dev/null)" ]; then 
+    if [ "$(docker info --format '{{json .}}' | grep "Cannot connect" 2>/dev/null)" ]; then
         log "Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?" error
         exit 1
     fi
@@ -25,25 +34,25 @@ __check_docker_daemon() {
 
 # delete path recursively and asks for root permissions if needed
 __delete_path() {
-    if [ ! -d "${1}" ]; then 
+    if [ ! -d "${1}" ]; then
         log "Directory \"${1}\" does not exist. Skipping delete. All good :)" warning
         return
     fi
 
     if [ -w "${1}" ]; then
         rm -rf ${1}
-    else 
+    else
         log "!!!!! ATTENTION !!!!!" error
         log "Directory \"${1}\" requires superuser permissions" error
         read -p "Do you wish to continue? [yes/no=default] " yn
         case $yn in
-            [Yy]* ) sudo rm -rf ${1} ;;
-            * ) return 0
+        [Yy]*) sudo rm -rf ${1} ;;
+        *) return 0 ;;
         esac
     fi
 }
 
-__set_peer_certs ()  {
+__set_peer_certs() {
     CORE_PEER_ADDRESS=peer${2}.org${1}.example.com:$((6 + ${1}))051
     CORE_PEER_LOCALMSPID=Org${1}MSP
     CORE_PEER_TLS_ENABLED=false
@@ -60,7 +69,7 @@ __set_peer_certs ()  {
     echo
 }
 
-set_peer_exec() {
+__set_peer_exec() {
     PEER_EXEC="docker exec -e CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
             -e CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID \
             -e CORE_PEER_TLS_ENABLED=$TLS_ENABLED \
@@ -92,16 +101,17 @@ log() {
     local level=$(echo ${2} | awk '{print tolower($0)}')
     local default_colour="\033[0m"
 
-    case $level in 
-        header ) colour_code="\033[1;35m" ;;
-        error ) colour_code="\033[1;31m" ;;
-        success ) colour_code="\033[1;32m" ;;
-        warning ) colour_code="\033[1;33m" ;;
-        info ) colour_code="\033[1;34m" ;;
-        debug ) 
-            if [ -z "${DEBUG}" ] || [ "${DEBUG}" == "false" ]; then return; fi
-            colour_code="\033[1;36m" ;;
-        * ) colour_code=${default_colour} ;;
+    case $level in
+    header) colour_code="\033[1;35m" ;;
+    error) colour_code="\033[1;31m" ;;
+    success) colour_code="\033[1;32m" ;;
+    warning) colour_code="\033[1;33m" ;;
+    info) colour_code="\033[1;34m" ;;
+    debug)
+        if [ -z "${DEBUG}" ] || [ "${DEBUG}" == "false" ]; then return; fi
+        colour_code="\033[1;36m"
+        ;;
+    *) colour_code=${default_colour} ;;
     esac
 
     # Print out the message and reset

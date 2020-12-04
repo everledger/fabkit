@@ -24,21 +24,21 @@ __exec_jobs() {
     " info
 
     start_time="$(date -u +%s)"
-    
+
     for i in $(seq 1 $jobs); do
-        __loader $entries & 
+        __loader $entries &
     done
 
     for job in $(jobs -p); do
         wait $job
-    done 
+    done
 
     end_time="$(date -u +%s)"
 
     elapsed="$(($end_time - $start_time))"
     log "Total of $elapsed seconds elapsed for process" warning
 
-    log "$(( $jobs * $entries )) entries added" success
+    log "$(($jobs * $entries)) entries added" success
 }
 
 __loader() {
@@ -50,7 +50,7 @@ __loader() {
     set -e
     export LC_CTYPE=C
 
-    for i in $(seq 1 $1); do 
+    for i in $(seq 1 $1); do
         key=$(LC_CTYPE=C cat /dev/urandom | tr -cd 'A-Z0-9' | fold -w 14 | head -n 1)
         value="$i"
 

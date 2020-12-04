@@ -243,7 +243,7 @@ __ca_setup() {
         echo
         log "A few examples:" info
         log "If enrolling an admin: 'hf.Registrar.Roles,hf.Registrar.Attributes,hf.AffiliationMgr'" warning
-        log "If registering a user: 'admin=false:ecert,email=provapi@everledger.io:ecert,application=provapi'" warning
+        log "If registering a user: 'admin=false:ecert,email=app@example.org:ecert,application=app'" warning
         log "If enrolling a user: 'admin:opt,email:opt,application:opt'" warning
         read -p "User attributes: [admin=false:ecert] " user_attributes
         export user_attributes=${user_attributes:-"admin=false:ecert"}
