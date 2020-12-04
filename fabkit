@@ -7,8 +7,6 @@ source ./scripts/bash_autocomplete.sh
 AutoComplete
 
 export GO111MODULE=on
-export GOPRIVATE=bitbucket.org/everledger/*
-
 # name of the working directory/project
 export WORKSPACE=$(basename ${ROOT})
 # it should be under GOPATH (automatically added in front of this path)
@@ -33,13 +31,22 @@ __jq() {
 }
 
 __log_setup() {
-    log "Setup" info
+    log "===========" info
+    log "Init: setup" info
+    log "===========" info
     echo
-    log "FABRIC_VERSION=${FABRIC_VERSION}" info
-    log "ORGS=${ORGS:-1}" info
-    log "CI=${CI:-false}" info
-    log "DEBUG=${DEBUG:-false}" info
-    log "RESET=${RESET:-false}" info
+    log "Docker network: $(log ${DOCKER_NETWORK} warning)" info
+    log "Fabric version: $(log ${FABRIC_VERSION} warning)" info
+    log "Fabric CA version: $(log ${FABRIC_CA_VERSION} warning)" info
+    log "Fabric third-party version: $(log ${FABRIC_THIRDPARTY_IMAGE_VERSION} warning)" info
+    log "Network configuration profile: $(log ${CONFIGTX_PROFILE_NETWORK} warning)" info
+    log "Channel configuration profile: $(log ${CONFIGTX_PROFILE_CHANNEL} warning)" info
+    log "Chaincode name: $(log ${CHAINCODE_NAME} warning)" info
+    log "Chaincode version: $(log ${CHAINCODE_VERSION} warning)" info
+    log "Organizations: $(log ${ORGS:-1} warning)" info
+    log "TLS enabled: $(log ${TLS_ENABLED} warning)" info
+    log "Debug mode: $(log ${DEBUG:-false} warning)" info
+    log "Fresh-start mode: $(log ${RESET:-false} warning)" info
     echo
 }
 
@@ -48,27 +55,27 @@ __set_params() {
         param="${1}"
 
         case $param in
-        -c|--ci)
+        -c | --ci)
             CI=true
             shift
             ;;
-        -d|--debug)
+        -d | --debug)
             DEBUG=true
             shift
             ;;
-        -r|--reset)
+        -r | --reset)
             RESET=true
             shift
             ;;
-        -o|--orgs)
+        -o | --orgs)
             ORGS="${2}"
             shift 2
             ;;
-        -v|--version)
+        -v | --version)
             FABRIC_VERSION="${2}"
             shift 2
             ;;
-        *) 
+        *)
             log "${1} paramater not recognized. Please run the help." error
             exit 1
             ;;
@@ -82,20 +89,20 @@ shift
 if [ "$func" == "network" ]; then
     __check_deps deploy
     __check_docker_daemon
+    __log_setup
     param="$1"
     shift
     if [ "$param" == "install" ]; then
         install_network
     elif [ "$param" == "start" ]; then
         __set_params "$@"
-        __log_setup
         start_network "$@"
     elif [ "$param" == "restart" ]; then
         restart_network
     elif [ "$param" == "stop" ]; then
         stop_network
     else
-        help
+        help_network
         exit 1
     fi
 elif [ "$func" == "explorer" ]; then
@@ -108,7 +115,7 @@ elif [ "$func" == "explorer" ]; then
     elif [ "$param" == "stop" ]; then
         stop_explorer
     else
-        help
+        help_explorer
         exit 1
     fi
 elif [ "$func" == "dep" ]; then
@@ -119,7 +126,7 @@ elif [ "$func" == "dep" ]; then
     elif [ "$param" == "update" ]; then
         dep_update "$@"
     else
-        help
+        help_dep
         exit 1
     fi
 elif [ "$func" == "chaincode" ]; then
@@ -150,7 +157,7 @@ elif [ "$func" == "chaincode" ]; then
             __check_docker_daemon
             lc_chaincode_deploy "$@"
         else
-            help
+            help_chaincode
             exit 1
         fi
     elif [ "$param" == "install" ]; then
@@ -188,7 +195,7 @@ elif [ "$func" == "chaincode" ]; then
         __check_docker_daemon
         invoke "$@"
     else
-        help
+        help_chaincode
         exit 1
     fi
 elif [ "$func" == "generate" ]; then
@@ -203,7 +210,7 @@ elif [ "$func" == "generate" ]; then
     elif [ "$param" == "channeltx" ]; then
         generate_channeltx "$@"
     else
-        help
+        help_generate
         exit 1
     fi
 elif [ "$func" == "ca" ]; then
@@ -221,7 +228,7 @@ elif [ "$func" == "ca" ]; then
     elif [ "$param" == "revoke" ]; then
         revoke_user "$@"
     else
-        help
+        help_ca
         exit 1
     fi
 elif [ "$func" == "channel" ]; then
@@ -236,7 +243,7 @@ elif [ "$func" == "channel" ]; then
     elif [ "$param" == "join" ]; then
         join_channel "$@"
     else
-        help
+        help_channel
         exit 1
     fi
 elif [ "$func" == "benchmark" ]; then
@@ -246,7 +253,7 @@ elif [ "$func" == "benchmark" ]; then
         __check_deps deploy
         __exec_jobs "$@"
     else
-        help
+        help_benchmark
         exit 1
     fi
 elif [ "$func" == "utils" ]; then
@@ -257,7 +264,7 @@ elif [ "$func" == "utils" ]; then
     elif [ "$param" == "tojson" ]; then
         tojson "$@"
     else
-        help
+        help_utils
         exit 1
     fi
 else
