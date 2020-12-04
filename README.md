@@ -1,6 +1,4 @@
-# Hyperledger Fabric Chaincode Boilerplate
-
-A basic and simple boilerplate which contains utilities for efficiently writing chaincode and test it in a running network.
+# Fabkit
 
 ## Prerequisites
 
@@ -8,12 +6,36 @@ A basic and simple boilerplate which contains utilities for efficiently writing 
 - [Docker](https://www.docker.com/get-started) [>= 18.05]
 - [Docker-compose](https://www.docker.com/get-started) [>= 1.24]
 
-## Install
+## Pre-install
 
-Install all the docker images needed:
+In order to run commands with ease, we recommend to add `fabkit` as an alias in your default shell profile.
+
+You can perform this step manually, as follows:
 
 ```bash
-./run.sh network install
+# for bash users
+echo "alias fabkit=./fabkit" >> ~/.bashrc
+source ~/.bashrc
+
+# for zsh users
+echo "alias fabkit=./fabkit" >> ~/.zshrc
+source ~/.bashrc
+```
+
+or, if you do not know what shell you are using, you can let this script doing it for you:
+
+```bash
+./scripts/runner.sh
+```
+
+Note: **this command needs to be executed only once (however, there will be no harm if accidentally you run it again 😉 )**
+
+## Install
+
+Before starting our network, let's first install all the required dependencies:
+
+```bash
+fabkit network install
 ```
 
 ## Run the blockchain network
@@ -21,9 +43,9 @@ Install all the docker images needed:
 The following command will spin a Hyperledger Fabric network up, generating _channel_ and _crypto_ config at runtime:
 
 ```bash
-./run.sh network start
+fabkit network start
 # or
-./run.sh network start --orgs 1
+fabkit network start --orgs 1
 ```
 
 It will execute the following functions:
@@ -41,7 +63,7 @@ It will execute the following functions:
 
 Afterwards, the network will be ready to accept `invoke` and `query` functions.
 
-Run `./run.sh help` for the complete list of functionalities.
+Run `fabkit help` for the complete list of functionalities.
 
 ### Run the network with different configurations
 
@@ -50,10 +72,20 @@ You may want to run the network with multiple organizations or by using customiz
 To run the network in multi-org setup, you can use the `-o|--orgs <number>` flag, where `number` is a numeric integer:
 
 ```bash
-./run.sh network start --orgs <number>
+fabkit network start --orgs <number>
 ```
 
 Note: **The maximum number of organizations supported at the time of writing is 3.**
+
+Or you might want to run a multi-org setup, in debug mode and on a specific version of Fabric:
+
+```bash
+fabkit networks start -o 3 -d -v 1.4.9
+```
+
+For the full list of params, check the helper by typing `fabkit network`.
+
+### On ordering service
 
 The consensus mechanism for the Ordering Service so far fully supported by this repo is `SOLO`, however, there is a 1-org configuration made available for `Raft` as well and it can be used by replacing the following variable in the `.env` file:
 
@@ -64,7 +96,7 @@ CONFIGTX_PROFILE_NETWORK=OneOrgOrdererEtcdRaft
 Then simply run the network with a single organization:
 
 ```bash
-./run.sh network start
+fabkit network start
 ```
 
 All network available configurations can be found under `network/config`. Users can extend them on their own need.
@@ -74,7 +106,7 @@ All network available configurations can be found under `network/config`. Users 
 The following command will stop all the components of your running network while preserving all the stored data into the _data_ directory by default:
 
 ```bash
-./run.sh network stop
+fabkit network stop
 ```
 
 ## Restart a previously running network
@@ -82,7 +114,7 @@ The following command will stop all the components of your running network while
 The following command will restart a network with the configuration of your last run only if a _data_ directory is found:
 
 ```bash
-./run.sh network restart
+fabkit network restart
 ```
 
 ## Upgrade chaincode
@@ -92,11 +124,11 @@ The following command will restart a network with the configuration of your last
 Run the following commands in order to install and instantiate a newer version of an existing chaincode:
 
 ```bash
-./run.sh chaincode install [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no]
-./run.sh chaincode upgrade [chaincode_name] [chaincode_version] [channel_name] [org_no] [peer_no]
+fabkit chaincode install [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no]
+fabkit chaincode upgrade [chaincode_name] [chaincode_version] [channel_name] [org_no] [peer_no]
 # e.g.
-./run.sh chaincode install mychaincode 1.1 mychaincode 1 0
-./run.sh chaincode upgrade mychaincode 1.1 mychannel 1 0
+fabkit chaincode install mychaincode 1.1 mychaincode 1 0
+fabkit chaincode upgrade mychaincode 1.1 mychannel 1 0
 ```
 
 Be sure the `chaincode_version` is unique and never used before (otherwise an error will be prompted).
@@ -110,26 +142,26 @@ Fabkit offers a simplified all-in-once command to perform this process.
 The commands below will install, approve, commit and initialize a newer version of an existing chaincode.
 
 ```bash
-./run.sh chaincode lifecycle deploy [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [sequence_no] [org_no] [peer_no]
+fabkit chaincode lifecycle deploy [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [sequence_no] [org_no] [peer_no]
 
 # e.g. considering previous chaincode_version was 1.0 and sequence_no was 1 (using default peer)
-./run.sh chaincode lifecycle deploy mychaincode 1.1 mychaincode mychannel 2 1 0
+fabkit chaincode lifecycle deploy mychaincode 1.1 mychaincode mychannel 2 1 0
 ```
 
 However, if you want more control over the single command execution, you can reproduce the exact same results as above by splitting that into the following steps:
 
 ```bash
-./run.sh chaincode lifecycle package [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no]
+fabkit chaincode lifecycle package [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no]
 # tip: run the install only if you are upgrading the chaincode binaries, otherwise no new container will be built (but also no errors will be thrown)
-./run.sh chaincode lifecycle install [chaincode_name] [chaincode_version] [org_no] [peer_no]
-./run.sh chaincode lifecycle approve [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [sequence_no] [org_no] [peer_no]
-./run.sh chaincode lifecycle commit [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [sequence_no] [org_no] [peer_no]
+fabkit chaincode lifecycle install [chaincode_name] [chaincode_version] [org_no] [peer_no]
+fabkit chaincode lifecycle approve [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [sequence_no] [org_no] [peer_no]
+fabkit chaincode lifecycle commit [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [sequence_no] [org_no] [peer_no]
 
 # e.g. considering previous chaincode_version was 1.0 and sequence_no was 1 (using default peer)
-./run.sh chaincode lifecycle package mychaincode 1.1 mychaincode 1 0
-./run.sh chaincode lifecycle install mychaincode 1.1 1 0
-./run.sh chaincode lifecycle approve mychaincode 1.1 mychaincode mychannel 2 1 0
-./run.sh chaincode lifecycle commit mychaincode 1.1 mychaincode mychannel 2 1 0
+fabkit chaincode lifecycle package mychaincode 1.1 mychaincode 1 0
+fabkit chaincode lifecycle install mychaincode 1.1 1 0
+fabkit chaincode lifecycle approve mychaincode 1.1 mychaincode mychannel 2 1 0
+fabkit chaincode lifecycle commit mychaincode 1.1 mychaincode mychannel 2 1 0
 ```
 
 >If you are upgrading the chaincode binaries, you need to update the chaincode version and the package ID in the chaincode definition. You can also update your chaincode endorsement policy without having to repackage your chaincode binaries. Channel members simply need to approve a definition with the new policy. The new definition needs to increment the sequence variable in the definition by one.
@@ -143,17 +175,17 @@ More details here: [Chaincode Lifecyle - Upgrade](https://hyperledger-fabric.rea
 Run the following command in order to create an archive for the selected chaincode including all the required dependencies:
 
 ```bash
-./run.sh chaincode zip [chaincode_name]
+fabkit chaincode zip [chaincode_name]
 ```
 
 Follow the output message in console to see where the archive has been created.
 
 ## Package and sign chaincode for deployment
 
-Some platforms, like IBPv2, do not accept `.zip` or archives which are not packaged and signed using the `peer chaincode package` Fabric functionality. In this specific cases you can use the following command:
+Some platforms, like IBPv2, do not accept `.zip` or archives which are not packaged and signed using the `peer chaincode package` Fabric functionality. In these specific cases you can use the following command:
 
 ```bash
-./run.sh chaincode package [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no]
+fabkit chaincode package [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no]
 ```
 
 Follow the output message in console to see where the package has been created.
@@ -167,26 +199,26 @@ It is possible to use the CLI to run and test functionalities via invoke and que
 ### Invoke
 
 ```bash
-./run.sh chaincode invoke [channel_name] [chaincode_name] [org_no] [peer_no] [request]
+fabkit chaincode invoke [channel_name] [chaincode_name] [org_no] [peer_no] [request]
 
 # e.g.
-./run.sh chaincode invoke mychannel mychaincode 1 0 '{"Args":["put","key1","10"]}'
+fabkit chaincode invoke mychannel mychaincode 1 0 '{"Args":["put","key1","10"]}'
 ```
 
 ### Query
 
 ```bash
-./run.sh chaincode query [channel_name] [chaincode_name] [org_no] [peer_no] [request]
+fabkit chaincode query [channel_name] [chaincode_name] [org_no] [peer_no] [request]
 
 # e.g.
-./run.sh chaincode query mychannel mychaincode 1 0 '{"Args":["get","key1"]}'
+fabkit chaincode query mychannel mychaincode 1 0 '{"Args":["get","key1"]}'
 ```
 
 ## Private Data Collections
 
 Starting from v1.2, Fabric offers the ability to create [private data collections](https://hyperledger-fabric.readthedocs.io/en/release-1.4/private-data/private-data.html), which allow a defined subset of organizations on a channel the ability to endorse, commit, or query private data without having to create a separate channel.
 
-This boilerplate propose a sample chaincode, `pdc`, exported from the [fabric-samples]((https://github.com/hyperledger/fabric-samples)) official repository, which includes a `collections_config.json` file with the following configuration:
+This repository proposes a sample chaincode, `pdc`, exported from the [fabric-samples]((https://github.com/hyperledger/fabric-samples)) official repository, which includes a `collections_config.json` file with the following configuration:
 
 - `collectionMarbles`: Org1MSP, Org2MSP
 - `collectionMarblePrivateDetails`: Org1MSP
@@ -195,7 +227,7 @@ In order to provide with a basic demonstration of how private data collections w
 
 ```bash
 # start the network with 3-orgs setup
-./run.sh network start --orgs 3
+fabkit network start --orgs 3
 ```
 
 The network will be initialized with the following components:
@@ -216,12 +248,12 @@ Install and instantiate the `pdc` chaincode:
 
 ```bash
 # install the pdc chaincode on all the organizations' peer0
-./run.sh chaincode install pdc 1.0 pdc 1 0
-./run.sh chaincode install pdc 1.0 pdc 2 0
-./run.sh chaincode install pdc 1.0 pdc 3 0
+fabkit chaincode install pdc 1.0 pdc 1 0
+fabkit chaincode install pdc 1.0 pdc 2 0
+fabkit chaincode install pdc 1.0 pdc 3 0
 
 # instantiate pdc chaincode on mychannel using org1 peer0
-./run.sh chaincode instantiate pdc 1.0 mychannel 1 0 --collections-config /opt/gopath/src/${CHAINCODE_REMOTE_PATH}/chaincode/pdc/collections_config.json -P "OR('Org1MSP.member','Org2MSP.member','Org3MSP.member')"
+fabkit chaincode instantiate pdc 1.0 mychannel 1 0 --collections-config /opt/gopath/src/${CHAINCODE_REMOTE_PATH}/chaincode/pdc/collections_config.json -P "OR('Org1MSP.member','Org2MSP.member','Org3MSP.member')"
 ```
 
 Execute some actions:
@@ -229,13 +261,13 @@ Execute some actions:
 ```bash
 # create a new marble as org1 peer0
 export MARBLE=$(echo -n "{\"name\":\"marble1\",\"color\":\"blue\",\"size\":35,\"owner\":\"tom\",\"price\":99}" | base64 | tr -d \\n)
-./run.sh chaincode invoke mychannel pdc 1 0 '{"Args":["initMarble"]}' --transient "{\"marble\":\"$MARBLE\"}"
+fabkit chaincode invoke mychannel pdc 1 0 '{"Args":["initMarble"]}' --transient "{\"marble\":\"$MARBLE\"}"
 
 # query marble as org2 peer0 (successful)
-./run.sh chaincode query mychannel pdc 2 0 '{"Args":["readMarble","marble1"]}'
+fabkit chaincode query mychannel pdc 2 0 '{"Args":["readMarble","marble1"]}'
 
 # query marble as org3 peer0 (fail, as org3 is not part of this collection)
-./run.sh chaincode query mychannel pdc 3 0 '{"Args":["readMarble","marble1"]}'
+fabkit chaincode query mychannel pdc 3 0 '{"Args":["readMarble","marble1"]}'
 ```
 
 You can access the CouchDB UI for each organization's peer to inspect the data which gets effectively stored and its format.
@@ -260,13 +292,13 @@ This code is provided with a graphical blockchain explorer powered by [Hyperledg
 Once the configuration is ready, you can run the explorer (and all the connected tools) with a simple command:
 
 ```bash
-./run.sh explorer start
+fabkit explorer start
 ```
 
 To stop and remove all the running Explorer processes:
 
 ```bash
-./run.sh explorer stop
+fabkit explorer stop
 ```
 
 ### UI Explorer
@@ -326,19 +358,19 @@ To perform any of the below procedures you need to have satisfied the following 
 - Enroll the `admin` user to retrieve its certificate (if you do not have it yet)
 
 ```bash
-./run.sh ca enroll
+fabkit ca enroll
 ```
 
 - Register the new user
 
 ```bash
-./run.sh ca register
+fabkit ca register
 ```
 
 - Enroll the new user (using same username and password used previously for registering it)
 
 ```bash
-./run.sh ca enroll
+fabkit ca enroll
 ```
 
 This final command will generate a new certificate for the user under `network/cryptos/<org_name>/<username>` directory.
@@ -359,13 +391,13 @@ The procedure to renew a certificate follows a few steps but it is not that bana
 - Enroll the `admin` user to retrieve its certificate (if you do not have it yet)
 
 ```bash
-./run.sh ca enroll
+fabkit ca enroll
 ```
 
 - Re-enroll the user with the expired certificate
 
 ```bash
-./run.sh ca reenroll
+fabkit ca reenroll
 ```
 
 ### Revoke a certificate
@@ -385,7 +417,7 @@ For example, a revoker with affiliation `orgs.org1` and `hf.Registrar.Roles=peer
 ### Steps
 
 ```bash
-./run.sh ca revoke
+fabkit ca revoke
 ```
 
 ### Registering and enrolling users on PaaS
@@ -415,10 +447,10 @@ If we want to use a specific user certificate and key, we need first to download
 The repository provides also a simple implementation of a bulk load function in order to benchmark the general speed of the network in terms of tps (transactions-per-second).
 
 ```bash
-./run.sh benchmark load [jobs] [entries]
+fabkit benchmark load [jobs] [entries]
 
 # e.g.
-./run.sh benchmark load 5 1000
+fabkit benchmark load 5 1000
 ```
 
 The example above will do a bulk load of 1000 entries times 5 parallel jobs, for a total of 5000 entries. At the completion of all the jobs it will be prompted on screen the elapsed time of the total task.
@@ -450,7 +482,7 @@ Error: Response from server: Error Code: 20 - Authorization failure
 
 - Be sure the CA certificate and the admin credentials you are using are valid and retrievable from the script
 
-- You may need to enroll again the admin using username and password (try it with `./run.sh enroll`)
+- You may need to enroll again the admin using username and password (try it with `fabkit enroll`)
 
 - **Be sure you are using the same versions of fabric-ca both in your server and client. Note that IBP, at the time of writing, is using v1.1.0, so be sure your fabric-ca-client is the exact same.**
 
@@ -533,7 +565,7 @@ When asked to provide enrollment attributes be sure you are either using a corre
 
 - Your version of Docker is > 2.3.x
 
-While running the app with `./run.sh network start` or trying to instantiate a chaincode, the following error occurs:
+While running the app with `fabkit network start` or trying to instantiate a chaincode, the following error occurs:
 
 ```bash
 Error: could not assemble transaction, err proposal response was not successful, error code 500, msg error starting container: error starting container: Post http://unix.sock/containers/create?name=dev-peer0.org1.example.com-mychaincode-1.0: dial unix /host/var/run/docker.sock: connect: no such file or directory
