@@ -105,8 +105,8 @@ _Note `fabric_options` are an optional parameter_
 ./run.sh chaincode install [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no]
 ./run.sh chaincode instantiate [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [org_no] [peer_no] [fabric_options]
 # e.g.
-./run.sh chaincode install mycc_javascript 1.0 javascript/mychaincode 1 0
-./run.sh chaincode instantiate mycc_javascript 1.0 javascipt/mychaincode mychannel 1 0 -c '"{\"Args\":[\"init\",\"a\",\"100\",\"b\",\"200\"]}"'
+./run.sh chaincode install mycc_node 1.0 node/mychaincode 1 0
+./run.sh chaincode instantiate mycc_node 1.0 javascipt/mychaincode mychannel 1 0 -c '"{\"Args\":[\"init\",\"a\",\"100\",\"b\",\"200\"]}"'
 ```
 
 Run the following commands in order to install and instantiate a newer version of an existing chaincode:
@@ -115,8 +115,8 @@ Run the following commands in order to install and instantiate a newer version o
 ./run.sh chaincode install [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no]
 ./run.sh chaincode upgrade [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [org_no] [peer_no] [fabric_options]
 # e.g.
-./run.sh chaincode install mycc_javascript 1.1 javascript/mychaincode 1 0
-./run.sh chaincode upgrade mycc_javascript 1.1 javascipt/mychaincode mychannel 1 0 -c '"{\"Args\":[\"init\",\"a\",\"100\",\"b\",\"200\"]}"'
+./run.sh chaincode install mycc_node 1.1 node/mychaincode 1 0
+./run.sh chaincode upgrade mycc_node 1.1 javascipt/mychaincode mychannel 1 0 -c '"{\"Args\":[\"init\",\"a\",\"100\",\"b\",\"200\"]}"'
 ```
 
 Be sure the `chaincode_version` is unique and never used before (otherwise an error will be prompted).
