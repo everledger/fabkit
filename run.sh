@@ -1042,7 +1042,7 @@ chaincode_install() {
 
     __get_chaincode_language ${chaincode_relative_path}
     __set_chaincode_remote_path
-    local install_path=""
+    local install_path=${chaincode_remote_path}/${chaincode_relative_path}
 
     if [ ${CHAINCODE_LANGUAGE} == "golang" ]; then
         __init_go_mod install ${chaincode_relative_path}
@@ -1051,8 +1051,6 @@ chaincode_install() {
         if [ ! "$(find ${install_path} -type f -name '*.go' -maxdepth 1 2>/dev/null)" ] && [ -d "${CHAINCODE_PATH}/${chaincode_relative_path}/cmd" ]; then
             install_path+="/cmd"
         fi
-    else
-        install_path="${CHAINCODE_REMOTE_MOUNT_PATH}/${chaincode_relative_path}"
     fi
 
     log "Installing chaincode $chaincode_name version $chaincode_version from path ${install_path}" info
@@ -1082,14 +1080,15 @@ chaincode_instantiate() {
     local org="$5"
     local peer="$6"
     shift 6
+    
     local options="$@"
        
     set_certs $org $peer
     set_peer_exec
+    
     __get_chaincode_language $chaincode_relative_path
 
     log "Instantiating chaincode $chaincode_name version $chaincode_version on channel: ${channel_name}" info
-
     if [[ ! "${options}" == *"-c"* ]]; then
         if [ -z "${CHAINCODE_ARGS}" ]; then
             options+=" -c '{\"Args\":[]}'"
@@ -1127,15 +1126,16 @@ chaincode_upgrade() {
     local org="$5"
     local peer="$6"
     shift 6
+    
     local options="$@"
 
     set_certs $org $peer
     set_peer_exec
+    
     __get_chaincode_language $chaincode_relative_path
 
     log "Upgrading chaincode $chaincode_name to version $chaincode_version on channel: ${channel_name}" info
-
-   if [[ ! "${options}" == *"-c"* ]]; then
+    if [[ ! "${options}" == *"-c"* ]]; then
         if [ -z "${CHAINCODE_ARGS}" ]; then
             options+=" -c '{\"Args\":[]}'"
         else
@@ -1230,8 +1230,6 @@ chaincode_pack() {
     else
         PEER_EXEC+="peer chaincode package dist/${chaincode_name}_${chaincode_version}_${timestamp}.cc -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -p ${install_path} -l ${CHAINCODE_LANGUAGE} --cc-package --sign --tls --cafile $ORDERER_CA || exit 1"
     fi
-
-    echo $PEER_EXEC
 
     __exec_command "${PEER_EXEC}"
 
@@ -1387,10 +1385,10 @@ lc_chaincode_install() {
     shift 4
 
     set_certs $org $peer
+    set_peer_exec
 
     log "Installing chaincode $chaincode_name version $chaincode_version" info
     
-    set_peer_exec
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
         PEER_EXEC+="peer lifecycle chaincode install ${chaincode_name}_${chaincode_version}.tar.gz || exit 1"
     else
@@ -1420,6 +1418,7 @@ lc_chaincode_approve() {
     shift 6
 
     set_certs $org $peer
+    set_peer_exec
 
     log "Querying chaincode package ID" info
     lc_query_package_id $chaincode_name $chaincode_version $org $peer
@@ -1430,7 +1429,6 @@ lc_chaincode_approve() {
     
     log "Approve chaincode for my organization" info
     # TODO: policy to be passed as input argument
-    set_peer_exec
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
         PEER_EXEC+="peer lifecycle chaincode approveformyorg --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --package-id $PACKAGE_ID --sequence $sequence_no --waitForEvent --signature-policy \"OR('Org1MSP.member','Org2MSP.member','Org3MSP.member')\" || exit 1"
     else
@@ -1471,9 +1469,9 @@ lc_chaincode_commit() {
 	fi
 
     set_certs $org $peer
+    set_peer_exec
 
     log "Check whether the chaincode definition is ready to be committed" info
-    set_peer_exec
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
         PEER_EXEC+="peer lifecycle chaincode checkcommitreadiness --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --sequence $sequence_no --output json --signature-policy \"OR('Org1MSP.member','Org2MSP.member','Org3MSP.member')\" || exit 1"
     else
