@@ -4,13 +4,10 @@ source $(pwd)/.env
 
 export GO111MODULE=on
 export GOPRIVATE=bitbucket.org/everledger/*
-
 # name of the working directory/project
 export WORKSPACE=$(basename ${ROOT})
-# if chaincode is written it should be under GOPATH (automatically added in front of this path) 
-# else set absolute path within cli container
-# TODO: Set a default chaincode path and grab the name of the package instead
-export CHAINCODE_REMOTE_PATH=bitbucket.org/everledger/${WORKSPACE}/chaincode
+
+chaincode_remote_path=${CHAINCODE_REMOTE_MOUNT_PATH}
 
 readonly ONE_ORG="OneOrgOrdererGenesis"
 readonly TWO_ORGS="TwoOrgsOrdererGenesis"
@@ -393,15 +390,15 @@ initialize_network() {
     update_channel $CHANNEL_NAME $ORG_MSP 1 0
 
     if [[ "${FABRIC_VERSION}" =~ 2.* ]]; then
-        lc_chaincode_package $CHAINCODE_NAME $CHAINCODE_VERSION $CHAINCODE_NAME 1 0
+        lc_chaincode_package $CHAINCODE_NAME $CHAINCODE_VERSION $CHAINCODE_RELATIVE_PATH 1 0
         
         for org in $(seq 1 ${ORGS})
         do 
             lc_chaincode_install $CHAINCODE_NAME $CHAINCODE_VERSION $org 0
-            lc_chaincode_approve $CHAINCODE_NAME $CHAINCODE_VERSION $CHAINCODE_NAME $CHANNEL_NAME 1 $org 0 
+            lc_chaincode_approve $CHAINCODE_NAME $CHAINCODE_VERSION $CHANNEL_NAME 1 $org 0 
         done
         
-        lc_chaincode_commit $CHAINCODE_NAME $CHAINCODE_VERSION $CHAINCODE_NAME $CHANNEL_NAME 1 1 0
+        lc_chaincode_commit $CHAINCODE_NAME $CHAINCODE_VERSION $CHANNEL_NAME 1 1 0
     else
         chaincode_install $CHAINCODE_NAME $CHAINCODE_VERSION $CHAINCODE_RELATIVE_PATH 1 0
         chaincode_instantiate $CHAINCODE_NAME $CHAINCODE_VERSION $CHAINCODE_RELATIVE_PATH $CHANNEL_NAME 1 0 
@@ -1008,10 +1005,10 @@ __get_chaincode_language() {
 
 __set_chaincode_remote_path() {
     if [ ${CHAINCODE_LANGUAGE} == "golang" ]; then
-        case $CHAINCODE_MOUNT_PATH/ in
+        case $CHAINCODE_REMOTE_MOUNT_PATH/ in
             /opt/gopath/src/*) 
                 log "Chaincode mounted in gopath" debug
-                CHAINCODE_REMOTE_PATH=${CHAINCODE_MOUNT_PATH#/opt/gopath/src/}
+                chaincode_remote_path=${CHAINCODE_REMOTE_MOUNT_PATH#/opt/gopath/src/}
                 return
                 ;;
             *) 
@@ -1020,8 +1017,6 @@ __set_chaincode_remote_path() {
                 ;;
         esac
     fi
-
-    CHAINCODE_REMOTE_PATH=${CHAINCODE_MOUNT_PATH}
 }
 
 chaincode_install() {
@@ -1040,7 +1035,6 @@ chaincode_install() {
 	local chaincode_relative_path="$3"
     local org="$4"
     local peer="$5"
-    
     shift 5
 
     set_certs $org $peer
@@ -1048,7 +1042,7 @@ chaincode_install() {
 
     __get_chaincode_language ${chaincode_relative_path}
     __set_chaincode_remote_path
-    local install_path="${CHAINCODE_REMOTE_PATH}/${chaincode_relative_path}"
+    local install_path=""
 
     if [ ${CHAINCODE_LANGUAGE} == "golang" ]; then
         __init_go_mod install ${chaincode_relative_path}
@@ -1058,7 +1052,7 @@ chaincode_install() {
             install_path+="/cmd"
         fi
     else
-        install_path="${CHAINCODE_MOUNT_PATH}/${chaincode_relative_path}"
+        install_path="${CHAINCODE_REMOTE_MOUNT_PATH}/${chaincode_relative_path}"
     fi
 
     log "Installing chaincode $chaincode_name version $chaincode_version from path ${install_path}" info
@@ -1184,7 +1178,7 @@ chaincode_zip() {
 
         # trick to allow chaincode packed as modules to work when deployed against remote environments
         log "Copying chaincode files into vendor..." info
-        mkdir -p ./vendor/${CHAINCODE_REMOTE_PATH}/${chaincode_name} && rsync -ar --exclude='vendor' --exclude='META-INF' . ./vendor/${CHAINCODE_REMOTE_PATH}/${chaincode_name} || { log >&2 "Error copying chaincode into vendor directory." error; exit 1; }
+        mkdir -p ./vendor/${chaincode_remote_path}/${chaincode_name} && rsync -ar --exclude='vendor' --exclude='META-INF' . ./vendor/${chaincode_remote_path}/${chaincode_name} || { log >&2 "Error copying chaincode into vendor directory." error; exit 1; }
     fi
     
     zip -rq ${DIST_PATH}/$(basename $chaincode_relative_path)_${timestamp}.zip . || { log >&2 "Error creating chaincode archive." error; exit 1; }
@@ -1217,7 +1211,7 @@ chaincode_pack() {
 
     __get_chaincode_language ${chaincode_relative_path}
     __set_chaincode_remote_path
-    local install_path="${CHAINCODE_REMOTE_PATH}/${chaincode_relative_path}"
+    local install_path="${chaincode_remote_path}/${chaincode_relative_path}"
 
     local timestamp=$(date +%Y-%m-%d-%H-%M-%S)
 
@@ -1226,7 +1220,7 @@ chaincode_pack() {
 
         # trick to allow chaincode packed as modules to work when deployed against remote environments
         log "Copying chaincode files into vendor..." info
-        mkdir -p ./vendor/${install_path} && rsync -ar --exclude='vendor' --exclude='META-INF' . ./vendor/${CHAINCODE_REMOTE_PATH}/${chaincode_name} || { log >&2 "Error copying chaincode into vendor directory." error; exit 1; }
+        mkdir -p ./vendor/${install_path} && rsync -ar --exclude='vendor' --exclude='META-INF' . ./vendor/${chaincode_remote_path}/${chaincode_name} || { log >&2 "Error copying chaincode into vendor directory." error; exit 1; }
     fi
 
     log "Packing chaincode $chaincode_name version $chaincode_version from path ${install_path}" info
@@ -1345,30 +1339,32 @@ lc_chaincode_package() {
 
 	local chaincode_name="$1"
 	local chaincode_version="$2"
-	local chaincode_path="$3"
+	local chaincode_relative_path="$3"
     local org="$4"
     local peer="$5"
-    local install_path="${CHAINCODE_REMOTE_PATH}/${chaincode_path}"
     shift 5
 
     set_certs $org $peer
+    set_peer_exec
 
-    __init_go_mod install ${chaincode_name}
+    __get_chaincode_language ${chaincode_relative_path}
+    __set_chaincode_remote_path
+    local install_path="${chaincode_remote_path}/${chaincode_relative_path}"
 
-    # TODO: Retrieve the chaincode language from the directory name
-    cc_lang="golang"
-
-    # TODO: Perform this check only if cc_lang is golang
-    # Golang: workaround for chaincode written as modules
-    # make the install to work when main files are not in the main directory but in cmd
-    if [ ! "$(find ${install_path} -type f -name '*.go' -maxdepth 1 2>/dev/null)" ] && [ -d "${CHAINCODE_PATH}/${chaincode_path}/cmd" ]; then
-        install_path+="/cmd"
+    if [ ${CHAINCODE_LANGUAGE} == "golang" ]; then
+        __init_go_mod install ${chaincode_relative_path}
+        # Golang: workaround for chaincode written as modules
+        # make the install to work when main files are not in the main directory but in cmd
+        if [ ! "$(find ${install_path} -type f -name '*.go' -maxdepth 1 2>/dev/null)" ] && [ -d "${CHAINCODE_PATH}/${chaincode_relative_path}/cmd" ]; then
+            install_path+="/cmd"
+        fi
+    else
+        install_path="${CHAINCODE_REMOTE_MOUNT_PATH}/${chaincode_relative_path}"
     fi
 
     log "Packaging chaincode $chaincode_name version $chaincode_version from path $chaincode_path" info
     # TODO: explore issue which runs into deps error every so often
-    set_peer_exec
-    PEER_EXEC+="peer lifecycle chaincode package ${chaincode_name}_${chaincode_version}.tar.gz --path ${install_path} --label ${chaincode_name}_${chaincode_version} --lang ${cc_lang} || exit 1"
+    PEER_EXEC+="peer lifecycle chaincode package ${chaincode_name}_${chaincode_version}.tar.gz --path ${install_path} --label ${chaincode_name}_${chaincode_version} --lang ${CHAINCODE_LANGUAGE} || exit 1"
 
     __exec_command "${PEER_EXEC}"
 }
@@ -1392,8 +1388,6 @@ lc_chaincode_install() {
 
     set_certs $org $peer
 
-    __init_go_mod install ${chaincode_name}
-
     log "Installing chaincode $chaincode_name version $chaincode_version" info
     
     set_peer_exec
@@ -1407,7 +1401,7 @@ lc_chaincode_install() {
 }
 
 lc_chaincode_approve() {
-	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ] || [ -z "$6" ] || [ -z "$7" ]; then
+	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ] || [ -z "$6" ]; then
 		log "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" error
 		exit 1
 	fi
@@ -1419,16 +1413,13 @@ lc_chaincode_approve() {
 
 	local chaincode_name="$1"
 	local chaincode_version="$2"
-	local chaincode_path="$3"
-    local channel_name="$4"
-    local sequence_no="$5"
-    local org="$6"
-    local peer="$7"
-    shift 7
+    local channel_name="$3"
+    local sequence_no="$4"
+    local org="$5"
+    local peer="$6"
+    shift 6
 
     set_certs $org $peer
-
-    __init_go_mod install ${chaincode_name}
 
     log "Querying chaincode package ID" info
     lc_query_package_id $chaincode_name $chaincode_version $org $peer
@@ -1450,7 +1441,7 @@ lc_chaincode_approve() {
 }
 
 lc_chaincode_commit() {
-	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ] || [ -z "$6" ] || [ -z "$7" ]; then
+	if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ] || [ -z "$6" ]; then
 		log "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" error
 		exit 1
 	fi
@@ -1462,12 +1453,11 @@ lc_chaincode_commit() {
     
     local chaincode_name="$1"
 	local chaincode_version="$2"
-	local chaincode_path="$3"
-	local channel_name="$4"
-    local sequence_no="$5"
-    local org="$6"
-    local peer="$7"
-    shift 7
+	local channel_name="$3"
+    local sequence_no="$4"
+    local org="$5"
+    local peer="$6"
+    shift 6
 
     if [ -z "$PACKAGE_ID" ]; then
 		log "Package ID is not defined" warning
@@ -1539,8 +1529,8 @@ lc_chaincode_upgrade() {
 
     lc_chaincode_package $1 $2 $3 $6 $7
     lc_chaincode_install $1 $2 $6 $7
-    lc_chaincode_approve "$@"
-    lc_chaincode_commit "$@"
+    lc_chaincode_approve $1 $2 $4 $5 $6 $7
+    lc_chaincode_commit $1 $2 $4 $5 $6 $7
 }
 
 register_user() {

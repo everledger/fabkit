@@ -90,7 +90,7 @@ The following command will restart a network with the configuration of your last
 Fabkit currently supports _golang_, _node_ and _java_ chaincodes. To deploy a chaincode from your own directory, you must set the following env variables before starting the network:
 
 - `CHAINCODE_PATH` -Absolute path to the directory to be mounted
-- `CHAINCODE_MOUNT_PATH` - Mount path inside the cli container. _Golang chaincodes must be mounted inside `GOPATH` ( `/opt/gopath/src` )_
+- `CHAINCODE_REMOTE_MOUNT_PATH` - Mount path inside the cli container. _Golang chaincodes must be mounted inside `GOPATH` ( `/opt/gopath/src` )_
 - `CHAINCODE_RELATIVE_PATH` - Relative path to the chaincode package from the mount path
 - `CHAINCODE_ARGS`- Chaincode arguments if any. Can be left blank
 
@@ -133,7 +133,7 @@ The commands below will install, approve, commit and initialize a newer version 
 ./run.sh chaincode lifecycle upgrade [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [sequence_no] [org_no] [peer_no]
 
 # e.g. considering previous chaincode_version was 1.0 and sequence_no was 1 (using default peer)
-./run.sh chaincode lifecycle upgrade mychaincode 1.1 mychaincode mychannel 2 1 0
+./run.sh chaincode lifecycle upgrade mychaincode 1.1 golang/mychaincode mychannel 2 1 0
 ```
 
 However, if you want more control over the single command execution, you can reproduce the exact same results as above by splitting that into the following steps:
@@ -142,14 +142,14 @@ However, if you want more control over the single command execution, you can rep
 ./run.sh chaincode lifecycle package [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no]
 # tip: run the install only if you are upgrading the chaincode binaries, otherwise no new container will be built (but also no errors will be thrown)
 ./run.sh chaincode lifecycle install [chaincode_name] [chaincode_version] [org_no] [peer_no]
-./run.sh chaincode lifecycle approve [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [sequence_no] [org_no] [peer_no]
-./run.sh chaincode lifecycle commit [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [sequence_no] [org_no] [peer_no]
+./run.sh chaincode lifecycle approve [chaincode_name] [chaincode_version] [channel_name] [sequence_no] [org_no] [peer_no]
+./run.sh chaincode lifecycle commit [chaincode_name] [chaincode_version] [channel_name] [sequence_no] [org_no] [peer_no]
 
 # e.g. considering previous chaincode_version was 1.0 and sequence_no was 1 (using default peer)
-./run.sh chaincode lifecycle package mychaincode 1.1 mychaincode 1 0
+./run.sh chaincode lifecycle package mychaincode 1.1 golang/mychaincode 1 0
 ./run.sh chaincode lifecycle install mychaincode 1.1 1 0
-./run.sh chaincode lifecycle approve mychaincode 1.1 mychaincode mychannel 2 1 0
-./run.sh chaincode lifecycle commit mychaincode 1.1 mychaincode mychannel 2 1 0
+./run.sh chaincode lifecycle approve mychaincode 1.1 mychannel 2 1 0
+./run.sh chaincode lifecycle commit mychaincode 1.1 mychannel 2 1 0
 ```
 
 > If you are upgrading the chaincode binaries, you need to update the chaincode version and the package ID in the chaincode definition. You can also update your chaincode endorsement policy without having to repackage your chaincode binaries. Channel members simply need to approve a definition with the new policy. The new definition needs to increment the sequence variable in the definition by one.
@@ -241,7 +241,7 @@ Install and instantiate the `pdc` chaincode:
 ./run.sh chaincode install pdc 1.0 pdc 3 0
 
 # instantiate pdc chaincode on mychannel using org1 peer0
-./run.sh chaincode instantiate pdc 1.0 mychannel 1 0 --collections-config /opt/gopath/src/${CHAINCODE_REMOTE_PATH}/chaincode/pdc/collections_config.json -P "OR('Org1MSP.member','Org2MSP.member','Org3MSP.member')"
+./run.sh chaincode instantiate pdc 1.0 mychannel 1 0 --collections-config ${CHAINCODE_REMOTE_MOUNT_PATH}/pdc/collections_config.json -P "OR('Org1MSP.member','Org2MSP.member','Org3MSP.member')"
 ```
 
 Execute some actions:
