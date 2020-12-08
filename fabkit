@@ -3,9 +3,6 @@
 source $(pwd)/.env
 for f in ./scripts/*; do source $f; done
 
-# Auto Complete
-_autocomplete
-
 export GO111MODULE=on
 # name of the working directory/project
 export WORKSPACE=$(basename ${ROOT})

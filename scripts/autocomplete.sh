@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 
+if [ "$SHELL | grep zsh" ] ; then 
+    autoload -Uz compinit && compinit
+    autoload -U +X bashcompinit && bashcompinit
+fi
 
-function _autocomplete {
+__autocomplete() {
     COMPREPLY=()
     
     local FIRST=("help" "dep" "channel" "network" "explorer" "ca" "generate" "chaincode" "benchmark" "utils" )
@@ -15,6 +19,7 @@ function _autocomplete {
     ACTIONS[chaincode]="test build zip package install instantiate upgrade query invoke lifecycle"
     ACTIONS[benchmark]="load"
     ACTIONS[utils]="tojson tostring"
+    ACTIONS[lifecycle]="package install approve commit deploy"
     
     local cur=${COMP_WORDS[COMP_CWORD]}
     
@@ -27,4 +32,4 @@ function _autocomplete {
     fi
 }
 
-complete -F _autocomplete fabkit
+complete -F __autocomplete fabkit
