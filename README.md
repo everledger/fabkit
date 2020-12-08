@@ -96,27 +96,31 @@ Fabkit currently supports _golang_, _node_ and _java_ chaincodes. To deploy a ch
 
 To deploy chaincode using FabKit's commands refer below.
 
+_Note `fabric_options` are an optional parameter. For more information about the fabric options that are possible :-_
+
+- [v1.x Chaincode Commands](https://hyperledger-fabric.readthedocs.io/en/latest/commands/peerchaincode.html)
+- [v2.x Chaincode Commands](https://hyperledger-fabric.readthedocs.io/en/latest/commands/peerlifecycle.html)
+
 ### v1.x
 
 Run the following commands in order to install and instantiate a new chaincode:
-_Note `fabric_options` are an optional parameter_
 
 ```bash
-./run.sh chaincode install [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no]
+./run.sh chaincode install [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no] [fabric_options]
 ./run.sh chaincode instantiate [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [org_no] [peer_no] [fabric_options]
 # e.g.
 ./run.sh chaincode install mycc_node 1.0 node/mychaincode 1 0
-./run.sh chaincode instantiate mycc_node 1.0 javascipt/mychaincode mychannel 1 0 -c '"{\"Args\":[\"init\",\"a\",\"100\",\"b\",\"200\"]}"'
+./run.sh chaincode instantiate mycc_node 1.0 node/mychaincode mychannel 1 0 -c '"{\"Args\":[\"init\",\"a\",\"100\",\"b\",\"200\"]}"'
 ```
 
 Run the following commands in order to install and instantiate a newer version of an existing chaincode:
 
 ```bash
-./run.sh chaincode install [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no]
+./run.sh chaincode install [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no] [fabric_options]
 ./run.sh chaincode upgrade [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [org_no] [peer_no] [fabric_options]
 # e.g.
 ./run.sh chaincode install mycc_node 1.1 node/mychaincode 1 0
-./run.sh chaincode upgrade mycc_node 1.1 javascipt/mychaincode mychannel 1 0 -c '"{\"Args\":[\"init\",\"a\",\"100\",\"b\",\"200\"]}"'
+./run.sh chaincode upgrade mycc_node 1.1 node/mychaincode mychannel 1 0 -c '"{\"Args\":[\"init\",\"a\",\"100\",\"b\",\"200\"]}"'
 ```
 
 Be sure the `chaincode_version` is unique and never used before (otherwise an error will be prompted).
@@ -139,17 +143,17 @@ The commands below will install, approve, commit and initialize a newer version 
 However, if you want more control over the single command execution, you can reproduce the exact same results as above by splitting that into the following steps:
 
 ```bash
-./run.sh chaincode lifecycle package [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no]
+./run.sh chaincode lifecycle package [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no] [fabric_options]
 # tip: run the install only if you are upgrading the chaincode binaries, otherwise no new container will be built (but also no errors will be thrown)
-./run.sh chaincode lifecycle install [chaincode_name] [chaincode_version] [org_no] [peer_no]
-./run.sh chaincode lifecycle approve [chaincode_name] [chaincode_version] [channel_name] [sequence_no] [org_no] [peer_no]
-./run.sh chaincode lifecycle commit [chaincode_name] [chaincode_version] [channel_name] [sequence_no] [org_no] [peer_no]
+./run.sh chaincode lifecycle install [chaincode_name] [chaincode_version] [org_no] [peer_no] [fabric_options]
+./run.sh chaincode lifecycle approve [chaincode_name] [chaincode_version] [channel_name] [sequence_no] [org_no] [peer_no] [fabric_options]
+./run.sh chaincode lifecycle commit [chaincode_name] [chaincode_version] [channel_name] [sequence_no] [org_no] [peer_no] [fabric_options]
 
 # e.g. considering previous chaincode_version was 1.0 and sequence_no was 1 (using default peer)
-./run.sh chaincode lifecycle package mychaincode 1.1 golang/mychaincode 1 0
+./run.sh chaincode lifecycle package mychaincode 1.1 node/abstore 1 0
 ./run.sh chaincode lifecycle install mychaincode 1.1 1 0
 ./run.sh chaincode lifecycle approve mychaincode 1.1 mychannel 2 1 0
-./run.sh chaincode lifecycle commit mychaincode 1.1 mychannel 2 1 0
+./run.sh chaincode lifecycle commit mychaincode 1.1 mychannel 2 1 0 -c '"{\"Args\":[\"init\",\"a\",\"100\",\"b\",\"200\"]}"'
 ```
 
 > If you are upgrading the chaincode binaries, you need to update the chaincode version and the package ID in the chaincode definition. You can also update your chaincode endorsement policy without having to repackage your chaincode binaries. Channel members simply need to approve a definition with the new policy. The new definition needs to increment the sequence variable in the definition by one.
