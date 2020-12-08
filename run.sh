@@ -796,7 +796,7 @@ __exec_command() {
     echo
     log "Excecuting command: " debug
     echo
-    message=${1%"|| exit 1"}
+    message=${1%"|| exit 1 "}
     log "$message" debug
     echo
 
@@ -1457,6 +1457,8 @@ lc_chaincode_commit() {
     local peer="$6"
     shift 6
 
+    local options="$@"
+
     if [ -z "$PACKAGE_ID" ]; then
 		log "Package ID is not defined" warning
 
@@ -1510,11 +1512,18 @@ lc_chaincode_commit() {
     __exec_command "${PEER_EXEC}"
 
     log "Init the chaincode" info
+    if [[ ! "${options}" == *"-c"* ]]; then
+        if [ -z "${CHAINCODE_ARGS}" ]; then
+            options+=" -c '{\"Args\":[]}'"
+        else
+            options+=" -c '${CHAINCODE_ARGS}'"
+        fi
+    fi
     set_peer_exec
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
-        PEER_EXEC+="peer chaincode invoke -o $ORDERER_ADDRESS --isInit --channelID $channel_name --name $chaincode_name --peerAddresses $CORE_PEER_ADDRESS --waitForEvent -c '{\"Args\":[]}' || exit 1"
+        PEER_EXEC+="peer chaincode invoke -o $ORDERER_ADDRESS --isInit --channelID $channel_name --name $chaincode_name --peerAddresses $CORE_PEER_ADDRESS --waitForEvent ${options} || exit 1"
     else
-        PEER_EXEC+="peer chaincode invoke -o $ORDERER_ADDRESS --isInit --channelID $channel_name --name $chaincode_name --peerAddresses $CORE_PEER_ADDRESS --tlsRootCertFiles $CORE_PEER_TLS_ROOTCERT_FILE --tls $TLS_ENABLED --cafile $ORDERER_CA -c '{\"Args\":[]}' --waitForEvent || exit 1"
+        PEER_EXEC+="peer chaincode invoke -o $ORDERER_ADDRESS --isInit --channelID $channel_name --name $chaincode_name --peerAddresses $CORE_PEER_ADDRESS --tlsRootCertFiles $CORE_PEER_TLS_ROOTCERT_FILE --tls $TLS_ENABLED --cafile $ORDERER_CA ${options} --waitForEvent || exit 1"
     fi
     __exec_command "${PEER_EXEC}"
 }
