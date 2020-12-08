@@ -130,7 +130,7 @@ Fabkit offers a simplified all-in-one command to perform this process.
 The commands below will install, approve, commit and initialize a newer version of an existing chaincode.
 
 ```bash
-./run.sh chaincode lifecycle upgrade [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [sequence_no] [org_no] [peer_no]
+./run.sh chaincode lifecycle deploy [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [sequence_no] [org_no] [peer_no]
 
 # e.g. considering previous chaincode_version was 1.0 and sequence_no was 1 (using default peer)
 ./run.sh chaincode lifecycle upgrade mychaincode 1.1 golang/mychaincode mychannel 2 1 0

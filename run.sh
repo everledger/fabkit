@@ -69,7 +69,7 @@ help() {
                                     [channel_name] [sequence_no] [org_no] [peer_no]
         chaincode lifecycle commit [chaincode_name] [chaincode_version] [chaincode_path]                : commit and init chaincode on channel
                                    [channel_name] [sequence_no] [org_no] [peer_no]
-        chaincode lifecycle upgrade [chaincode_name] [chaincode_version] [chaincode_path]               : run in sequence package, install, approve and commit
+        chaincode lifecycle deploy [chaincode_name] [chaincode_version] [chaincode_path]                : run in sequence package, install, approve and commit
                                    [channel_name] [sequence_no] [org_no] [peer_no]
 
         benchmark load [jobs] [entries]                                                                 : run benchmark bulk loading of [entries] per parallel [jobs] against a running network
@@ -1519,7 +1519,7 @@ lc_chaincode_commit() {
     __exec_command "${PEER_EXEC}"
 }
 
-lc_chaincode_upgrade() {
+lc_chaincode_deploy() {
     if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ] || [ -z "$6" ] || [ -z "$7" ]; then
 		log "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" error
 		exit 1
@@ -1925,10 +1925,10 @@ elif [ "$func" == "chaincode" ]; then
             __check_deps deploy
             __check_docker_daemon
             lc_chaincode_commit "$@"
-        elif [ "$param" == "upgrade" ]; then
+        elif [ "$param" == "deploy" ]; then
             __check_deps deploy
             __check_docker_daemon
-            lc_chaincode_upgrade "$@"
+            lc_chaincode_deploy "$@"
         else
             help
             exit 1
