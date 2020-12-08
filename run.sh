@@ -4,8 +4,6 @@ source $(pwd)/.env
 
 export GO111MODULE=on
 export GOPRIVATE=bitbucket.org/everledger/*
-# name of the working directory/project
-export WORKSPACE=$(basename ${ROOT})
 
 chaincode_remote_path=${CHAINCODE_REMOTE_MOUNT_PATH}
 
@@ -796,7 +794,7 @@ __exec_command() {
     echo
     log "Excecuting command: " debug
     echo
-    message=${1%"|| exit 1 "}
+    message=${1%"|| exit 1"}
     log "$message" debug
     echo
 
@@ -1037,6 +1035,8 @@ chaincode_install() {
     local peer="$5"
     shift 5
 
+    local options="$@"
+
     set_certs $org $peer
     set_peer_exec
 
@@ -1057,7 +1057,7 @@ chaincode_install() {
 
     # fabric-samples does not use tls for installing (and it won't work with), however this flag is listed in the install command on the official fabric documentation 
     # https://hyperledger-fabric.readthedocs.io/en/release-1.4/commands/peerchaincode.html#peer-chaincode-install
-    PEER_EXEC+="peer chaincode install -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -p ${install_path} -l ${CHAINCODE_LANGUAGE} || exit 1"
+    PEER_EXEC+="peer chaincode install -o $ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -p ${install_path} -l ${CHAINCODE_LANGUAGE} ${options} || exit 1"
 
     __exec_command "${PEER_EXEC}"
 }
@@ -1342,6 +1342,8 @@ lc_chaincode_package() {
     local peer="$5"
     shift 5
 
+    local options="$@"
+
     set_certs $org $peer
     set_peer_exec
 
@@ -1362,7 +1364,7 @@ lc_chaincode_package() {
 
     log "Packaging chaincode $chaincode_name version $chaincode_version from path $chaincode_path" info
     # TODO: explore issue which runs into deps error every so often
-    PEER_EXEC+="peer lifecycle chaincode package ${chaincode_name}_${chaincode_version}.tar.gz --path ${install_path} --label ${chaincode_name}_${chaincode_version} --lang ${CHAINCODE_LANGUAGE} || exit 1"
+    PEER_EXEC+="peer lifecycle chaincode package ${chaincode_name}_${chaincode_version}.tar.gz --path ${install_path} --label ${chaincode_name}_${chaincode_version} --lang ${CHAINCODE_LANGUAGE} ${options} || exit 1"
 
     __exec_command "${PEER_EXEC}"
 }
@@ -1384,15 +1386,17 @@ lc_chaincode_install() {
     local peer="$4"
     shift 4
 
+    local options="$@"
+
     set_certs $org $peer
     set_peer_exec
 
     log "Installing chaincode $chaincode_name version $chaincode_version" info
     
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
-        PEER_EXEC+="peer lifecycle chaincode install ${chaincode_name}_${chaincode_version}.tar.gz || exit 1"
+        PEER_EXEC+="peer lifecycle chaincode install ${chaincode_name}_${chaincode_version}.tar.gz ${options} || exit 1"
     else
-        PEER_EXEC+="peer lifecycle chaincode install ${chaincode_name}_${chaincode_version}.tar.gz --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
+        PEER_EXEC+="peer lifecycle chaincode install ${chaincode_name}_${chaincode_version}.tar.gz ${options} --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
     fi
 
     __exec_command "${PEER_EXEC}"
@@ -1417,8 +1421,7 @@ lc_chaincode_approve() {
     local peer="$6"
     shift 6
 
-    set_certs $org $peer
-    set_peer_exec
+    local options="$@"
 
     log "Querying chaincode package ID" info
     lc_query_package_id $chaincode_name $chaincode_version $org $peer
@@ -1426,13 +1429,16 @@ lc_chaincode_approve() {
         log "Package ID is not defined" warning
         return 
     fi
+
+    set_certs $org $peer
+    set_peer_exec
     
     log "Approve chaincode for my organization" info
     # TODO: policy to be passed as input argument
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
-        PEER_EXEC+="peer lifecycle chaincode approveformyorg --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --package-id $PACKAGE_ID --sequence $sequence_no --waitForEvent --signature-policy \"OR('Org1MSP.member','Org2MSP.member','Org3MSP.member')\" || exit 1"
+        PEER_EXEC+="peer lifecycle chaincode approveformyorg --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --package-id $PACKAGE_ID --sequence $sequence_no --waitForEvent --signature-policy \"OR('Org1MSP.member','Org2MSP.member','Org3MSP.member')\" ${options} || exit 1"
     else
-        PEER_EXEC+="peer lifecycle chaincode approveformyorg --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --package-id $PACKAGE_ID --sequence $sequence_no --waitForEvent --signature-policy \"OR('Org1MSP.member','Org2MSP.member','Org3MSP.member')\" --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
+        PEER_EXEC+="peer lifecycle chaincode approveformyorg --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --package-id $PACKAGE_ID --sequence $sequence_no --waitForEvent --signature-policy \"OR('Org1MSP.member','Org2MSP.member','Org3MSP.member')\" ${options} --tls $TLS_ENABLED --cafile $ORDERER_CA  || exit 1"
     fi
 
     __exec_command "${PEER_EXEC}"
@@ -1457,6 +1463,7 @@ lc_chaincode_commit() {
     local peer="$6"
     shift 6
 
+    # TODO: Enable options for all commands below. But how? :o
     local options="$@"
 
     if [ -z "$PACKAGE_ID" ]; then
@@ -1528,6 +1535,7 @@ lc_chaincode_commit() {
     __exec_command "${PEER_EXEC}"
 }
 
+# TODO: Enable fabric options for chaincode deploy
 lc_chaincode_deploy() {
     if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ] || [ -z "$6" ] || [ -z "$7" ]; then
 		log "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" error
