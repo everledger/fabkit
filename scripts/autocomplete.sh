@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-SHELL=$(ps -ocomm= -q $$)
-if [ $SHELL == "zsh" ] ; then 
+shell=$(ps -ocomm= -q $$)
+if [ "$shell" = "zsh" ]; then 
     autoload -Uz compinit && compinit
     autoload -U +X bashcompinit && bashcompinit
 fi
