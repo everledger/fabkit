@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-if [ "$SHELL | grep zsh" ] ; then 
+SHELL=$(ps -ocomm= -q $$)
+if [ $SHELL == "zsh" ] ; then 
     autoload -Uz compinit && compinit
     autoload -U +X bashcompinit && bashcompinit
 fi
