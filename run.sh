@@ -4,8 +4,10 @@ source $(pwd)/.env
 
 export GO111MODULE=on
 export GOPRIVATE=bitbucket.org/everledger/*
+# name of the working directory/project
+export WORKSPACE=$(basename ${ROOT})
 
-chaincode_remote_path=${CHAINCODE_REMOTE_MOUNT_PATH}
+chaincode_remote_path=${CHAINCODE_REMOTE_PATH}
 
 readonly ONE_ORG="OneOrgOrdererGenesis"
 readonly TWO_ORGS="TwoOrgsOrdererGenesis"
@@ -972,24 +974,18 @@ __get_chaincode_language() {
     local chaincode_relative_path="$1"
     local golang_cc_identifier="func main"
     local java_cc_identifier="public static void main"
-     local node_cc_identifier="require('fabric-shim')"
+    local node_cc_identifier="require('fabric-shim')"
 
     # check golang
     if [ ! "$( grep --include='*.go' -rnw "${CHAINCODE_PATH}/${chaincode_relative_path}" -e "${golang_cc_identifier}" )" == "" ]; then
         log "Chaincode language is golang" debug
         CHAINCODE_LANGUAGE="golang"
         return
-    fi
-
-    # check java
-    if [ ! "$( grep --include='*.java' -rnw "${CHAINCODE_PATH}/${chaincode_relative_path}" -e "${java_cc_identifier}" )" == "" ]; then
+    elif [ ! "$( grep --include='*.java' -rnw "${CHAINCODE_PATH}/${chaincode_relative_path}" -e "${java_cc_identifier}" )" == "" ]; then
         log "Chaincode language is java" debug
         CHAINCODE_LANGUAGE="java"
         return
-    fi
-
-     # check node 
-    if [ ! "$( grep --include='*.js' -rnw "${CHAINCODE_PATH}/${chaincode_relative_path}" -e "${node_cc_identifier}" )" == "" ]; then
+    elif [ ! "$( grep --include='*.js' -rnw "${CHAINCODE_PATH}/${chaincode_relative_path}" -e "${node_cc_identifier}" )" == "" ]; then
         log "Chaincode language is node" debug
         CHAINCODE_LANGUAGE="node"
         return
@@ -1003,10 +999,10 @@ __get_chaincode_language() {
 
 __set_chaincode_remote_path() {
     if [ ${CHAINCODE_LANGUAGE} == "golang" ]; then
-        case $CHAINCODE_REMOTE_MOUNT_PATH/ in
+        case $CHAINCODE_REMOTE_PATH/ in
             /opt/gopath/src/*) 
                 log "Chaincode mounted in gopath" debug
-                chaincode_remote_path=${CHAINCODE_REMOTE_MOUNT_PATH#/opt/gopath/src/}
+                chaincode_remote_path=${CHAINCODE_REMOTE_PATH#/opt/gopath/src/}
                 return
                 ;;
             *) 
@@ -1359,7 +1355,7 @@ lc_chaincode_package() {
             install_path+="/cmd"
         fi
     else
-        install_path="${CHAINCODE_REMOTE_MOUNT_PATH}/${chaincode_relative_path}"
+        install_path="${CHAINCODE_REMOTE_PATH}/${chaincode_relative_path}"
     fi
 
     log "Packaging chaincode $chaincode_name version $chaincode_version from path $chaincode_path" info
