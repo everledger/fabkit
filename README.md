@@ -90,13 +90,13 @@ The following command will restart a network with the configuration of your last
 Fabkit currently supports _golang_, _node_ and _java_ chaincodes. To deploy a chaincode from your own directory, you must set the following env variables before starting the network:
 
 - `CHAINCODE_PATH` -Absolute path to the directory to be mounted
-- `CHAINCODE_REMOTE_MOUNT_PATH` - Mount path inside the cli container. _Golang chaincodes must be mounted inside `GOPATH` ( `/opt/gopath/src` )_
+- `CHAINCODE_REMOTE_PATH` - Mount path inside the cli container. _Golang chaincodes must be mounted inside `GOPATH` ( `/opt/gopath/src` )_
 - `CHAINCODE_RELATIVE_PATH` - Relative path to the chaincode package from the mount path
 - `CHAINCODE_ARGS`- Chaincode arguments if any. Can be left blank
 
-To deploy chaincode using FabKit's commands refer below.
+To deploy chaincode using Fabkit's commands refer below.
 
-_Note `fabric_options` are an optional parameter. For more information about the fabric options that are possible :-_
+_Note `options` is an optional parameter. For more information about all the available options check the following documentations :-_
 
 - [v1.x Chaincode Commands](https://hyperledger-fabric.readthedocs.io/en/latest/commands/peerchaincode.html)
 - [v2.x Chaincode Commands](https://hyperledger-fabric.readthedocs.io/en/latest/commands/peerlifecycle.html)
@@ -106,21 +106,21 @@ _Note `fabric_options` are an optional parameter. For more information about the
 Run the following commands in order to install and instantiate a new chaincode:
 
 ```bash
-./run.sh chaincode install [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no] [fabric_options]
-./run.sh chaincode instantiate [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [org_no] [peer_no] [fabric_options]
+./run.sh chaincode install [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no] [options]
+./run.sh chaincode instantiate [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [org_no] [peer_no] [options]
 # e.g.
-./run.sh chaincode install mycc_node 1.0 node/mychaincode 1 0
-./run.sh chaincode instantiate mycc_node 1.0 node/mychaincode mychannel 1 0 -c '"{\"Args\":[\"init\",\"a\",\"100\",\"b\",\"200\"]}"'
+./run.sh chaincode install myccnode 1.0 node/mychaincode 1 0
+./run.sh chaincode instantiate myccnode 1.0 node/mychaincode mychannel 1 0 -c '"{\"Args\":[\"init\",\"a\",\"100\",\"b\",\"200\"]}"'
 ```
 
 Run the following commands in order to install and instantiate a newer version of an existing chaincode:
 
 ```bash
-./run.sh chaincode install [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no] [fabric_options]
-./run.sh chaincode upgrade [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [org_no] [peer_no] [fabric_options]
+./run.sh chaincode install [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no] [options]
+./run.sh chaincode upgrade [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [org_no] [peer_no] [options]
 # e.g.
-./run.sh chaincode install mycc_node 1.1 node/mychaincode 1 0
-./run.sh chaincode upgrade mycc_node 1.1 node/mychaincode mychannel 1 0 -c '"{\"Args\":[\"init\",\"a\",\"100\",\"b\",\"200\"]}"'
+./run.sh chaincode install myccnode 1.1 node/mychaincode 1 0
+./run.sh chaincode upgrade myccnode 1.1 node/mychaincode mychannel 1 0 -c '"{\"Args\":[\"init\",\"a\",\"100\",\"b\",\"200\"]}"'
 ```
 
 Be sure the `chaincode_version` is unique and never used before (otherwise an error will be prompted).
@@ -137,17 +137,17 @@ The commands below will install, approve, commit and initialize a newer version 
 ./run.sh chaincode lifecycle deploy [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [sequence_no] [org_no] [peer_no]
 
 # e.g. considering previous chaincode_version was 1.0 and sequence_no was 1 (using default peer)
-./run.sh chaincode lifecycle upgrade mychaincode 1.1 golang/mychaincode mychannel 2 1 0
+./run.sh chaincode lifecycle deploy mychaincode 1.1 golang/mychaincode mychannel 2 1 0
 ```
 
 However, if you want more control over the single command execution, you can reproduce the exact same results as above by splitting that into the following steps:
 
 ```bash
-./run.sh chaincode lifecycle package [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no] [fabric_options]
+./run.sh chaincode lifecycle package [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no] [options]
 # tip: run the install only if you are upgrading the chaincode binaries, otherwise no new container will be built (but also no errors will be thrown)
-./run.sh chaincode lifecycle install [chaincode_name] [chaincode_version] [org_no] [peer_no] [fabric_options]
-./run.sh chaincode lifecycle approve [chaincode_name] [chaincode_version] [channel_name] [sequence_no] [org_no] [peer_no] [fabric_options]
-./run.sh chaincode lifecycle commit [chaincode_name] [chaincode_version] [channel_name] [sequence_no] [org_no] [peer_no] [fabric_options]
+./run.sh chaincode lifecycle install [chaincode_name] [chaincode_version] [org_no] [peer_no] [options]
+./run.sh chaincode lifecycle approve [chaincode_name] [chaincode_version] [channel_name] [sequence_no] [org_no] [peer_no] [options]
+./run.sh chaincode lifecycle commit [chaincode_name] [chaincode_version] [channel_name] [sequence_no] [org_no] [peer_no] [options]
 
 # e.g. considering previous chaincode_version was 1.0 and sequence_no was 1 (using default peer)
 ./run.sh chaincode lifecycle package mychaincode 1.1 node/abstore 1 0
@@ -245,7 +245,7 @@ Install and instantiate the `pdc` chaincode:
 ./run.sh chaincode install pdc 1.0 pdc 3 0
 
 # instantiate pdc chaincode on mychannel using org1 peer0
-./run.sh chaincode instantiate pdc 1.0 mychannel 1 0 --collections-config ${CHAINCODE_REMOTE_MOUNT_PATH}/pdc/collections_config.json -P "OR('Org1MSP.member','Org2MSP.member','Org3MSP.member')"
+./run.sh chaincode instantiate pdc 1.0 mychannel 1 0 --collections-config ${CHAINCODE_REMOTE_PATH}/pdc/collections_config.json -P "OR('Org1MSP.member','Org2MSP.member','Org3MSP.member')"
 ```
 
 Execute some actions:
