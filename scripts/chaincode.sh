@@ -596,7 +596,10 @@ lc_chaincode_deploy() {
     fi
 
     lc_chaincode_package $1 $2 $3 $6 $7
-    lc_chaincode_install $1 $2 $6 $7
     lc_chaincode_approve "$@"
+    for org in $(seq 1 ${ORGS}); do
+            lc_chaincode_install $1 $2 $6 $7
+            lc_chaincode_approve "$@"
+    done
     lc_chaincode_commit "$@"
 }
