@@ -91,6 +91,14 @@ __exec_command() {
     eval ${1}
 }
 
+__timer() {
+    local start_time="${1}"
+    local end_time="${2}"
+
+    elapsed_time="$(($end_time - $start_time))"
+    log "Total elapsed time: ${elapsed_time}s" debug
+}
+
 log() {
     if [[ ${#} != 2 ]]; then
         echo "usage: ${FUNCNAME} <string> [debug|info|warning|error|success]"
