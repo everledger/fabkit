@@ -17,7 +17,6 @@ help_header() {
 }
 
 help() {
-    title
     help_header fabkit
     log "
         help                                                                                            : this help
