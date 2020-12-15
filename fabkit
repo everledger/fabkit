@@ -14,10 +14,9 @@ readonly ONE_ORG="OneOrgOrdererGenesis"
 readonly TWO_ORGS="TwoOrgsOrdererGenesis"
 readonly THREE_ORGS="ThreeOrgsOrdererGenesis"
 readonly RAFT_ONE_ORG="OneOrgOrdererEtcdRaft"
+readonly START_TIME="$(date -u +%s)"
 
-# DO NOT REMOVE
-# docker exec command
-PEER_EXEC=""
+unset PEER_EXEC
 
 __yq() {
     docker run --rm -i -v "${PWD}":/workdir ${YQ_DOCKER_IMAGE} yq "$@"
@@ -49,7 +48,7 @@ __log_setup() {
 
 __set_params() {
     while [[ $# -gt 0 ]]; do
-        param="${1}"
+        local param="${1}"
 
         case $param in
         -c | --ci)
@@ -80,19 +79,18 @@ __set_params() {
     done
 }
 
-readonly func="$1"
-shift
+readonly func="$1"; shift
 
+title
 if [ "$func" == "network" ]; then
+    param="$1"; shift
     __check_deps deploy
     __check_docker_daemon
+    __set_params "$@"
     __log_setup
-    param="$1"
-    shift
     if [ "$param" == "install" ]; then
         install_network
     elif [ "$param" == "start" ]; then
-        __set_params "$@"
         start_network "$@"
     elif [ "$param" == "restart" ]; then
         restart_network
@@ -100,7 +98,6 @@ if [ "$func" == "network" ]; then
         stop_network
     else
         help_network
-        exit 1
     fi
 elif [ "$func" == "explorer" ]; then
     __check_deps deploy
@@ -113,7 +110,6 @@ elif [ "$func" == "explorer" ]; then
         stop_explorer
     else
         help_explorer
-        exit 1
     fi
 elif [ "$func" == "dep" ]; then
     param="$1"
@@ -124,7 +120,6 @@ elif [ "$func" == "dep" ]; then
         dep_update "$@"
     else
         help_dep
-        exit 1
     fi
 elif [ "$func" == "chaincode" ]; then
     param="$1"
@@ -155,20 +150,19 @@ elif [ "$func" == "chaincode" ]; then
             lc_chaincode_deploy "$@"
         else
             help_chaincode
-            exit 1
         fi
     elif [ "$param" == "install" ]; then
-        __check_fabric_version 1
+        # __check_fabric_version 1
         __check_deps deploy
         __check_docker_daemon
         chaincode_install "$@"
     elif [ "$param" == "instantiate" ]; then
-        __check_fabric_version 1
+        # __check_fabric_version 1
         __check_deps deploy
         __check_docker_daemon
         chaincode_instantiate "$@"
     elif [ "$param" == "upgrade" ]; then
-        __check_fabric_version 1
+        # __check_fabric_version 1
         __check_deps deploy
         __check_docker_daemon
         chaincode_upgrade "$@"
@@ -177,7 +171,7 @@ elif [ "$func" == "chaincode" ]; then
     elif [ "$param" == "build" ]; then
         chaincode_build "$@"
     elif [ "$param" == "package" ]; then
-        __check_fabric_version 1
+        # __check_fabric_version 1
         __check_deps deploy
         __check_docker_daemon
         chaincode_pack "$@"
@@ -193,7 +187,6 @@ elif [ "$func" == "chaincode" ]; then
         invoke "$@"
     else
         help_chaincode
-        exit 1
     fi
 elif [ "$func" == "generate" ]; then
     __check_deps deploy
@@ -208,7 +201,6 @@ elif [ "$func" == "generate" ]; then
         generate_channeltx "$@"
     else
         help_generate
-        exit 1
     fi
 elif [ "$func" == "ca" ]; then
     __check_deps deploy
@@ -226,7 +218,6 @@ elif [ "$func" == "ca" ]; then
         revoke_user "$@"
     else
         help_ca
-        exit 1
     fi
 elif [ "$func" == "channel" ]; then
     __check_deps deploy
@@ -241,7 +232,6 @@ elif [ "$func" == "channel" ]; then
         join_channel "$@"
     else
         help_channel
-        exit 1
     fi
 elif [ "$func" == "benchmark" ]; then
     param="$1"
@@ -251,7 +241,6 @@ elif [ "$func" == "benchmark" ]; then
         __exec_jobs "$@"
     else
         help_benchmark
-        exit 1
     fi
 elif [ "$func" == "utils" ]; then
     param="$1"
@@ -262,9 +251,10 @@ elif [ "$func" == "utils" ]; then
         tojson "$@"
     else
         help_utils
-        exit 1
     fi
 else
     help
-    exit 1
 fi
+
+END_TIME="$(date -u +%s)"
+__timer ${START_TIME} ${END_TIME}
