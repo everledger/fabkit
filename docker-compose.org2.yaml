@@ -12,7 +12,7 @@ services:
     extends:
       file: network/base/base.yaml
       service: ca-base
-    environment: 
+    environment:
       - FABRIC_CA_SERVER_CA_NAME=ca.org2.example.com
     volumes:
       - ./network/cryptos/peerOrganizations/org2.example.com/ca/:/etc/hyperledger/fabric-ca-server-config
@@ -40,7 +40,7 @@ services:
       # # bridge network as the peers
       # # https://docs.docker.com/compose/networking/
       - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
-      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=peer0.org2.example.com-couchdb:5984
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb.peer0.org2.example.com:5984
       # The CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME and CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD
       # provide the credentials for ledger to connect to CouchDB.  The username and password must
       # match the username and password set for the associated CouchDB.
@@ -48,8 +48,8 @@ services:
       - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=
       - GODEBUG=netdns=go
     volumes:
-        # trick: for security reasons some services such as Bitbucket Pipeline will not allow to mount volumes 
-        # which are sitting outside the cloned/project directory
+      # trick: for security reasons some services such as Bitbucket Pipeline will not allow to mount volumes
+      # which are sitting outside the cloned/project directory
       - ./docker.sock/:/host/var/run/
       - ./network/cryptos/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/msp:/etc/hyperledger/fabric/msp
       - ./network/cryptos/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls:/etc/hyperledger/fabric/tls
@@ -57,11 +57,11 @@ services:
     ports:
       - 8051:8051
     depends_on:
-      - peer0.org2.example.com-couchdb
+      - couchdb.peer0.org2.example.com
 
-  peer0.org2.example.com-couchdb:
-    container_name: peer0.org2.example.com-couchdb
-    extends: 
+  couchdb.peer0.org2.example.com:
+    container_name: couchdb.peer0.org2.example.com
+    extends:
       file: network/base/base.yaml
       service: couchdb-base
     # Populate the COUCHDB_USER and COUCHDB_PASSWORD to set an admin user and password
@@ -70,6 +70,6 @@ services:
       - COUCHDB_USER=
       - COUCHDB_PASSWORD=
     volumes:
-      - ./data/peer0.org2.example.com-couchdb:/opt/couchdb/data
+      - ./data/couchdb.peer0.org2.example.com:/opt/couchdb/data
     ports:
       - 6984:5984

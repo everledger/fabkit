@@ -8,6 +8,7 @@ services:
     restart: always
     environment:
       - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - GODEBUG=netdns=go
       # the following setting starts chaincode containers on the same
       # bridge network as the peers
       # https://docs.docker.com/compose/networking/
@@ -40,6 +41,7 @@ services:
     image: hyperledger/fabric-orderer:${FABRIC_VERSION}
     restart: always
     environment:
+      - GODEBUG=netdns=go
       - GRPC_VERBOSITY=info
       - FABRIC_LOGGING_SPEC=info
       # - FABRIC_LOGGING_FORMAT="%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}"
@@ -79,6 +81,7 @@ services:
   tools-base:
     image: hyperledger/fabric-tools:${FABRIC_VERSION}
     environment:
+      - GODEBUG=netdns=go
       - FABRIC_LOGGING_SPEC=info
       - GOPATH=/opt/gopath
       - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
