@@ -50,9 +50,9 @@ join_channel() {
     log "Joining channel ${channel_name}" info
 
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
-        PEER_EXEC+="peer channel join -b ${CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}.block || exit 1"
+        PEER_EXEC+="peer channel join -o $ORDERER_ADDRESS -b ${CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}.block || exit 1"
     else
-        PEER_EXEC+="peer channel join -b ${CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}.block --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
+        PEER_EXEC+="peer channel join -o $ORDERER_ADDRESS -b ${CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}.block --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
     fi
 
     __exec_command "${PEER_EXEC}"
