@@ -1,36 +1,30 @@
 #!/usr/bin/env bash
 
-shell=$(ps -ocomm= -q $$)
-if [ "$shell" = "zsh" ]; then 
-    autoload -Uz compinit && compinit
-    autoload -U +X bashcompinit && bashcompinit
-fi
-
 __autocomplete() {
     COMPREPLY=()
     
-    local FIRST=("help" "dep" "channel" "network" "explorer" "ca" "generate" "chaincode" "benchmark" "utils" )
+    local functions=("help" "dep" "channel" "network" "explorer" "ca" "generate" "chaincode" "benchmark" "utils" )
     
-    declare -A ACTIONS
-    ACTIONS[ca]="register enroll reenroll revoke"
-    ACTIONS[network]="install start restart stop"
-    ACTIONS[explorer]="start stop"
-    ACTIONS[channel]="create update join"
-    ACTIONS[generate]="genensis cryptos channeltx"
-    ACTIONS[chaincode]="test build zip package install instantiate upgrade query invoke lifecycle"
-    ACTIONS[benchmark]="load"
-    ACTIONS[utils]="tojson tostring"
-    ACTIONS[lifecycle]="package install approve commit deploy"
+    declare -A actions
+    actions[ca]="register enroll reenroll revoke"
+    actions[network]="install start restart stop"
+    actions[explorer]="start stop"
+    actions[channel]="create update join"
+    actions[generate]="genesis cryptos channeltx"
+    actions[chaincode]="test build zip package install instantiate upgrade query invoke lifecycle"
+    actions[benchmark]="load"
+    actions[utils]="tojson tostring"
+    actions[lifecycle]="package install approve commit deploy"
     
     local cur=${COMP_WORDS[COMP_CWORD]}
     
-    if [ ${ACTIONS[$3]+1} ] ; then
-        COMPREPLY=( `compgen -W "${ACTIONS[$3]}" -- $cur` )
-        elif [[ "${ACTIONS[*]}" == *"$3"* ]] ; then
-        COMPREPLY=( `compgen -W "${OPTIONS[*]}" -- $cur` )
+    if [ ${actions[$3]+1} ] ; then
+        COMPREPLY=( `compgen -W "${actions[$3]}" -- $cur` )
+        elif [[ "${actions[*]}" == *"$3"* ]] ; then
+        COMPREPLY=( `compgen -W "${options[*]}" -- $cur` )
     else
-        COMPREPLY=( `compgen -W "${FIRST[*]}" -- $cur` )
+        COMPREPLY=( `compgen -W "${functions[*]}" -- $cur` )
     fi
 }
 
-complete -F __autocomplete fabkit
+complete -F __autocomplete fabkit fk
