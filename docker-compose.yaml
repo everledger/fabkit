@@ -113,7 +113,7 @@ services:
         # trick: for security reasons some services such as Bitbucket Pipeline will not allow to mount volumes 
         # which are sitting outside the cloned/project directory
       - ./docker.sock/:/host/var/run/
-      - ${CHAINCODE_PATH}:${CHAINCODE_REMOTE_MOUNT_PATH}
+      - ${CHAINCODE_PATH}:${CHAINCODE_REMOTE_PATH}
       - ./network/cryptos:${CONTAINER_PEER_BASEPATH}/crypto
       - ./network/channels:${CONTAINER_PEER_BASEPATH}/channels
       - ./dist:${CONTAINER_PEER_BASEPATH}/dist
