@@ -18,7 +18,7 @@ readonly RAFT_ONE_ORG="OneOrgOrdererEtcdRaft"
 # docker exec command
 PEER_EXEC=""
 # chaincocode language
-CHAINCODE_LANGUAGE=""
+unset CHAINCODE_LANGUAGE
 
 help() {
     local help="
@@ -903,7 +903,7 @@ chaincode_test() {
 
     if [ ${CHAINCODE_LANGUAGE} == "golang" ]; then
          # avoid "found no test suites" ginkgo error
-        if [ ! `find ${CHAINCODE_PATH}/${chaincode_relative_path} -type f -name "*_test*" ! -path "**/node_modules/*" ! -path "**/vendor/*"` ]; then
+        if [ ! $(find ${CHAINCODE_PATH}/${chaincode_relative_path} -type f -name "*_test*" ! -path "**/node_modules/*" ! -path "**/vendor/*") ]; then
             log "No test suites found. Skipping tests..." warning
             return 
         fi
@@ -975,17 +975,16 @@ __get_chaincode_language() {
     local golang_cc_identifier="func main"
     local java_cc_identifier="public static void main"
     local node_cc_identifier="require('fabric-shim')"
-
-    # check golang
-    if [ ! "$( grep --include='*.go' -rnw "${CHAINCODE_PATH}/${chaincode_relative_path}" -e "${golang_cc_identifier}" )" == "" ]; then
+    
+    if [ ! "$(find "${CHAINCODE_PATH}/${chaincode_relative_path}" -type f -iname '*.go' -exec grep -l "${golang_cc_identifier}" {} \;)" == "" ]; then
         log "Chaincode language is golang" debug
         CHAINCODE_LANGUAGE="golang"
         return
-    elif [ ! "$( grep --include='*.java' -rnw "${CHAINCODE_PATH}/${chaincode_relative_path}" -e "${java_cc_identifier}" )" == "" ]; then
+    elif [ ! "$(find "${CHAINCODE_PATH}/${chaincode_relative_path}" -type f -iname '*.java' -exec grep -l "${java_cc_identifier}" {} \;)" == "" ]; then
         log "Chaincode language is java" debug
         CHAINCODE_LANGUAGE="java"
         return
-    elif [ ! "$( grep --include='*.js' -rnw "${CHAINCODE_PATH}/${chaincode_relative_path}" -e "${node_cc_identifier}" )" == "" ]; then
+    elif [ ! "$(find "${CHAINCODE_PATH}/${chaincode_relative_path}" -type f \( -iname \*.js -o -iname \*.ts \) -exec grep -l "${node_cc_identifier}" {} \;)" == "" ]; then
         log "Chaincode language is node" debug
         CHAINCODE_LANGUAGE="node"
         return
