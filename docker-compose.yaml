@@ -16,10 +16,10 @@ services:
       - GRPC_VERBOSITY=info
       - FABRIC_LOGGING_SPEC=info
     volumes:
-        - ./network/channels/orderer-system-channel/genesis_block.pb:/var/hyperledger/orderer/orderer.genesis.block
-        - ./network/cryptos/ordererOrganizations/example.com/orderers/orderer.example.com/msp:/var/hyperledger/orderer/msp
-        - ./network/cryptos/ordererOrganizations/example.com/orderers/orderer.example.com/tls/:/var/hyperledger/orderer/tls
-        - ./data/orderer.example.com:/var/hyperledger/production/orderer
+      - ./network/channels/orderer-system-channel/genesis_block.pb:/var/hyperledger/orderer/orderer.genesis.block
+      - ./network/cryptos/ordererOrganizations/example.com/orderers/orderer.example.com/msp:/var/hyperledger/orderer/msp
+      - ./network/cryptos/ordererOrganizations/example.com/orderers/orderer.example.com/tls/:/var/hyperledger/orderer/tls
+      - ./data/orderer.example.com:/var/hyperledger/production/orderer
     ports:
       - 7050:7050
 
@@ -28,7 +28,7 @@ services:
     extends:
       file: network/base/base.yaml
       service: ca-base
-    environment: 
+    environment:
       - FABRIC_CA_SERVER_CA_NAME=ca.org1.example.com
     volumes:
       - ./network/cryptos/peerOrganizations/org1.example.com/ca/:/etc/hyperledger/fabric-ca-server-config
@@ -67,8 +67,8 @@ services:
       - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=
       - GODEBUG=netdns=go
     volumes:
-        # trick: for security reasons some services such as Bitbucket Pipeline will not allow to mount volumes 
-        # which are sitting outside the cloned/project directory
+      # trick: for security reasons some services such as Bitbucket Pipeline will not allow to mount volumes
+      # which are sitting outside the cloned/project directory
       - ./docker.sock/:/host/var/run/
       - ./network/cryptos/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp:/etc/hyperledger/fabric/msp
       - ./network/cryptos/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls:/etc/hyperledger/fabric/tls
@@ -80,7 +80,7 @@ services:
 
   peer0.org1.example.com-couchdb:
     container_name: peer0.org1.example.com-couchdb
-    extends: 
+    extends:
       file: network/base/base.yaml
       service: couchdb-base
     # Populate the COUCHDB_USER and COUCHDB_PASSWORD to set an admin user and password
@@ -88,11 +88,11 @@ services:
     environment:
       - COUCHDB_USER=
       - COUCHDB_PASSWORD=
-    volumes:
-      - ./data/peer0.org1.example.com-couchdb:/opt/couchdb/data
+    # volumes:
+    #   - ./data/peer0.org1.example.com-couchdb:/opt/couchdb/data
     ports:
       - 5984:5984
-      
+
   fabric-cli:
     container_name: ${CHAINCODE_UTIL_CONTAINER}
     extends:
@@ -105,20 +105,19 @@ services:
       - CORE_PEER_ID=fabric-cli
       - CORE_PEER_ADDRESS=peer0.org1.example.com:7051
       - CORE_PEER_LOCALMSPID=Org1MSP
-      - CORE_PEER_TLS_CERT_FILE=${CONTAINER_PEER_BASEPATH}/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/server.crt
-      - CORE_PEER_TLS_KEY_FILE=${CONTAINER_PEER_BASEPATH}/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/server.key
-      - CORE_PEER_TLS_ROOTCERT_FILE=${CONTAINER_PEER_BASEPATH}/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
-      - CORE_PEER_MSPCONFIGPATH=${CONTAINER_PEER_BASEPATH}/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
+      - CORE_PEER_TLS_CERT_FILE=${PEER_REMOTE_BASEPATH}/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=${PEER_REMOTE_BASEPATH}/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=${PEER_REMOTE_BASEPATH}/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+      - CORE_PEER_MSPCONFIGPATH=${PEER_REMOTE_BASEPATH}/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
     volumes:
-        # trick: for security reasons some services such as Bitbucket Pipeline will not allow to mount volumes 
-        # which are sitting outside the cloned/project directory
+      # trick: for security reasons some services such as Bitbucket Pipeline will not allow to mount volumes
+      # which are sitting outside the cloned/project directory
       - ./docker.sock/:/host/var/run/
       - ${CHAINCODE_PATH}:${CHAINCODE_REMOTE_PATH}
-      - ./network/cryptos:${CONTAINER_PEER_BASEPATH}/crypto
-      - ./network/channels:${CONTAINER_PEER_BASEPATH}/channels
-      - ./dist:${CONTAINER_PEER_BASEPATH}/dist
+      - ./network/cryptos:${PEER_REMOTE_BASEPATH}/crypto
+      - ./network/channels:${PEER_REMOTE_BASEPATH}/channels
+      - ./dist:${PEER_REMOTE_BASEPATH}/dist
     depends_on:
       - ca.org1.example.com
       - orderer.example.com
       - peer0.org1.example.com
-

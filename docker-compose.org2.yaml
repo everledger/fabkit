@@ -69,7 +69,7 @@ services:
     environment:
       - COUCHDB_USER=
       - COUCHDB_PASSWORD=
-    volumes:
-      - ./data/peer0.org2.example.com-couchdb:/opt/couchdb/data
+    # volumes:
+    #   - ./data/peer0.org2.example.com-couchdb:/opt/couchdb/data
     ports:
       - 6984:5984
