@@ -1054,7 +1054,7 @@ __set_chaincode_options() {
         param=$1
 
         case $param in
-        *"{\"Args\":"*) 
+        *"{\"Args\":"*)
             if [[ "$operation" =~ ^(invoke|instantiate|upgrade)$ ]]; then
                 __options=" -c $(tostring $param)"
             fi
@@ -1204,6 +1204,17 @@ chaincode_upgrade() {
     __exec_command "${PEER_EXEC}"
 }
 
+__chaincode_module_pack() {
+    local chaincode_path=$1
+
+    # trick to allow chaincode packed as modules to work when deployed against remote environments
+    log "Copying chaincode files into vendor..." info
+    mkdir -p ./vendor/${chaincode_path} && rsync -ar --exclude='vendor' --exclude='META-INF' . ./vendor/${chaincode_path} || {
+        log >&2 "Error copying chaincode into vendor directory." error
+        exit 1
+    }
+}
+
 chaincode_zip() {
     type zip >/dev/null 2>&1 || {
         log >&2 "zip required but it is not installed. Aborting." error
@@ -1232,14 +1243,8 @@ chaincode_zip() {
     local timestamp=$(date +%Y-%m-%d-%H-%M-%S)
 
     if [ "$chaincode_language" == "golang" ]; then
-        __init_go_mod install ${chaincode_relative_path}
-
-        # trick to allow chaincode packed as modules to work when deployed against remote environments
-        log "Copying chaincode files into vendor..." info
-        mkdir -p ./vendor/${chaincode_path} && rsync -ar --exclude='vendor' --exclude='META-INF' . ./vendor/${chaincode_path} || {
-            log >&2 "Error copying chaincode into vendor directory." error
-            exit 1
-        }
+        __init_go_mod install $chaincode_relative_path
+        __chaincode_module_pack $chaincode_path
     fi
 
     local filename="$(basename $chaincode_relative_path)_${timestamp}.zip"
@@ -1287,13 +1292,7 @@ chaincode_pack() {
 
     if [ "$chaincode_language" == "golang" ]; then
         __init_go_mod install ${chaincode_relative_path}
-
-        # trick to allow chaincode packed as modules to work when deployed against remote environments
-        log "Copying chaincode files into vendor..." info
-        mkdir -p ./vendor/${chaincode_path} && rsync -ar --exclude='vendor' --exclude='META-INF' . ./vendor/${chaincode_path} || {
-            log >&2 "Error copying chaincode into vendor directory." error
-            exit 1
-        }
+        __chaincode_module_pack $chaincode_path
     fi
 
     log "Packing chaincode $chaincode_name version $chaincode_version from path ${chaincode_path} " info
@@ -1556,7 +1555,7 @@ lc_chaincode_commit() {
     set_peer_exec
 
     log "Check whether the chaincode definition is ready to be committed" info
-    
+
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
         PEER_EXEC+="peer lifecycle chaincode checkcommitreadiness --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --sequence $sequence_no --output json --signature-policy '${signature_policy}' $options"
     else
@@ -1583,7 +1582,7 @@ lc_chaincode_commit() {
     __exec_command "${cmd}"
 
     log "Query the chaincode definitions that have been committed to the channel" info
-    
+
     set_certs $org $peer
     set_peer_exec
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
