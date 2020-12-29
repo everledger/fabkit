@@ -85,18 +85,40 @@ The following command will restart a network with the configuration of your last
 ./run.sh network restart
 ```
 
-## Upgrade chaincode
+## Chaincodes
+
+Fabkit currently supports _golang_, _node_ and _java_ chaincodes. To deploy a chaincode from your own directory, you must set the following env variables before starting the network:
+
+- `CHAINCODE_PATH`: Absolute path to the directory to be mounted
+- `CHAINCODE_REMOTE_PATH`: Mount path inside the cli container. _Golang chaincodes must be mounted inside `GOPATH` ( `/opt/gopath/src` )_
+
+To deploy chaincode using Fabkit's commands refer below.
+
+_Note `options` is an optional parameter. For more information about all the available options check the following documentations:_
+
+- [v1.x Chaincode Commands](https://hyperledger-fabric.readthedocs.io/en/latest/commands/peerchaincode.html)
+- [v2.x Chaincode Commands](https://hyperledger-fabric.readthedocs.io/en/latest/commands/peerlifecycle.html)
 
 ### v1.x
+
+Run the following commands in order to install and instantiate a new chaincode:
+
+```bash
+./run.sh chaincode install [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no] [options]
+./run.sh chaincode instantiate [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [org_no] [peer_no] [options]
+# e.g.
+./run.sh chaincode install mynodecc 1.0 node/mychaincode 1 0
+./run.sh chaincode instantiate mynodecc 1.0 node/mychaincode mychannel 1 0 '{"Args":["init","a","100","b","200"]}'
+```
 
 Run the following commands in order to install and instantiate a newer version of an existing chaincode:
 
 ```bash
-./run.sh chaincode install [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no]
-./run.sh chaincode upgrade [chaincode_name] [chaincode_version] [channel_name] [org_no] [peer_no]
+./run.sh chaincode install [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no] [options]
+./run.sh chaincode upgrade [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [org_no] [peer_no] [options]
 # e.g.
-./run.sh chaincode install mychaincode 1.1 mychaincode 1 0
-./run.sh chaincode upgrade mychaincode 1.1 mychannel 1 0
+./run.sh chaincode install mynodecc 1.1 node/mychaincode 1 0
+./run.sh chaincode upgrade mynodecc 1.1 node/mychaincode mychannel 1 0 '{"Args":["init","a","100","b","200"]}'
 ```
 
 Be sure the `chaincode_version` is unique and never used before (otherwise an error will be prompted).
@@ -105,38 +127,38 @@ Be sure the `chaincode_version` is unique and never used before (otherwise an er
 
 The new chaincode lifecycle flow implemented in v2.x decentralizes much more the way in which a chaincode gets deployed into the network, enforcing security and empowering governance. However, this choice comes with an increase in complexity at the full expense of user experience.
 
-Fabkit offers a simplified all-in-once command to perform this process.
+Fabkit offers a simplified all-in-one command to perform this process.
 
 The commands below will install, approve, commit and initialize a newer version of an existing chaincode.
 
 ```bash
-./run.sh chaincode lifecycle deploy [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [sequence_no] [org_no] [peer_no]
+./run.sh chaincode lifecycle deploy [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [sequence_no] [org_no] [peer_no] [options]
 
 # e.g. considering previous chaincode_version was 1.0 and sequence_no was 1 (using default peer)
-./run.sh chaincode lifecycle deploy mychaincode 1.1 mychaincode mychannel 2 1 0
+./run.sh chaincode lifecycle deploy abstore 1.1 node/abstore mychannel 2 1 0 '{"Args":["init","a","100","b","200"]}'
 ```
 
 However, if you want more control over the single command execution, you can reproduce the exact same results as above by splitting that into the following steps:
 
 ```bash
-./run.sh chaincode lifecycle package [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no]
+./run.sh chaincode lifecycle package [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no] [options]
 # tip: run the install only if you are upgrading the chaincode binaries, otherwise no new container will be built (but also no errors will be thrown)
-./run.sh chaincode lifecycle install [chaincode_name] [chaincode_version] [org_no] [peer_no]
-./run.sh chaincode lifecycle approve [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [sequence_no] [org_no] [peer_no]
-./run.sh chaincode lifecycle commit [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [sequence_no] [org_no] [peer_no]
+./run.sh chaincode lifecycle install [chaincode_name] [chaincode_version] [org_no] [peer_no] [options]
+./run.sh chaincode lifecycle approve [chaincode_name] [chaincode_version] [channel_name] [sequence_no] [org_no] [peer_no] [options]
+./run.sh chaincode lifecycle commit [chaincode_name] [chaincode_version] [channel_name] [sequence_no] [org_no] [peer_no] [options]
 
 # e.g. considering previous chaincode_version was 1.0 and sequence_no was 1 (using default peer)
-./run.sh chaincode lifecycle package mychaincode 1.1 mychaincode 1 0
-./run.sh chaincode lifecycle install mychaincode 1.1 1 0
-./run.sh chaincode lifecycle approve mychaincode 1.1 mychaincode mychannel 2 1 0
-./run.sh chaincode lifecycle commit mychaincode 1.1 mychaincode mychannel 2 1 0
+./run.sh chaincode lifecycle package abstore 1.1 node/abstore 1 0
+./run.sh chaincode lifecycle install abstore 1.1 1 0
+./run.sh chaincode lifecycle approve abstore 1.1 mychannel 2 1 0
+./run.sh chaincode lifecycle commit abstore 1.1 mychannel 2 1 0 '{"Args":["init","a","100","b","200"]}'
 ```
 
->If you are upgrading the chaincode binaries, you need to update the chaincode version and the package ID in the chaincode definition. You can also update your chaincode endorsement policy without having to repackage your chaincode binaries. Channel members simply need to approve a definition with the new policy. The new definition needs to increment the sequence variable in the definition by one.
+> If you are upgrading the chaincode binaries, you need to update the chaincode version and the package ID in the chaincode definition. You can also update your chaincode endorsement policy without having to repackage your chaincode binaries. Channel members simply need to approve a definition with the new policy. The new definition needs to increment the sequence variable in the definition by one.
 
 Be sure the `chaincode_version` is unique and never used before (otherwise an error will be prompted) and the `sequence_no` has an incremental value.
 
-More details here: [Chaincode Lifecyle - Upgrade](https://hyperledger-fabric.readthedocs.io/en/release-2.0/chaincode4noah.html#upgrade-a-chaincode)
+More details here: [Chaincode Lifecycle - Upgrade](https://hyperledger-fabric.readthedocs.io/en/release-2.0/chaincode4noah.html#upgrade-a-chaincode)
 
 ## Archive chaincode for deployment
 
@@ -186,7 +208,13 @@ It is possible to use the CLI to run and test functionalities via invoke and que
 
 Starting from v1.2, Fabric offers the ability to create [private data collections](https://hyperledger-fabric.readthedocs.io/en/release-1.4/private-data/private-data.html), which allow a defined subset of organizations on a channel the ability to endorse, commit, or query private data without having to create a separate channel.
 
-This boilerplate propose a sample chaincode, `pdc`, exported from the [fabric-samples]((https://github.com/hyperledger/fabric-samples)) official repository, which includes a `collections_config.json` file with the following configuration:
+This repository proposes a sample chaincode, `pdc`, to allow the user to experiment and get more familiar with the concept of private data collection.
+
+This chaincode is a repackaged code from [fabric-samples - marbles02_private](https://github.com/hyperledger/fabric-samples/tree/v1.4.8/chaincode/marbles02_private) with the Fabkit's way to run commands which have been added to the `main.go` file itself, as commented lines above the corresponding fabric-samples' command.
+
+Any chaincode which interacts with private data collections need to have a JSON file containing the configurations of those and this file needs to be passed in input during the instantiation step (see below).
+
+The `collections_config.json` file resides in the same directory of the main code and defines collections with the following configuration:
 
 - `collectionMarbles`: Org1MSP, Org2MSP
 - `collectionMarblePrivateDetails`: Org1MSP
@@ -214,14 +242,22 @@ The network will be initialized with the following components:
 
 Install and instantiate the `pdc` chaincode:
 
+### v1.x
+
 ```bash
 # install the pdc chaincode on all the organizations' peer0
-./run.sh chaincode install pdc 1.0 pdc 1 0
-./run.sh chaincode install pdc 1.0 pdc 2 0
-./run.sh chaincode install pdc 1.0 pdc 3 0
+./run.sh chaincode install pdc 1.0 golang/pdc 1 0
+./run.sh chaincode install pdc 1.0 golang/pdc 2 0
+./run.sh chaincode install pdc 1.0 golang/pdc 3 0
 
 # instantiate pdc chaincode on mychannel using org1 peer0
-./run.sh chaincode instantiate pdc 1.0 mychannel 1 0 --collections-config /opt/gopath/src/${CHAINCODE_REMOTE_PATH}/chaincode/pdc/collections_config.json -P "OR('Org1MSP.member','Org2MSP.member','Org3MSP.member')"
+./run.sh chaincode instantiate pdc 1.0 golang/pdc mychannel 1 0 --collections-config ${CHAINCODE_REMOTE_PATH}/golang/pdc/collections_config.json -P 'OR("Org1MSP.member","Org2MSP.member","Org3MSP.member")'
+```
+
+### v2.x
+
+```bash
+./run.sh chaincode lifecycle deploy pdc 1.0 golang/pdc mychannel 1 1 0 --collections-config ${CHAINCODE_REMOTE_PATH}/golang/pdc/collections_config.json
 ```
 
 Execute some actions:
@@ -229,7 +265,7 @@ Execute some actions:
 ```bash
 # create a new marble as org1 peer0
 export MARBLE=$(echo -n "{\"name\":\"marble1\",\"color\":\"blue\",\"size\":35,\"owner\":\"tom\",\"price\":99}" | base64 | tr -d \\n)
-./run.sh chaincode invoke mychannel pdc 1 0 '{"Args":["initMarble"]}' --transient "{\"marble\":\"$MARBLE\"}"
+./run.sh chaincode invoke mychannel pdc 1 0 '{"Args":["initMarble"]}' --transient '{"marble":"$MARBLE"}'
 
 # query marble as org2 peer0 (successful)
 ./run.sh chaincode query mychannel pdc 2 0 '{"Args":["readMarble","marble1"]}'
@@ -306,9 +342,9 @@ To perform any of the below procedures you need to have satisfied the following 
 - Downloaded the connection profile if available or be sure you have on your hands the following information
 
   - Admin username (commonly `admin`) and password. This user needs to have the right permissions in order to perform any of the operations below.
-  
+
   - Organization name
-  
+
   - CA hostname and port
 
 ### Register and enroll a new user

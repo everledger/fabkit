@@ -4,31 +4,35 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-// ./run.sh chaincode install pdc 1.0 pdc 1 0
-// ./run.sh chaincode instantiate pdc 1.0 mychannel 1 0 --collections-config ./chaincode/pdc/collections_config.json -P "OR('Org1MSP.member','Org2MSP.member','Org3MSP.member')"
-
+// v1.x
+// ./run.sh chaincode install pdc 1.0 golang/pdc 1 0
+// ./run.sh chaincode install pdc 1.0 golang/pdc 2 0
+// ./run.sh chaincode install pdc 1.0 golang/pdc 3 0
+// ./run.sh chaincode instantiate pdc 1.0 golang/pdc mychannel 1 0 --collections-config ${CHAINCODE_REMOTE_PATH}/golang/pdc/collections_config.json -P 'OR("Org1MSP.member","Org2MSP.member","Org3MSP.member")'
+// v2.x
+// ./run.sh chaincode lifecycle deploy pdc 1.0 golang/pdc mychannel 1 1 0 --collections-config ${CHAINCODE_REMOTE_PATH}/golang/pdc/collections_config.json
 // ====CHAINCODE EXECUTION SAMPLES (CLI) ==================
 
 // ==== Invoke marbles, pass private data as base64 encoded bytes in transient map ====
 //
 // export MARBLE=$(echo -n "{\"name\":\"marble1\",\"color\":\"blue\",\"size\":35,\"owner\":\"tom\",\"price\":99}" | base64 | tr -d \\n)
-// ./run.sh chaincode invoke mychannel pdc 1 0 '{"Args":["initMarble"]}' --transient "{\"marble\":\"$MARBLE\"}"
+// ./run.sh chaincode invoke mychannel pdc 1 0 '{"Args":["initMarble"]}' --transient '{"marble":"$MARBLE"}'
 // peer chaincode invoke -C mychannel -n marblesp -c '{"Args":["initMarble"]}' --transient "{\"marble\":\"$MARBLE\"}"
 //
 // export MARBLE=$(echo -n "{\"name\":\"marble2\",\"color\":\"red\",\"size\":50,\"owner\":\"tom\",\"price\":102}" | base64 | tr -d \\n)
-// ./run.sh chaincode invoke mychannel pdc 1 0 '{"Args":["initMarble"]}' --transient "{\"marble\":\"$MARBLE\"}"
+// ./run.sh chaincode invoke mychannel pdc 1 0 '{"Args":["initMarble"]}' --transient '{"marble":"$MARBLE"}'
 // peer chaincode invoke -C mychannel -n marblesp -c '{"Args":["initMarble"]}' --transient "{\"marble\":\"$MARBLE\"}"
 //
 // export MARBLE=$(echo -n "{\"name\":\"marble3\",\"color\":\"blue\",\"size\":70,\"owner\":\"tom\",\"price\":103}" | base64 | tr -d \\n)
-// ./run.sh chaincode invoke mychannel pdc 1 0 '{"Args":["initMarble"]}' --transient "{\"marble\":\"$MARBLE\"}"
+// ./run.sh chaincode invoke mychannel pdc 1 0 '{"Args":["initMarble"]}' --transient '{"marble":"$MARBLE"}'
 // peer chaincode invoke -C mychannel -n marblesp -c '{"Args":["initMarble"]}' --transient "{\"marble\":\"$MARBLE\"}"
 //
 // export MARBLE_OWNER=$(echo -n "{\"name\":\"marble2\",\"owner\":\"jerry\"}" | base64 | tr -d \\n)
-//  ./run.sh chaincode invoke mychannel pdc 1 0 '{"Args":["transferMarble"]}' --transient "{\"marble_owner\":\"$MARBLE_OWNER\"}"
+// ./run.sh chaincode invoke mychannel pdc 1 0 '{"Args":["transferMarble"]}' --transient '{"marble_owner":"$MARBLE_OWNER"}'
 // peer chaincode invoke -C mychannel -n marblesp -c '{"Args":["transferMarble"]}' --transient "{\"marble_owner\":\"$MARBLE_OWNER\"}"
 //
 // export MARBLE_DELETE=$(echo -n "{\"name\":\"marble1\"}" | base64 | tr -d \\n)
-// ./run.sh chaincode invoke mychannel pdc 1 0 '{"Args":["delete"]}' --transient "{\"marble_delete\":\"$MARBLE_DELETE\"}"
+// ./run.sh chaincode invoke mychannel pdc 1 0 '{"Args":["delete"]}' --transient '{"marble_delete":"$MARBLE_DELETE"}'
 // peer chaincode invoke -C mychannel -n marblesp -c '{"Args":["delete"]}' --transient "{\"marble_delete\":\"$MARBLE_DELETE\"}"
 
 // ==== Query marbles, since queries are not recorded on chain we don't need to hide private data in transient map ====
