@@ -52,15 +52,15 @@ __delete_path() {
     fi
 }
 
-__set_peer_certs() {
+set_certs() {
     CORE_PEER_ADDRESS=peer${2}.org${1}.example.com:$((6 + ${1}))051
     CORE_PEER_LOCALMSPID=Org${1}MSP
     CORE_PEER_TLS_ENABLED=false
-    CORE_PEER_TLS_CERT_FILE=${CONTAINER_PEER_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/peers/peer${2}.org${1}.example.com/tls/server.crt
-    CORE_PEER_TLS_KEY_FILE=${CONTAINER_PEER_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/peers/peer${2}.org${1}.example.com/tls/server.key
-    CORE_PEER_TLS_ROOTCERT_FILE=${CONTAINER_PEER_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/peers/peer${2}.org${1}.example.com/tls/ca.crt
-    CORE_PEER_MSPCONFIGPATH=${CONTAINER_PEER_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/users/Admin@org${1}.example.com/msp
-    ORDERER_CA=${CONTAINER_PEER_BASEPATH}/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
+    CORE_PEER_TLS_CERT_FILE=${PEER_REMOTE_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/peers/peer${2}.org${1}.example.com/tls/server.crt
+    CORE_PEER_TLS_KEY_FILE=${PEER_REMOTE_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/peers/peer${2}.org${1}.example.com/tls/server.key
+    CORE_PEER_TLS_ROOTCERT_FILE=${PEER_REMOTE_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/peers/peer${2}.org${1}.example.com/tls/ca.crt
+    CORE_PEER_MSPCONFIGPATH=${PEER_REMOTE_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/users/Admin@org${1}.example.com/msp
+    ORDERER_CA=${PEER_REMOTE_BASEPATH}/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
 
     log "===========================================" info
     log "Peer address: ${CORE_PEER_ADDRESS}" info
@@ -69,7 +69,7 @@ __set_peer_certs() {
     echo
 }
 
-__set_peer_exec() {
+set_peer_exec() {
     PEER_EXEC="docker exec -e CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
             -e CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID \
             -e CORE_PEER_TLS_ENABLED=$TLS_ENABLED \
@@ -84,11 +84,11 @@ __exec_command() {
     echo
     log "Excecuting command: " debug
     echo
-    message=${1%"|| exit 1"}
+    local message=$1
     log "$message" debug
     echo
 
-    eval ${1}
+    eval "$message || exit 1"
 }
 
 __timer() {
@@ -127,7 +127,7 @@ log() {
 }
 
 tostring() {
-    echo "$@" | __jq tostring
+    echo "$@" | __jq tostring 2>/dev/null || echo ${@//\"/\\\"}
 }
 
 tojson() {

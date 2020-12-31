@@ -2,7 +2,7 @@
 
 create_channel() {
     if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
-        log "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" error
+        log "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help" error
         exit 1
     fi
 
@@ -15,15 +15,15 @@ create_channel() {
     local org="$2"
     local peer="$3"
 
-    __set_peer_certs $org $peer
-    __set_peer_exec
+    set_certs $org $peer
+    set_peer_exec
 
     log "Creating channel ${channel_name} using configuration file ${CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}_tx.pb" info
 
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
-        PEER_EXEC+="peer channel create -o $ORDERER_ADDRESS -c ${channel_name} -f $CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}_tx.pb --outputBlock $CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}.block || exit 1"
+        PEER_EXEC+="peer channel create -o $ORDERER_ADDRESS -c ${channel_name} -f $CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}_tx.pb --outputBlock $CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}.block"
     else
-        PEER_EXEC+="peer channel create -o $ORDERER_ADDRESS -c ${channel_name} -f $CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}_tx.pb --outputBlock $CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}.block --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
+        PEER_EXEC+="peer channel create -o $ORDERER_ADDRESS -c ${channel_name} -f $CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}_tx.pb --outputBlock $CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}.block --tls $TLS_ENABLED --cafile $ORDERER_CA"
     fi
 
     __exec_command "${PEER_EXEC}"
@@ -31,7 +31,7 @@ create_channel() {
 
 join_channel() {
     if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
-        log "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" error
+        log "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help" error
         exit 1
     fi
 
@@ -44,15 +44,15 @@ join_channel() {
     local org="$2"
     local peer="$3"
 
-    __set_peer_certs $org $peer
-    __set_peer_exec
+    set_certs $org $peer
+    set_peer_exec
 
     log "Joining channel ${channel_name}" info
 
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
-        PEER_EXEC+="peer channel join -o $ORDERER_ADDRESS -b ${CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}.block || exit 1"
+        PEER_EXEC+="peer channel join -b ${CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}.block"
     else
-        PEER_EXEC+="peer channel join -o $ORDERER_ADDRESS -b ${CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}.block --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
+        PEER_EXEC+="peer channel join -b ${CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}.block --tls $TLS_ENABLED --cafile $ORDERER_CA"
     fi
 
     __exec_command "${PEER_EXEC}"
@@ -60,7 +60,7 @@ join_channel() {
 
 update_channel() {
     if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ]; then
-        log "Incorrect usage of $FUNCNAME. Please consult the help: ./run.sh help" error
+        log "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help" error
         exit 1
     fi
 
@@ -74,15 +74,15 @@ update_channel() {
     local org="$3"
     local peer="$4"
 
-    __set_peer_certs $org $peer
-    __set_peer_exec
+    set_certs $org $peer
+    set_peer_exec
 
     log "Updating anchors peers on ${channel_name} using configuration file ${CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors.tx" info
 
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
-        PEER_EXEC+="peer channel update -o $ORDERER_ADDRESS -c ${channel_name} -f ${CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors_tx.pb || exit 1"
+        PEER_EXEC+="peer channel update -o $ORDERER_ADDRESS -c ${channel_name} -f ${CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors_tx.pb"
     else
-        PEER_EXEC+="peer channel update -o $ORDERER_ADDRESS -c ${channel_name} -f ${CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors_tx.pb --tls $TLS_ENABLED --cafile $ORDERER_CA || exit 1"
+        PEER_EXEC+="peer channel update -o $ORDERER_ADDRESS -c ${channel_name} -f ${CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors_tx.pb --tls $TLS_ENABLED --cafile $ORDERER_CA"
     fi
 
     __exec_command "${PEER_EXEC}"

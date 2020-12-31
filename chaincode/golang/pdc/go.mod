@@ -1,6 +1,6 @@
 module bitbucket.org/everledger/fabric-chaincode-boilerplate/chaincode/pdc
 
-go 1.14
+go 1.12
 
 require (
 	github.com/Knetic/govaluate v3.0.0+incompatible // indirect

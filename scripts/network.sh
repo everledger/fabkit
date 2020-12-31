@@ -66,8 +66,8 @@ start_network() {
 
         stop_network
 
-        chaincode_build $CHAINCODE_NAME
-        chaincode_test $CHAINCODE_NAME
+        chaincode_build $CHAINCODE_RELATIVE_PATH
+        chaincode_test $CHAINCODE_RELATIVE_PATH
     fi
 
     log "==============" info
@@ -186,36 +186,38 @@ initialize_network() {
     update_channel $CHANNEL_NAME $ORG_MSP 1 0
 
     if [[ "${FABRIC_VERSION}" =~ 2.* ]]; then
-        lc_chaincode_package $CHAINCODE_NAME $CHAINCODE_VERSION $CHAINCODE_NAME 1 0
+        lc_chaincode_package $CHAINCODE_NAME $CHAINCODE_VERSION $CHAINCODE_RELATIVE_PATH 1 0
 
         for org in $(seq 1 ${ORGS}); do
             lc_chaincode_install $CHAINCODE_NAME $CHAINCODE_VERSION $org 0
-            lc_chaincode_approve $CHAINCODE_NAME $CHAINCODE_VERSION $CHAINCODE_NAME $CHANNEL_NAME 1 $org 0
+            lc_chaincode_approve $CHAINCODE_NAME $CHAINCODE_VERSION $CHANNEL_NAME 1 $org 0
         done
 
-        lc_chaincode_commit $CHAINCODE_NAME $CHAINCODE_VERSION $CHAINCODE_NAME $CHANNEL_NAME 1 1 0
+        lc_chaincode_commit $CHAINCODE_NAME $CHAINCODE_VERSION $CHANNEL_NAME 1 1 0
     else
-        chaincode_install $CHAINCODE_NAME $CHAINCODE_VERSION $CHAINCODE_NAME 1 0
-        chaincode_instantiate $CHAINCODE_NAME $CHAINCODE_VERSION $CHANNEL_NAME 1 0
+        for org in $(seq 1 ${ORGS}); do
+            chaincode_install $CHAINCODE_NAME $CHAINCODE_VERSION $CHAINCODE_RELATIVE_PATH $org 0
+        done
+        chaincode_instantiate $CHAINCODE_NAME $CHAINCODE_VERSION $CHAINCODE_RELATIVE_PATH $CHANNEL_NAME 1 0
     fi
 }
 
 __replace_config_capabilities() {
     configtx=${CONFIG_PATH}/configtx
     if [[ "${FABRIC_VERSION}" =~ 2.* ]]; then
-        cat ${configtx}.base.yaml | __yq w - 'Capabilities.Channel.V2_0' true |
-            __yq w - 'Capabilities.Channel.V1_4_3' false |
-            __yq w - 'Capabilities.Orderer.V2_0' true |
-            __yq w - 'Capabilities.Orderer.V1_4_2' false |
-            __yq w - 'Capabilities.Application.V2_0' true |
-            __yq w - 'Capabilities.Application.V1_4_2' false >${configtx}.yaml
+        cat ${configtx}.base.yaml | __yq e '.Capabilities.Channel.V2_0 = true |
+            .Capabilities.Channel.V1_4_3 = false |
+            .Capabilities.Orderer.V2_0 = true |
+            .Capabilities.Orderer.V1_4_2 = false |
+            .Capabilities.Application.V2_0 = true |
+            .Capabilities.Application.V1_4_2 = false' - >${configtx}.yaml
     else
-        cat ${configtx}.base.yaml | __yq w - 'Capabilities.Channel.V2_0' false |
-            __yq w - 'Capabilities.Channel.V1_4_3' true |
-            __yq w - 'Capabilities.Orderer.V2_0' false |
-            __yq w - 'Capabilities.Orderer.V1_4_2' true |
-            __yq w - 'Capabilities.Application.V2_0' false |
-            __yq w - 'Capabilities.Application.V1_4_2' true >${configtx}.yaml
+        cat ${configtx}.base.yaml | __yq e '.Capabilities.Channel.V2_0 = false |
+            .Capabilities.Channel.V1_4_3 = true |
+            .Capabilities.Orderer.V2_0 = false |
+            .Capabilities.Orderer.V1_4_2 = true |
+            .Capabilities.Application.V2_0 = false |
+            .Capabilities.Application.V1_4_2 = true' - >${configtx}.yaml
     fi
 }
 

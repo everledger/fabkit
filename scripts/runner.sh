@@ -15,7 +15,7 @@ __add_aliases() {
     done
 
     if [ "${to_add}" == "true" ]; then
-        echo -e ${cmd} >> ~/.${shell}rc
+        echo -e ${cmd} >>~/.${shell}rc
         source ~/.${shell}rc 2>/dev/null
     fi
 }

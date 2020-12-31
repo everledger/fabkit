@@ -2,15 +2,15 @@
 
 start_explorer() {
     stop_explorer
-    
+
     log "===============" info
-	log "Explorer: start" info
+    log "Explorer: start" info
     log "===============" info
     echo
 
     if [[ ! $(docker ps | grep fabric) ]]; then
-        log "No Fabric networks running. First launch ./run.sh start" error
-		exit 1
+        log "No Fabric networks running. First launch fabkit start" error
+        exit 1
     fi
 
     if [ ! -d "${CRYPTOS_PATH}" ]; then
@@ -21,8 +21,8 @@ start_explorer() {
     config=${EXPLORER_PATH}/connection-profile/first-network
     admin_key_path="peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/keystore"
     private_key="/tmp/crypto/${admin_key_path}/$(ls ${CRYPTOS_PATH}/${admin_key_path})"
-    cat ${config}.base.json | __jq -r --arg private_key "$private_key" '.organizations.Org1MSP.adminPrivateKey.path = $private_key' | \
-    __jq -r --argjson TLS_ENABLED "$TLS_ENABLED" '.client.tlsEnable = $TLS_ENABLED' > ${config}.json
+    cat ${config}.base.json | __jq -r --arg private_key "$private_key" '.organizations.Org1MSP.adminPrivateKey.path = $private_key' |
+        __jq -r --argjson TLS_ENABLED "$TLS_ENABLED" '.client.tlsEnable = $TLS_ENABLED' >${config}.json
 
     # considering tls enabled as default in base
     if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
@@ -37,7 +37,7 @@ start_explorer() {
 
 stop_explorer() {
     log "==============" info
-	log "Explorer: stop" info
+    log "Explorer: stop" info
     log "==============" info
     echo
 

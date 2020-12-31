@@ -6,9 +6,6 @@ for f in ./scripts/*; do source $f; done
 export GO111MODULE=on
 # name of the working directory/project
 export WORKSPACE=$(basename ${ROOT})
-# it should be under GOPATH (automatically added in front of this path)
-# TODO: Set a default chaincode path and grab the name of the package instead
-export CHAINCODE_REMOTE_PATH=bitbucket.org/everledger/${WORKSPACE}/chaincode
 
 readonly ONE_ORG="OneOrgOrdererGenesis"
 readonly TWO_ORGS="TwoOrgsOrdererGenesis"
@@ -19,7 +16,7 @@ readonly START_TIME="$(date -u +%s)"
 unset PEER_EXEC
 
 __yq() {
-    docker run --rm -i -v "${PWD}":/workdir ${YQ_DOCKER_IMAGE} yq "$@"
+    docker run --rm -i -v "${PWD}":/workdir ${YQ_DOCKER_IMAGE} "$@"
 }
 
 __jq() {
@@ -79,11 +76,13 @@ __set_params() {
     done
 }
 
-readonly func="$1"; shift
+readonly func="$1"
+shift
 
 title
 if [ "$func" == "network" ]; then
-    param="$1"; shift
+    param="$1"
+    shift
     __check_deps deploy
     __check_docker_daemon
     __set_params "$@"
@@ -125,7 +124,6 @@ elif [ "$func" == "chaincode" ]; then
     param="$1"
     shift
     if [ "$param" == "lifecycle" ]; then
-        __check_fabric_version 2
         param="$1"
         shift
         if [ "$param" == "package" ]; then
@@ -152,17 +150,14 @@ elif [ "$func" == "chaincode" ]; then
             help_chaincode
         fi
     elif [ "$param" == "install" ]; then
-        # __check_fabric_version 1
         __check_deps deploy
         __check_docker_daemon
         chaincode_install "$@"
     elif [ "$param" == "instantiate" ]; then
-        # __check_fabric_version 1
         __check_deps deploy
         __check_docker_daemon
         chaincode_instantiate "$@"
     elif [ "$param" == "upgrade" ]; then
-        # __check_fabric_version 1
         __check_deps deploy
         __check_docker_daemon
         chaincode_upgrade "$@"
@@ -171,7 +166,6 @@ elif [ "$func" == "chaincode" ]; then
     elif [ "$param" == "build" ]; then
         chaincode_build "$@"
     elif [ "$param" == "package" ]; then
-        # __check_fabric_version 1
         __check_deps deploy
         __check_docker_daemon
         chaincode_pack "$@"

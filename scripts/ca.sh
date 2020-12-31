@@ -103,18 +103,18 @@ revoke_user() {
         log "Select one of the reason for the revoke from this list: " info
         log "${reason_list}" info
         read -p "Select a number from the list above: [1] " reason
-        case $reason in 
-            1) reason="unspecified" ;;
-            2) reason="keycompromise" ;;
-            3) reason="cacompromise" ;;
-            4) reason="affiliationchange" ;;
-            5) reason="superseded" ;;
-            6) reason="cessationofoperation" ;;
-            7) reason="certificatehold" ;;
-            8) reason="removefromcrl" ;;
-            9) reason="privilegewithdrawn" ;;
-            10) reason="aacompromise" ;;
-            *) log "Please select any of the reason from the list by typying in the corresponding number" warning;;
+        case $reason in
+        1) reason="unspecified" ;;
+        2) reason="keycompromise" ;;
+        3) reason="cacompromise" ;;
+        4) reason="affiliationchange" ;;
+        5) reason="superseded" ;;
+        6) reason="cessationofoperation" ;;
+        7) reason="certificatehold" ;;
+        8) reason="removefromcrl" ;;
+        9) reason="privilegewithdrawn" ;;
+        10) reason="aacompromise" ;;
+        *) log "Please select any of the reason from the list by typying in the corresponding number" warning ;;
         esac
     done
     log ${reason} success
@@ -137,7 +137,7 @@ revoke_user() {
 
 __ca_setup() {
     log "Creating docker network..." info
-    docker network create ${DOCKER_NETWORK} 2>/dev/null 
+    docker network create ${DOCKER_NETWORK} 2>/dev/null
 
     log "Insert the organization name of the user to register/enroll" info
     while [ -z "$org" ]; do
@@ -190,7 +190,10 @@ __ca_setup() {
     echo
 
     log "Insert the username of the user to register/enroll" info
-    username_default="user_"$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 5; echo)
+    username_default="user_"$(
+        LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 5
+        echo
+    )
     read -p "Username: [${username_default}] " username
     export username=${username:-${username_default}}
     mkdir -p ${users_dir}/${username}
@@ -198,7 +201,10 @@ __ca_setup() {
     echo
 
     log "Insert password of the user. It will be used by the CA as secret to generate the user certificate and key" info
-    password_default=$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 20; echo)
+    password_default=$(
+        LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 20
+        echo
+    )
     read -p "Password: [${password_default}] " password
     export password=${password:-${password_default}}
     log $password success
@@ -208,14 +214,14 @@ __ca_setup() {
     log "CA secure connection (https)" info
     read -p "Using TLS secure connection? (if your CA address starts with https)? [yes/no=default] " yn
     case $yn in
-        [Yy]* ) 
-            export ca_protocol="https://"
-            log "Secure TLS connection: enabled" success
-            ;;
-        * ) 
-            export ca_protocol="http://" 
-            log "Secure TLS connection: disabled" success
-            ;;
+    [Yy]*)
+        export ca_protocol="https://"
+        log "Secure TLS connection: enabled" success
+        ;;
+    *)
+        export ca_protocol="http://"
+        log "Secure TLS connection: disabled" success
+        ;;
     esac
     echo
 

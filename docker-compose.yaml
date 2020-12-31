@@ -89,8 +89,8 @@ services:
       - COUCHDB_USER=
       - COUCHDB_PASSWORD=
     # TODO: Inspect why, while using VBox and boot2docker, the couchdb will exit if this volume is mounted (no logs)
-    # volumes:
-    #   - ./data/couchdb.peer0.org1.example.com:/opt/couchdb/data
+    volumes:
+      - ./data/couchdb.peer0.org1.example.com:/opt/couchdb/data
     ports:
       - 5984:5984
 
@@ -105,18 +105,18 @@ services:
       - CORE_PEER_ID=fabric-cli
       - CORE_PEER_ADDRESS=peer0.org1.example.com:7051
       - CORE_PEER_LOCALMSPID=Org1MSP
-      - CORE_PEER_TLS_CERT_FILE=${CONTAINER_PEER_BASEPATH}/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/server.crt
-      - CORE_PEER_TLS_KEY_FILE=${CONTAINER_PEER_BASEPATH}/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/server.key
-      - CORE_PEER_TLS_ROOTCERT_FILE=${CONTAINER_PEER_BASEPATH}/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
-      - CORE_PEER_MSPCONFIGPATH=${CONTAINER_PEER_BASEPATH}/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
+      - CORE_PEER_TLS_CERT_FILE=${PEER_REMOTE_BASEPATH}/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=${PEER_REMOTE_BASEPATH}/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=${PEER_REMOTE_BASEPATH}/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+      - CORE_PEER_MSPCONFIGPATH=${PEER_REMOTE_BASEPATH}/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
     volumes:
       # trick: for security reasons some services such as Bitbucket Pipeline will not allow to mount volumes
       # which are sitting outside the cloned/project directory
       - ./docker.sock/:/host/var/run/
-      - ./chaincode:/opt/gopath/src/${CHAINCODE_REMOTE_PATH}
-      - ./network/cryptos:${CONTAINER_PEER_BASEPATH}/crypto
-      - ./network/channels:${CONTAINER_PEER_BASEPATH}/channels
-      - ./dist:${CONTAINER_PEER_BASEPATH}/dist
+      - ${CHAINCODE_PATH}:${CHAINCODE_REMOTE_PATH}
+      - ./network/cryptos:${PEER_REMOTE_BASEPATH}/crypto
+      - ./network/channels:${PEER_REMOTE_BASEPATH}/channels
+      - ./dist:${PEER_REMOTE_BASEPATH}/dist
     depends_on:
       - ca.org1.example.com
       - orderer.example.com
