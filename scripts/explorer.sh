@@ -31,8 +31,8 @@ start_explorer() {
 
     docker-compose -f ${EXPLORER_PATH}/docker-compose.yaml up --force-recreate -d || exit 1
 
-    log "Blockchain Explorer default user is exploreradmin/exploreradminpw" warning
-    log "Grafana default user is admin/admin" warning
+    log "Blockchain Explorer default user is exploreradmin/exploreradminpw - http://localhost:8090" warning
+    log "Grafana default user is admin/admin - http://localhost:3000" warning
 }
 
 stop_explorer() {

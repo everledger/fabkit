@@ -95,8 +95,9 @@ __timer() {
     local start_time="${1}"
     local end_time="${2}"
 
-    elapsed_time="$(($end_time - $start_time))"
-    log "Total elapsed time: ${elapsed_time}s" debug
+    local elapsed_time="$(($end_time - $start_time))"
+    
+    log "\nTotal elapsed time: $(($elapsed_time / 60))m$(($elapsed_time % 60))s" debug
 }
 
 log() {

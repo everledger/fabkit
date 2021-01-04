@@ -80,7 +80,7 @@ Note: **The maximum number of organizations supported at the time of writing is 
 Or you might want to run a multi-org setup, in debug mode and on a specific version of Fabric:
 
 ```bash
-fabkit networks start -o 3 -d -v 1.4.9
+fabkit network start -o 3 -d -v 1.4.9
 ```
 
 For the full list of params, check the helper by typing `fabkit network`.
@@ -491,17 +491,16 @@ fabkit benchmark load 5 1000
 
 The example above will do a bulk load of 1000 entries times 5 parallel jobs, for a total of 5000 entries. At the completion of all the jobs it will be prompted on screen the elapsed time of the total task.
 
-**Note: Maintain the number of jobs not superior to your CPU cores in order to obtain the best results. This implementation does not provides a complete parallelization.**
+**Note: Kepe the number of jobs not higher than your CPU cores in order to obtain the best results. This implementation does not provides a complete parallelization.**
 
 To achieve the optimal result it is recommended to install [Gnu Parallel](https://www.gnu.org/software/parallel/) and use as it follows:
 
 ```bash
-time (parallel ./benchmarks.sh {} ::: [entries])
+parallel ./fabkit benchmark load {} ::: [entries])
 
 # e.g.
-time (parallel ./benchmarks.sh {} ::: 20)
-# 8.613 total against 29.893 total
-# ~4 times lower than running jobs with "&"
+parallel ./fabkit benchmark load {} ::: 20
+# prefix with DEBUG=true to see more logs
 ```
 
 ### Troubleshooting

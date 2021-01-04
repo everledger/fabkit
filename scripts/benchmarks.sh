@@ -1,6 +1,11 @@
 #!/bin/sh
 
 __exec_jobs() {
+    if [[ $# == 1 ]]; then
+        __loader $1
+        return
+    fi
+
     local jobs=$1
     local entries=$2
 
@@ -23,7 +28,7 @@ __exec_jobs() {
     Entries: $entries
     " info
 
-    start_time="$(date -u +%s)"
+    local start_time="$(date -u +%s)"
 
     for i in $(seq 1 $jobs); do
         __loader $entries &
@@ -33,11 +38,10 @@ __exec_jobs() {
         wait $job
     done
 
-    end_time="$(date -u +%s)"
+    local end_time="$(date -u +%s)"
+    local elapsed="$(($end_time - $start_time))"
 
-    elapsed="$(($end_time - $start_time))"
     log "Total of $elapsed seconds elapsed for process" warning
-
     log "$(($jobs * $entries)) entries added" success
 }
 
@@ -48,12 +52,13 @@ __loader() {
     fi
 
     set -e
-    export LC_CTYPE=C
 
     for i in $(seq 1 $1); do
-        key=$(LC_CTYPE=C cat /dev/urandom | tr -cd 'A-Z0-9' | fold -w 14 | head -n 1)
-        value="$i"
+        local key=$(LC_CTYPE=C tr -cd '[:alnum:]' < /dev/urandom | fold -w12| head -n1)
+        local value="$i"
 
-        invoke mychannel mychaincode 1 0 "{\"Args\":[\"put\",\"${key}\",\"${value}\"]}" &>/dev/null
+        log "Writing <${key},${value}> pair in the ledger" debug
+
+        invoke $CHANNEL_NAME $CHAINCODE_NAME 1 0 "{\"Args\":[\"put\",\"${key}\",\"${value}\"]}" &>/dev/null
     done
 }
