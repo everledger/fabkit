@@ -75,21 +75,23 @@ start_network() {
     log "==============" info
     echo
 
-    local start_command="docker-compose -f ${ROOT}/docker-compose.yaml up -d || exit 1;"
+    __set_env_lastrun
+
+    local command="docker-compose -f ${ROOT}/docker-compose.yaml up -d || exit 1;"
 
     # TODO: create raft profiles for different network topologies (multi-org support)
     if [ "${CONFIGTX_PROFILE_NETWORK}" == "${RAFT_ONE_ORG}" ]; then
         CONFIGTX_PROFILE_NETWORK=${RAFT_ONE_ORG}
-        start_command+="docker-compose -f ${ROOT}/docker-compose.etcdraft.yaml up -d || exit 1;"
+        command+="docker-compose -f ${ROOT}/docker-compose.etcdraft.yaml up -d || exit 1;"
     elif [ "${ORGS}" == "2" ] || [ "${CONFIGTX_PROFILE_NETWORK}" == "${TWO_ORGS}" ]; then
         CONFIGTX_PROFILE_NETWORK=${TWO_ORGS}
         CONFIGTX_PROFILE_CHANNEL=TwoOrgsChannel
-        start_command+="docker-compose -f ${ROOT}/docker-compose.org2.yaml up -d || exit 1;"
+        command+="docker-compose -f ${ROOT}/docker-compose.org2.yaml up -d || exit 1;"
     elif [ "${ORGS}" == "3" ] || [ "${CONFIGTX_PROFILE_NETWORK}" == "${THREE_ORGS}" ]; then
         CONFIGTX_PROFILE_NETWORK=${THREE_ORGS}
         CONFIGTX_PROFILE_CHANNEL=ThreeOrgsChannel
-        start_command+="docker-compose -f ${ROOT}/docker-compose.org2.yaml up -d || exit 1;"
-        start_command+="docker-compose -f ${ROOT}/docker-compose.org3.yaml up -d || exit 1;"
+        command+="docker-compose -f ${ROOT}/docker-compose.org2.yaml up -d || exit 1;"
+        command+="docker-compose -f ${ROOT}/docker-compose.org3.yaml up -d || exit 1;"
     fi
 
     generate_cryptos $CONFIG_PATH $CRYPTOS_PATH
@@ -101,7 +103,7 @@ start_network() {
     # After Building and testing chaincode, come back to root directory so that docker-compose can take .env file automatically
     cd ${ROOT}
 
-    eval ${start_command}
+    eval ${command}
 
     sleep 5
 
@@ -121,13 +123,11 @@ restart_network() {
 
     docker network create ${DOCKER_NETWORK} 2>/dev/null
 
-    docker-compose -f ${ROOT}/docker-compose.yaml up --force-recreate -d || exit 1
-    if [ "$(find ${DATA_PATH} -type d -name 'peer*org2*' -maxdepth 1 2>/dev/null)" ]; then
-        docker-compose -f ${ROOT}/docker-compose.org2.yaml up --force-recreate -d || exit 1
-    fi
-    if [ "$(find ${DATA_PATH} -type d -name 'peer*org3*' -maxdepth 1 2>/dev/null)" ]; then
-        docker-compose -f ${ROOT}/docker-compose.org3.yaml up --force-recreate -d || exit 1
-    fi
+    local command="docker-compose -f ${ROOT}/docker-compose.yaml up --force-recreate -d || exit 1;"
+    for ((i = 2; i <= $ORGS; i++)); do
+        command+="docker-compose -f ${ROOT}/docker-compose.org${i}.yaml up --force-recreate -d || exit 1;"
+    done
+    eval ${command}
 
     log "The chaincode container will be instantiated automatically once the peer executes the first invoke or query" warning
 }
@@ -138,19 +138,17 @@ stop_network() {
     log "=============" info
     echo
 
-    docker-compose -f ${ROOT}/docker-compose.yaml down || exit 1
-    if [ "$(find ${DATA_PATH} -type d -name 'peer*org2*' -maxdepth 1 2>/dev/null)" ]; then
-        docker-compose -f ${ROOT}/docker-compose.org2.yaml down || exit 1
-    fi
-    if [ "$(find ${DATA_PATH} -type d -name 'peer*org3*' -maxdepth 1 2>/dev/null)" ]; then
-        docker-compose -f ${ROOT}/docker-compose.org3.yaml down || exit 1
-    fi
+    local command="docker-compose -f ${ROOT}/docker-compose.yaml down || exit 1;"
+    for ((i = 2; i <= $ORGS; i++)); do
+        command+="docker-compose -f ${ROOT}/docker-compose.org${i}.yaml down || exit 1;"
+    done
+    eval ${command}
 
     if [[ $(docker ps | grep "hyperledger/explorer") ]]; then
         stop_explorer
     fi
 
-    log "Cleaning docker leftovers containers and images" success
+    log "Cleaning docker leftovers containers and images" info
     docker rm -f $(docker ps -a | awk '($2 ~ /${DOCKER_NETWORK}|dev-/) {print $1}') 2>/dev/null
     docker rmi -f $(docker images -qf "dangling=true") 2>/dev/null
     docker rmi -f $(docker images | awk '($1 ~ /^<none>|dev-/) {print $3}') 2>/dev/null

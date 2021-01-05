@@ -2,7 +2,7 @@
 
 __check_fabric_version() {
     if [[ ! "${FABRIC_VERSION}" =~ ${1}.* ]]; then
-        log "This command is not enabled on Fabric v${FABRIC_VERSION}. In order to run, update the FABRIC_VERSION value in .env file" error
+        log "This command is not enabled on Fabric v${FABRIC_VERSION}. In order to run, run your network with the flag: -v|--version [version]" error
         exit 1
     fi
 }
@@ -98,6 +98,10 @@ __timer() {
     local elapsed_time="$(($end_time - $start_time))"
     
     log "\nTotal elapsed time: $(($elapsed_time / 60))m$(($elapsed_time % 60))s" debug
+}
+
+__set_env_lastrun() {
+    mkdir -p ${DATA_PATH} && printenv | sed 's/\=/="/; s/$/"/;' > ${DATA_PATH}/.env.lastrun
 }
 
 log() {

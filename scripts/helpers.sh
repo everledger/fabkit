@@ -12,8 +12,8 @@ title() {
 help_header() {
     log "
         Usage: $@ [command]
-        commands:
-    " info
+        
+        Commands:" info
 }
 
 help() {
@@ -98,7 +98,12 @@ help_network() {
     help_header "fabkit network"
     log "
         install                                                                                 : install all the dependencies and docker images
-        start                                                                                   : start the blockchain network and initialize it
+        start [options]                                                                         : start the blockchain network and initialize it
+            -c, --ci                                                                                : skip network stop/restart and test/build for CI
+            -d, --debug                                                                             : run in debug mode verbose logging
+            -o, --orgs [orgs_no]                                                                    : use a specific number of organizations (default: 1)
+            -r, --reset                                                                             : reset all previous configuration and run in fresh start
+            -v, --version [version]                                                                 : use a specific fabric version (default: latest)
         restart                                                                                 : restart a previously running the blockchain network
         stop                                                                                    : stop the blockchain network and remove all the docker containers
     " info
