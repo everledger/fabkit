@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+source ${PWD}/.env
+
 __autocomplete() {
     COMPREPLY=()
 

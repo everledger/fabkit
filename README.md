@@ -32,7 +32,7 @@ Note: **this command needs to be executed only once (however, there will be no h
 
 ## Install
 
-Before starting our network, let's first install all the required dependencies:
+Before starting the network, let's first install all the required dependencies:
 
 ```bash
 fabkit network install
