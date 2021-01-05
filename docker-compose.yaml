@@ -59,7 +59,7 @@ services:
       # # bridge network as the peers
       # # https://docs.docker.com/compose/networking/
       - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
-      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=peer0.org1.example.com-couchdb:5984
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb.peer0.org1.example.com:5984
       # The CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME and CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD
       # provide the credentials for ledger to connect to CouchDB.  The username and password must
       # match the username and password set for the associated CouchDB.
@@ -76,10 +76,10 @@ services:
     ports:
       - 7051:7051
     depends_on:
-      - peer0.org1.example.com-couchdb
+      - couchdb.peer0.org1.example.com
 
-  peer0.org1.example.com-couchdb:
-    container_name: peer0.org1.example.com-couchdb
+  couchdb.peer0.org1.example.com:
+    container_name: couchdb.peer0.org1.example.com
     extends:
       file: network/base/base.yaml
       service: couchdb-base
@@ -88,8 +88,9 @@ services:
     environment:
       - COUCHDB_USER=
       - COUCHDB_PASSWORD=
+    # TODO: Inspect why, while using VBox and boot2docker, the couchdb will exit if this volume is mounted (no logs)
     volumes:
-      - ./data/peer0.org1.example.com-couchdb:/opt/couchdb/data
+      - ./data/couchdb.peer0.org1.example.com:/opt/couchdb/data
     ports:
       - 5984:5984
 
@@ -101,7 +102,6 @@ services:
     tty: true
     environment:
       - FABRIC_LOGGING_SPEC=info
-      - GODEBUG=netdns=go
       - CORE_PEER_ID=fabric-cli
       - CORE_PEER_ADDRESS=peer0.org1.example.com:7051
       - CORE_PEER_LOCALMSPID=Org1MSP

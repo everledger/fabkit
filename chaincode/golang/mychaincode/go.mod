@@ -1,6 +1,6 @@
 module bitbucket.org/everledger/fabric-chaincode-boilerplate/chaincode/mychaincode
 
-go 1.15
+go 1.12
 
 require (
 	github.com/DataDog/zstd v1.3.8 // indirect
