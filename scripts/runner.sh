@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+source ${PWD}/.env
+
 ALIASES=("fabkit" "fk")
 
 __add_aliases() {
