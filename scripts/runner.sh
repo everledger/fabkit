@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-source ${PWD}/.env
+source ${PWD}/scripts/utils.sh
 
 ALIASES=("fabkit" "fk")
 
@@ -22,13 +22,19 @@ __add_aliases() {
     fi
 }
 
-case $SHELL in
-*bash)
-    __add_aliases bash
-    ;;
-*zsh)
-    __add_aliases zsh
-    ;;
-esac
+init() {
+    case $SHELL in
+    *bash)
+        __add_aliases bash
+        ;;
+    *zsh)
+        __add_aliases zsh
+        ;;
+    esac
 
-source ${ROOT}/scripts/autocomplete.sh
+    log "Fabkit aliases added to your default shell. Try now to use any of: $(for alias in ${ALIASES[@]}; do printf "$alias "; done)" success
+}
+
+if [ "$1" == "init" ]; then
+    init
+fi
