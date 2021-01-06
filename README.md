@@ -25,14 +25,14 @@ source ~/.bashrc
 or, if you do not know what shell you are using, you can let this script doing it for you:
 
 ```bash
-./scripts/runner.sh
+./scripts/runner.sh init
 ```
 
 Note: **this command needs to be executed only once (however, there will be no harm if accidentally you run it again 😉 )**
 
 ## Install
 
-Before starting our network, let's first install all the required dependencies:
+Before starting the network, let's first install all the required dependencies:
 
 ```bash
 fabkit network install

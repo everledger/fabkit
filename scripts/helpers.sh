@@ -74,7 +74,6 @@ help() {
 }
 
 help_dep() {
-    title
     help_header "fabkit dep"
     log "
         install [chaincode_name]                                                                    : install all go modules as vendor and init go.mod if does not exist yet
@@ -83,7 +82,6 @@ help_dep() {
 }
 
 help_ca() {
-    title
     help_header "fabkit ca"
     log "
         register                                                                                     : register a new user
@@ -94,7 +92,6 @@ help_ca() {
 }
 
 help_network() {
-    title
     help_header "fabkit network"
     log "
         install                                                                                 : install all the dependencies and docker images
@@ -110,7 +107,6 @@ help_network() {
 }
 
 help_explorer() {
-    title
     help_header "fabkit explorer"
     log "
         start                                                                                  : run the blockchain explorer user-interface and analytics
@@ -119,7 +115,6 @@ help_explorer() {
 }
 
 help_channel() {
-    title
     help_header "fabkit channel"
     log "
         create [channel_name] [org_no] [peer_no]                                                : generate channel configuration file
@@ -129,7 +124,6 @@ help_channel() {
 }
 
 help_generate() {
-    title
     help_header "fabkit generate"
     log "
         cryptos [config_path] [cryptos_path]                                                   : generate all the crypto keys and certificates for the network
@@ -140,7 +134,6 @@ help_generate() {
 }
 
 help_chaincode() {
-    title
     help_header "fabkit chaincode"
     log "
         test [chaincode_path]                                                                 : run unit tests
@@ -166,7 +159,6 @@ help_chaincode() {
 }
 
 help_benchmark() {
-    title
     help_header "fabkit benchmark"
     log "
         load [jobs] [entries]                                                                 : run benchmark bulk loading of [entries] per parallel [jobs] against a running network        
@@ -174,7 +166,6 @@ help_benchmark() {
 }
 
 help_utils() {
-    title
     help_header "fabkit utils"
     log "
         tojson                                                                                    : transform a string format with escaped characters to a valid JSON format
