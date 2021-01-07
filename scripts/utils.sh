@@ -96,12 +96,25 @@ __timer() {
     local end_time="${2}"
 
     local elapsed_time="$(($end_time - $start_time))"
-    
+
     log "\nTotal elapsed time: $(($elapsed_time / 60))m$(($elapsed_time % 60))s" debug
 }
 
-__set_env_lastrun() {
-    mkdir -p ${DATA_PATH} && printenv | sed 's/\=/="/; s/$/"/;' > ${DATA_PATH}/.env.lastrun
+__validate_params() {
+    # TODO: Slow and requires internet connection. Add the version list to a local file and keep up to date
+    if [[ ! $(docker pull hyperledger/fabric-peer:${FABRIC_VERSION} 2>/dev/null) ]]; then
+        log "Fabric version ${FABRIC_VERSION} does not exist. For the complete list of releases visit: https://github.com/hyperledger/fabric/tags" error
+        exit 1
+    fi
+
+    if [[ $ORGS -lt 1 ]]; then
+        log "-o,--orgs cannot be lower than 1" error
+        exit 1
+    fi
+}
+
+__set_lastrun() {
+    mkdir -p ${DATA_PATH} && declare -p | grep "declare -x" >${DATA_PATH}/.lastrun
 }
 
 log() {

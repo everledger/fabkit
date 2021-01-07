@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-source ${PWD}/scripts/utils.sh
+source $(pwd)/scripts/utils.sh
 
 ALIASES=("fabkit" "fk")
 

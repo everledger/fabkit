@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 source ${PWD}/.env
-source ${DATA_PATH}/.env.lastrun 2>/dev/null
+source ${DATA_PATH}/.lastrun 2>/dev/null
 for f in ./scripts/*; do source $f; done
 
 export GO111MODULE=on
@@ -87,6 +87,7 @@ if [ "$func" == "network" ]; then
     __check_deps deploy
     __check_docker_daemon
     __set_params "$@"
+    __validate_params
     __log_setup
     if [ "$param" == "install" ]; then
         install_network

@@ -75,7 +75,7 @@ start_network() {
     log "==============" info
     echo
 
-    __set_env_lastrun
+    __set_lastrun
 
     local command="docker-compose -f ${ROOT}/docker-compose.yaml up -d || exit 1;"
 
