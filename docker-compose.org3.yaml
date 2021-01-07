@@ -4,7 +4,7 @@ networks:
   default:
     external:
       # This value should be the same for fabric network and client
-      name: ${DOCKER_NETWORK}
+      name: ${FABKIT_DOCKER_NETWORK}
 
 services:
   ca.org3.example.com:
@@ -26,7 +26,7 @@ services:
       service: peer-base
     environment:
       # Change this value aligning with the defined docker network name
-      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=${DOCKER_NETWORK}
+      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=${FABKIT_DOCKER_NETWORK}
       - CORE_PEER_ID=peer0.org3.example.com
       - CORE_PEER_ADDRESS=peer0.org3.example.com:9051
       - CORE_PEER_LISTENADDRESS=0.0.0.0:9051

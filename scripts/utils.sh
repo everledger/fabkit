@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 __check_fabric_version() {
-    if [[ ! "${FABRIC_VERSION}" =~ ${1}.* ]]; then
-        log "This command is not enabled on Fabric v${FABRIC_VERSION}. In order to run, run your network with the flag: -v|--version [version]" error
+    if [[ ! "${FABKIT_FABRIC_VERSION}" =~ ${1}.* ]]; then
+        log "This command is not enabled on Fabric v${FABKIT_FABRIC_VERSION}. In order to run, run your network with the flag: -v|--version [version]" error
         exit 1
     fi
 }
@@ -56,11 +56,11 @@ set_certs() {
     CORE_PEER_ADDRESS=peer${2}.org${1}.example.com:$((6 + ${1}))051
     CORE_PEER_LOCALMSPID=Org${1}MSP
     CORE_PEER_TLS_ENABLED=false
-    CORE_PEER_TLS_CERT_FILE=${PEER_REMOTE_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/peers/peer${2}.org${1}.example.com/tls/server.crt
-    CORE_PEER_TLS_KEY_FILE=${PEER_REMOTE_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/peers/peer${2}.org${1}.example.com/tls/server.key
-    CORE_PEER_TLS_ROOTCERT_FILE=${PEER_REMOTE_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/peers/peer${2}.org${1}.example.com/tls/ca.crt
-    CORE_PEER_MSPCONFIGPATH=${PEER_REMOTE_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/users/Admin@org${1}.example.com/msp
-    ORDERER_CA=${PEER_REMOTE_BASEPATH}/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
+    CORE_PEER_TLS_CERT_FILE=${FABKIT_PEER_REMOTE_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/peers/peer${2}.org${1}.example.com/tls/server.crt
+    CORE_PEER_TLS_KEY_FILE=${FABKIT_PEER_REMOTE_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/peers/peer${2}.org${1}.example.com/tls/server.key
+    CORE_PEER_TLS_ROOTCERT_FILE=${FABKIT_PEER_REMOTE_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/peers/peer${2}.org${1}.example.com/tls/ca.crt
+    CORE_PEER_MSPCONFIGPATH=${FABKIT_PEER_REMOTE_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/users/Admin@org${1}.example.com/msp
+    ORDERER_CA=${FABKIT_PEER_REMOTE_BASEPATH}/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
 
     log "===========================================" info
     log "Peer address: ${CORE_PEER_ADDRESS}" info
@@ -72,12 +72,12 @@ set_certs() {
 set_peer_exec() {
     PEER_EXEC="docker exec -e CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
             -e CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID \
-            -e CORE_PEER_TLS_ENABLED=$TLS_ENABLED \
+            -e CORE_PEER_TLS_ENABLED=$FABKIT_TLS_ENABLED \
             -e CORE_PEER_TLS_CERT_FILE=$CORE_PEER_TLS_CERT_FILE \
             -e CORE_PEER_TLS_KEY_FILE=$CORE_PEER_TLS_KEY_FILE \
             -e CORE_PEER_TLS_ROOTCERT_FILE=$CORE_PEER_TLS_ROOTCERT_FILE \
             -e CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH \
-            $CHAINCODE_UTIL_CONTAINER "
+            $FABKIT_CHAINCODE_UTIL_CONTAINER "
 }
 
 __exec_command() {
@@ -101,20 +101,42 @@ __timer() {
 }
 
 __validate_params() {
-    # TODO: Slow and requires internet connection. Add the version list to a local file and keep up to date
-    if [[ ! $(docker pull hyperledger/fabric-peer:${FABRIC_VERSION} 2>/dev/null) ]]; then
-        log "Fabric version ${FABRIC_VERSION} does not exist. For the complete list of releases visit: https://github.com/hyperledger/fabric/tags" error
+    local version_exists=false
+    for version in "${FABKIT_FABRIC_AVAILABLE_VERSIONS[@]}"; do
+        if [ "$version" == "$FABKIT_FABRIC_VERSION" ]; then
+            version_exists=true
+        fi
+    done
+    if [ "$version_exists" == "false" ]; then
+        log "Fabric version ${FABKIT_FABRIC_VERSION} does not exist. For the complete list of releases visit: https://github.com/hyperledger/fabric/tags" error
         exit 1
     fi
 
-    if [[ $ORGS -lt 1 ]]; then
+    if [[ $FABKIT_ORGS -lt 1 ]]; then
         log "-o,--orgs cannot be lower than 1" error
         exit 1
     fi
 }
 
 __set_lastrun() {
-    mkdir -p ${DATA_PATH} && declare -p | grep "declare -x" >${DATA_PATH}/.lastrun
+    if [ ! -f ${FABKIT_USER_PATH}/.lastrun ]; then
+        unset FABKIT_RESET
+        (
+            set -o posix
+            set | grep "FABKIT_"
+        ) >${FABKIT_USER_PATH}/.lastrun
+    fi
+
+    __load_lastrun
+}
+
+__load_lastrun() {
+    source ${FABKIT_USER_PATH}/.lastrun 2>/dev/null
+}
+
+__clean_user_path() {
+    __delete_path ${FABKIT_USER_PATH}
+    mkdir -p ${FABKIT_USER_PATH}
 }
 
 log() {
@@ -134,7 +156,7 @@ log() {
     warning) colour_code="\033[1;33m" ;;
     info) colour_code="\033[1;34m" ;;
     debug)
-        if [ -z "${DEBUG}" ] || [ "${DEBUG}" == "false" ]; then return; fi
+        if [ -z "${FABKIT_DEBUG}" ] || [ "${FABKIT_DEBUG}" == "false" ]; then return; fi
         colour_code="\033[1;36m"
         ;;
     *) colour_code=${default_colour} ;;

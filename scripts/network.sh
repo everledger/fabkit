@@ -12,38 +12,38 @@ install_network() {
 
 __docker_fabric_pull() {
     for image in peer orderer ccenv tools; do
-        log "==> FABRIC IMAGE: hyperledger/fabric-$image:${FABRIC_VERSION}" info
+        log "==> FABRIC IMAGE: hyperledger/fabric-$image:${FABKIT_FABRIC_VERSION}" info
         echo
-        docker pull hyperledger/fabric-$image:${FABRIC_VERSION} || exit 1
-        docker tag hyperledger/fabric-$image:${FABRIC_VERSION} hyperledger/fabric-$image:latest
+        docker pull hyperledger/fabric-$image:${FABKIT_FABRIC_VERSION} || exit 1
+        docker tag hyperledger/fabric-$image:${FABKIT_FABRIC_VERSION} hyperledger/fabric-$image:latest
         echo
     done
 
-    log "==> FABRIC CA IMAGE: hyperledger/fabric-ca:${FABRIC_CA_VERSION}" info
+    log "==> FABRIC CA IMAGE: hyperledger/fabric-ca:${FABKIT_FABRIC_CA_VERSION}" info
     echo
-    docker pull hyperledger/fabric-ca:${FABRIC_CA_VERSION} || exit 1
-    docker tag hyperledger/fabric-ca:${FABRIC_CA_VERSION} hyperledger/fabric-ca:latest
+    docker pull hyperledger/fabric-ca:${FABKIT_FABRIC_CA_VERSION} || exit 1
+    docker tag hyperledger/fabric-ca:${FABKIT_FABRIC_CA_VERSION} hyperledger/fabric-ca:latest
     echo
 
-    log "==> COUCHDB IMAGE: hyperledger/fabric-couchdb:${FABRIC_THIRDPARTY_IMAGE_VERSION}" info
+    log "==> COUCHDB IMAGE: hyperledger/fabric-couchdb:${FABKIT_FABRIC_THIRDPARTY_IMAGE_VERSION}" info
     echo
-    docker pull hyperledger/fabric-couchdb:${FABRIC_THIRDPARTY_IMAGE_VERSION} || exit 1
-    docker tag hyperledger/fabric-couchdb:${FABRIC_THIRDPARTY_IMAGE_VERSION} hyperledger/fabric-couchdb:latest
+    docker pull hyperledger/fabric-couchdb:${FABKIT_FABRIC_THIRDPARTY_IMAGE_VERSION} || exit 1
+    docker tag hyperledger/fabric-couchdb:${FABKIT_FABRIC_THIRDPARTY_IMAGE_VERSION} hyperledger/fabric-couchdb:latest
     echo
 }
 
 __docker_third_party_images_pull() {
-    log "==> GOLANG IMAGE: ${GOLANG_DOCKER_IMAGE}" info
+    log "==> GOLANG IMAGE: ${FABKIT_GOLANG_DOCKER_IMAGE}" info
     echo
-    docker pull ${GOLANG_DOCKER_IMAGE}
+    docker pull ${FABKIT_GOLANG_DOCKER_IMAGE}
     echo
-    log "==> JQ IMAGE: ${JQ_DOCKER_IMAGE}" info
+    log "==> JQ IMAGE: ${FABKIT_JQ_DOCKER_IMAGE}" info
     echo
-    docker pull ${JQ_DOCKER_IMAGE}
+    docker pull ${FABKIT_JQ_DOCKER_IMAGE}
     echo
-    log "==> YQ IMAGE: ${YQ_DOCKER_IMAGE}" info
+    log "==> YQ IMAGE: ${FABKIT_YQ_DOCKER_IMAGE}" info
     echo
-    docker pull ${YQ_DOCKER_IMAGE}
+    docker pull ${FABKIT_YQ_DOCKER_IMAGE}
     echo
 }
 
@@ -51,9 +51,9 @@ start_network() {
     # Note: this trick may allow the network to work also in strict-security platform
     rm -rf ./docker.sock 2>/dev/null && ln -sf /var/run ./docker.sock
 
-    if [ -z "${CI}" ] || [ "${CI}" == "false" ]; then
-        if [ -d "$DATA_PATH" ] && [ "${RESET}" != "true" ]; then
-            log "Found data directory: ${DATA_PATH}" warning
+    if [ -z "${FABKIT_CI}" ] || [ "${FABKIT_CI}" == "false" ]; then
+        if [ -d "$FABKIT_DATA_PATH" ] && [ "${FABKIT_RESET}" != "true" ]; then
+            log "Found data directory: ${FABKIT_DATA_PATH}" warning
             read -p "Do you wish to restart the network and reuse this data? [yes/no=default] " yn
             case $yn in
             [Yy]*)
@@ -66,8 +66,8 @@ start_network() {
 
         stop_network
 
-        chaincode_build $CHAINCODE_RELATIVE_PATH
-        chaincode_test $CHAINCODE_RELATIVE_PATH
+        chaincode_build $FABKIT_CHAINCODE_RELATIVE_PATH
+        chaincode_test $FABKIT_CHAINCODE_RELATIVE_PATH
     fi
 
     log "==============" info
@@ -75,33 +75,33 @@ start_network() {
     log "==============" info
     echo
 
-    __set_lastrun
+    cd ${FABKIT_ROOT}
 
-    local command="docker-compose -f ${ROOT}/docker-compose.yaml up -d || exit 1;"
+    local command="docker-compose -f ${FABKIT_ROOT}/docker-compose.yaml up -d || exit 1;"
 
     # TODO: create raft profiles for different network topologies (multi-org support)
-    if [ "${CONFIGTX_PROFILE_NETWORK}" == "${RAFT_ONE_ORG}" ]; then
-        CONFIGTX_PROFILE_NETWORK=${RAFT_ONE_ORG}
-        command+="docker-compose -f ${ROOT}/docker-compose.etcdraft.yaml up -d || exit 1;"
-    elif [ "${ORGS}" == "2" ] || [ "${CONFIGTX_PROFILE_NETWORK}" == "${TWO_ORGS}" ]; then
-        CONFIGTX_PROFILE_NETWORK=${TWO_ORGS}
-        CONFIGTX_PROFILE_CHANNEL=TwoOrgsChannel
-        command+="docker-compose -f ${ROOT}/docker-compose.org2.yaml up -d || exit 1;"
-    elif [ "${ORGS}" == "3" ] || [ "${CONFIGTX_PROFILE_NETWORK}" == "${THREE_ORGS}" ]; then
-        CONFIGTX_PROFILE_NETWORK=${THREE_ORGS}
-        CONFIGTX_PROFILE_CHANNEL=ThreeOrgsChannel
-        command+="docker-compose -f ${ROOT}/docker-compose.org2.yaml up -d || exit 1;"
-        command+="docker-compose -f ${ROOT}/docker-compose.org3.yaml up -d || exit 1;"
+    if [ "${FABKIT_CONFIGTX_PROFILE_NETWORK}" == "${RAFT_ONE_ORG}" ]; then
+        FABKIT_CONFIGTX_PROFILE_NETWORK=${RAFT_ONE_ORG}
+        command+="docker-compose -f ${FABKIT_ROOT}/docker-compose.etcdraft.yaml up -d || exit 1;"
+    elif [ "${FABKIT_ORGS}" == "2" ] || [ "${FABKIT_CONFIGTX_PROFILE_NETWORK}" == "${TWO_ORGS}" ]; then
+        FABKIT_CONFIGTX_PROFILE_NETWORK=${TWO_ORGS}
+        FABKIT_CONFIGTX_PROFILE_CHANNEL=TwoOrgsChannel
+        command+="docker-compose -f ${FABKIT_ROOT}/docker-compose.org2.yaml up -d || exit 1;"
+    elif [ "${FABKIT_ORGS}" == "3" ] || [ "${FABKIT_CONFIGTX_PROFILE_NETWORK}" == "${THREE_ORGS}" ]; then
+        FABKIT_CONFIGTX_PROFILE_NETWORK=${THREE_ORGS}
+        FABKIT_CONFIGTX_PROFILE_CHANNEL=ThreeOrgsChannel
+        command+="docker-compose -f ${FABKIT_ROOT}/docker-compose.org2.yaml up -d || exit 1;"
+        command+="docker-compose -f ${FABKIT_ROOT}/docker-compose.org3.yaml up -d || exit 1;"
     fi
 
-    generate_cryptos $CONFIG_PATH $CRYPTOS_PATH
-    generate_genesis $NETWORK_PATH $CONFIG_PATH $CRYPTOS_PATH $CONFIGTX_PROFILE_NETWORK
-    generate_channeltx $CHANNEL_NAME $NETWORK_PATH $CONFIG_PATH $CRYPTOS_PATH $CONFIGTX_PROFILE_NETWORK $CONFIGTX_PROFILE_CHANNEL $ORG_MSP
+    generate_cryptos $FABKIT_CONFIG_PATH $FABKIT_CRYPTOS_PATH
+    generate_genesis $FABKIT_NETWORK_PATH $FABKIT_CONFIG_PATH $FABKIT_CRYPTOS_PATH $FABKIT_CONFIGTX_PROFILE_NETWORK
+    generate_channeltx $FABKIT_CHANNEL_NAME $FABKIT_NETWORK_PATH $FABKIT_CONFIG_PATH $FABKIT_CRYPTOS_PATH $FABKIT_CONFIGTX_PROFILE_NETWORK $FABKIT_CONFIGTX_PROFILE_CHANNEL $FABKIT_ORG_MSP
 
-    docker network create ${DOCKER_NETWORK} 2>/dev/null
+    __set_lastrun
+    __log_setup
 
-    # After Building and testing chaincode, come back to root directory so that docker-compose can take .env file automatically
-    cd ${ROOT}
+    docker network create ${FABKIT_DOCKER_NETWORK} 2>/dev/null
 
     eval ${command}
 
@@ -116,16 +116,19 @@ restart_network() {
     log "================" info
     echo
 
-    if [ ! -d "${DATA_PATH}" ]; then
-        log "Data directory not found in: ${DATA_PATH}. Run a normal start." error
+    if [ ! -d "${FABKIT_DATA_PATH}" ]; then
+        log "Data directory not found in: ${FABKIT_DATA_PATH}. Run a normal start." error
         exit 1
     fi
 
-    docker network create ${DOCKER_NETWORK} 2>/dev/null
+    __load_lastrun
+    __log_setup
 
-    local command="docker-compose -f ${ROOT}/docker-compose.yaml up --force-recreate -d || exit 1;"
-    for ((i = 2; i <= $ORGS; i++)); do
-        command+="docker-compose -f ${ROOT}/docker-compose.org${i}.yaml up --force-recreate -d || exit 1;"
+    docker network create ${FABKIT_DOCKER_NETWORK} 2>/dev/null
+
+    local command="docker-compose -f ${FABKIT_ROOT}/docker-compose.yaml up --force-recreate -d || exit 1;"
+    for ((i = 2; i <= $FABKIT_ORGS; i++)); do
+        command+="docker-compose -f ${FABKIT_ROOT}/docker-compose.org${i}.yaml up --force-recreate -d || exit 1;"
     done
     eval ${command}
 
@@ -138,9 +141,9 @@ stop_network() {
     log "=============" info
     echo
 
-    local command="docker-compose -f ${ROOT}/docker-compose.yaml down || exit 1;"
-    for ((i = 2; i <= $ORGS; i++)); do
-        command+="docker-compose -f ${ROOT}/docker-compose.org${i}.yaml down || exit 1;"
+    local command="docker-compose -f ${FABKIT_ROOT}/docker-compose.yaml down || exit 1;"
+    for ((i = 2; i <= $FABKIT_ORGS; i++)); do
+        command+="docker-compose -f ${FABKIT_ROOT}/docker-compose.org${i}.yaml down || exit 1;"
     done
     eval ${command}
 
@@ -149,22 +152,22 @@ stop_network() {
     fi
 
     log "Cleaning docker leftovers containers and images" info
-    docker rm -f $(docker ps -a | awk '($2 ~ /${DOCKER_NETWORK}|dev-/) {print $1}') 2>/dev/null
+    docker rm -f $(docker ps -a | awk '($2 ~ /${FABKIT_DOCKER_NETWORK}|dev-/) {print $1}') 2>/dev/null
     docker rmi -f $(docker images -qf "dangling=true") 2>/dev/null
     docker rmi -f $(docker images | awk '($1 ~ /^<none>|dev-/) {print $3}') 2>/dev/null
     docker system prune -f 2>/dev/null
 
-    if [ "${RESET}" == "true" ]; then
-        __delete_path $DATA_PATH
+    if [ "${FABKIT_RESET}" == "true" ]; then
+        __delete_path $FABKIT_DATA_PATH
         return 0
     fi
 
-    if [ -d "${DATA_PATH}" ]; then
+    if [ -d "${FABKIT_DATA_PATH}" ]; then
         log "!!!!! ATTENTION !!!!!" error
-        log "Found data directory: ${DATA_PATH}" error
+        log "Found data directory: ${FABKIT_DATA_PATH}" error
         read -p "Do you wish to remove this data? [yes/no=default] " yn
         case $yn in
-        [Yy]*) __delete_path $DATA_PATH ;;
+        [Yy]*) __delete_path $FABKIT_DATA_PATH ;;
         *) return 0 ;;
         esac
     fi
@@ -176,33 +179,33 @@ initialize_network() {
     log "=============" info
     echo
 
-    create_channel $CHANNEL_NAME 1 0
-    for org in $(seq 1 ${ORGS}); do
-        join_channel $CHANNEL_NAME $org 0
+    create_channel $FABKIT_CHANNEL_NAME 1 0
+    for org in $(seq 1 ${FABKIT_ORGS}); do
+        join_channel $FABKIT_CHANNEL_NAME $org 0
     done
     #TODO: Create txns for all orgs and place below command in above
-    update_channel $CHANNEL_NAME $ORG_MSP 1 0
+    update_channel $FABKIT_CHANNEL_NAME $FABKIT_ORG_MSP 1 0
 
-    if [[ "${FABRIC_VERSION}" =~ 2.* ]]; then
-        lc_chaincode_package $CHAINCODE_NAME $CHAINCODE_VERSION $CHAINCODE_RELATIVE_PATH 1 0
+    if [[ "${FABKIT_FABRIC_VERSION}" =~ 2.* ]]; then
+        lc_chaincode_package $FABKIT_CHAINCODE_NAME $FABKIT_CHAINCODE_VERSION $FABKIT_CHAINCODE_RELATIVE_PATH 1 0
 
-        for org in $(seq 1 ${ORGS}); do
-            lc_chaincode_install $CHAINCODE_NAME $CHAINCODE_VERSION $org 0
-            lc_chaincode_approve $CHAINCODE_NAME $CHAINCODE_VERSION $CHANNEL_NAME 1 $org 0
+        for org in $(seq 1 ${FABKIT_ORGS}); do
+            lc_chaincode_install $FABKIT_CHAINCODE_NAME $FABKIT_CHAINCODE_VERSION $org 0
+            lc_chaincode_approve $FABKIT_CHAINCODE_NAME $FABKIT_CHAINCODE_VERSION $FABKIT_CHANNEL_NAME 1 $org 0
         done
 
-        lc_chaincode_commit $CHAINCODE_NAME $CHAINCODE_VERSION $CHANNEL_NAME 1 1 0
+        lc_chaincode_commit $FABKIT_CHAINCODE_NAME $FABKIT_CHAINCODE_VERSION $FABKIT_CHANNEL_NAME 1 1 0
     else
-        for org in $(seq 1 ${ORGS}); do
-            chaincode_install $CHAINCODE_NAME $CHAINCODE_VERSION $CHAINCODE_RELATIVE_PATH $org 0
+        for org in $(seq 1 ${FABKIT_ORGS}); do
+            chaincode_install $FABKIT_CHAINCODE_NAME $FABKIT_CHAINCODE_VERSION $FABKIT_CHAINCODE_RELATIVE_PATH $org 0
         done
-        chaincode_instantiate $CHAINCODE_NAME $CHAINCODE_VERSION $CHAINCODE_RELATIVE_PATH $CHANNEL_NAME 1 0
+        chaincode_instantiate $FABKIT_CHAINCODE_NAME $FABKIT_CHAINCODE_VERSION $FABKIT_CHAINCODE_RELATIVE_PATH $FABKIT_CHANNEL_NAME 1 0
     fi
 }
 
 __replace_config_capabilities() {
-    configtx=${CONFIG_PATH}/configtx
-    if [[ "${FABRIC_VERSION}" =~ 2.* ]]; then
+    configtx=${FABKIT_CONFIG_PATH}/configtx
+    if [[ "${FABKIT_FABRIC_VERSION}" =~ 2.* ]]; then
         cat ${configtx}.base.yaml | __yq e '.Capabilities.Channel.V2_0 = true |
             .Capabilities.Channel.V1_4_3 = false |
             .Capabilities.Orderer.V2_0 = true |
@@ -248,7 +251,7 @@ generate_genesis() {
     local cryptos_path="$3"
     local network_profile="$4"
 
-    if [ "${RESET}" == "true" ]; then
+    if [ "${FABKIT_RESET}" == "true" ]; then
         __delete_path ${channel_dir}
     fi
 
@@ -283,7 +286,7 @@ generate_genesis() {
         -v ${cryptos_path}:/crypto-config \
         -u $(id -u):$(id -g) \
         -e FABRIC_CFG_PATH=/ \
-        hyperledger/fabric-tools:${FABRIC_VERSION} \
+        hyperledger/fabric-tools:${FABKIT_FABRIC_VERSION} \
         bash -c " \
                         configtxgen -profile $network_profile -channelID orderer-system-channel -outputBlock /channels/orderer-system-channel/genesis_block.pb /configtx.yaml;
                         configtxgen -inspectBlock /channels/orderer-system-channel/genesis_block.pb
@@ -341,7 +344,7 @@ generate_channeltx() {
     local channel_profile="$6"
     local org_msp="$7"
 
-    if [ "${RESET}" == "true" ]; then
+    if [ "${FABKIT_RESET}" == "true" ]; then
         __delete_path ${channel_dir}
     fi
 
@@ -380,7 +383,7 @@ generate_channeltx() {
         -v ${cryptos_path}:/crypto-config \
         -u $(id -u):$(id -g) \
         -e FABRIC_CFG_PATH=/ \
-        hyperledger/fabric-tools:${FABRIC_VERSION} \
+        hyperledger/fabric-tools:${FABKIT_FABRIC_VERSION} \
         bash -c " \
                         configtxgen -profile $channel_profile -outputCreateChannelTx /channels/${channel_name}/${channel_name}_tx.pb -channelID ${channel_name} /configtx.yaml;
                         configtxgen -inspectChannelCreateTx /channels/${channel_name}/${channel_name}_tx.pb
@@ -396,7 +399,7 @@ generate_channeltx() {
         -v ${cryptos_path}:/crypto-config \
         -u $(id -u):$(id -g) \
         -e FABRIC_CFG_PATH=/ \
-        hyperledger/fabric-tools:${FABRIC_VERSION} \
+        hyperledger/fabric-tools:${FABKIT_FABRIC_VERSION} \
         configtxgen -profile $channel_profile -outputAnchorPeersUpdate /channels/${channel_name}/${org_msp}_anchors_tx.pb -channelID ${channel_name} -asOrg $org_msp /configtx.yaml
     if [ "$?" -ne 0 ]; then
         log "Failed to generate anchor peer update for $org_msp..." error
@@ -427,9 +430,9 @@ generate_cryptos() {
     log "Config path: $config_path" debug
     log "Cryptos path: $cryptos_path" debug
 
-    if [ "${RESET}" == "true" ]; then
+    if [ "${FABKIT_RESET}" == "true" ]; then
         __delete_path ${cryptos_path}
-        __delete_path ${CRYPTOS_SHARED_PATH}
+        __delete_path ${FABKIT_CRYPTOS_SHARED_PATH}
     fi
 
     if [ -d "${cryptos_path}" ]; then
@@ -448,7 +451,7 @@ generate_cryptos() {
         docker run --rm -v ${config_path}/crypto-config.yaml:/crypto-config.yaml \
             -v ${cryptos_path}:/crypto-config \
             -u $(id -u):$(id -g) \
-            hyperledger/fabric-tools:${FABRIC_VERSION} \
+            hyperledger/fabric-tools:${FABKIT_FABRIC_VERSION} \
             cryptogen generate --config=/crypto-config.yaml --output=/crypto-config
         if [ "$?" -ne 0 ]; then
             log "Failed to generate crypto material..." error
@@ -457,16 +460,16 @@ generate_cryptos() {
     fi
 
     # copy cryptos into a shared folder available for client applications (sdk)
-    if [ -d "${CRYPTOS_SHARED_PATH}" ]; then
-        log "Shared crypto-config directory ${CRYPTOS_SHARED_PATH} already exists" warning
+    if [ -d "${FABKIT_CRYPTOS_SHARED_PATH}" ]; then
+        log "Shared crypto-config directory ${FABKIT_CRYPTOS_SHARED_PATH} already exists" warning
         read -p "Do you want to overwrite this shared data with your local crypto-config directory? [yes/no=default] " yn
         case $yn in
         [Yy]*)
-            __delete_path ${CRYPTOS_SHARED_PATH}
+            __delete_path ${FABKIT_CRYPTOS_SHARED_PATH}
             ;;
         *) return 0 ;;
         esac
     fi
-    mkdir -p ${CRYPTOS_SHARED_PATH}
-    cp -r ${cryptos_path}/** ${CRYPTOS_SHARED_PATH}
+    mkdir -p ${FABKIT_CRYPTOS_SHARED_PATH}
+    cp -r ${cryptos_path}/** ${FABKIT_CRYPTOS_SHARED_PATH}
 }
