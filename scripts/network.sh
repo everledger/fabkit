@@ -51,23 +51,23 @@ start_network() {
     # Note: this trick may allow the network to work also in strict-security platform
     rm -rf ./docker.sock 2>/dev/null && ln -sf /var/run ./docker.sock
 
-    if [ -z "${FABKIT_CI}" ] || [ "${FABKIT_CI}" == "false" ]; then
-        if [ -d "$FABKIT_DATA_PATH" ] && [ "${FABKIT_RESET}" != "true" ]; then
-            log "Found data directory: ${FABKIT_DATA_PATH}" warning
-            read -p "Do you wish to restart the network and reuse this data? [yes/no=default] " yn
-            case $yn in
-            [Yy]*)
-                restart_network
-                return 0
-                ;;
-            *) ;;
-            esac
-        fi
+    if [ -d "$FABKIT_DATA_PATH" ] && [ "${FABKIT_RESET}" == "false" ]; then
+        log "Found data directory: ${FABKIT_DATA_PATH}" warning
+        read -p "Do you wish to restart the network and reuse this data? [yes/no=default] " yn
+        case $yn in
+        [Yy]*)
+            restart_network
+            return 0
+            ;;
+        *) ;;
+        esac
+    fi
 
-        stop_network
+    stop_network
 
-        # chaincode_build $FABKIT_CHAINCODE_RELATIVE_PATH
-        # chaincode_test $FABKIT_CHAINCODE_RELATIVE_PATH
+    if [ -z "${FABKIT_QUICK_RUN}" ]; then
+        chaincode_build $FABKIT_CHAINCODE_RELATIVE_PATH
+        chaincode_test $FABKIT_CHAINCODE_RELATIVE_PATH
     fi
 
     log "==============" info

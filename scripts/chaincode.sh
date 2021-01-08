@@ -138,13 +138,11 @@ __get_chaincode_language() {
     local node_cc_identifier="require('fabric-shim')"
     local chaincode_path=$(__print_absolute_path $FABKIT_CHAINCODE_PATH $chaincode_relative_path)
 
-    if [ ! "$(find "${chaincode_path}" -type f -iname '*.go' -exec grep -l "${golang_cc_identifier}" {} \;)" == "" ]; then
+    if [ ! "$(find "${chaincode_path}" -type d \( -name vendor \) -prune -false -o -type f -iname '*.go' -exec grep -l "${golang_cc_identifier}" {} \;)" == "" ]; then
         __chaincode_language="golang"
-    elif [ ! "$(find "${chaincode_path}" -type f -iname '*.java' -exec grep -l "${java_cc_identifier}" {} \;)" == "" ]; then
-        log "Chaincode language is java" debug
+    elif [ ! "$(find "${chaincode_path}" -type d \( -name node_modules \) -prune -false -o -type f -iname '*.java' -exec grep -l "${java_cc_identifier}" {} \;)" == "" ]; then
         __chaincode_language="java"
     elif [ ! "$(find "${chaincode_path}" -type f \( -iname \*.js -o -iname \*.ts \) -exec grep -l "${node_cc_identifier}" {} \;)" == "" ]; then
-        log "Chaincode language is node" debug
         __chaincode_language="node"
     else
         log "Error cannot determine chaincode language" error

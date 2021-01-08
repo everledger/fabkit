@@ -96,7 +96,7 @@ help_network() {
     log "
         install                                                                                 : install all the dependencies and docker images
         start [options]                                                                         : start the blockchain network and initialize it
-            -c, --ci                                                                                : skip network stop/restart and test/build for FABKIT_CI
+            -q, --quick-run                                                                         : skip boring chaincode build&test
             -d, --debug                                                                             : run in debug mode verbose logging
             -o, --orgs [orgs_no]                                                                    : use a specific number of organizations (default: 1)
             -r, --reset                                                                             : reset all previous configuration and run in fresh start

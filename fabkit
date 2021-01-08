@@ -2,7 +2,6 @@
 
 source ${PWD}/.env
 for f in ./scripts/*; do source $f; done
-__load_lastrun
 
 export GO111MODULE=on
 
@@ -43,12 +42,17 @@ __log_setup() {
 }
 
 __set_params() {
+    if [[ $# -eq 0 ]]; then
+        __load_lastrun
+        return 0
+    fi
+
     while [[ $# -gt 0 ]]; do
         local param="${1}"
 
         case $param in
-        -c | --ci)
-            FABKIT_CI=true
+        -q | --quick-run)
+            FABKIT_QUICK_RUN=true
             shift
             ;;
         -d | --debug)
@@ -85,12 +89,12 @@ if [ "$func" == "network" ]; then
     shift
     __check_deps deploy
     __check_docker_daemon
-    __set_params "$@"
-    __validate_params
     if [ "$param" == "install" ]; then
         __log_setup
         install_network
     elif [ "$param" == "start" ]; then
+        __set_params "$@"
+        __validate_params
         start_network "$@"
     elif [ "$param" == "restart" ]; then
         restart_network
