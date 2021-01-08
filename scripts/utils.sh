@@ -119,13 +119,15 @@ __validate_params() {
 }
 
 __set_lastrun() {
-    if [ ! -f ${FABKIT_USER_PATH}/.lastrun ]; then
-        unset FABKIT_RESET
-        (
-            set -o posix
-            set | grep "FABKIT_"
-        ) >${FABKIT_USER_PATH}/.lastrun
+    if [ ! -f ${FABKIT_USER_PATH} ]; then
+        mkdir -p ${FABKIT_USER_PATH} 
     fi
+
+    unset FABKIT_RESET
+    (
+        set -o posix
+        set | grep "FABKIT_"
+    ) >${FABKIT_USER_PATH}/.lastrun
 
     __load_lastrun
 }

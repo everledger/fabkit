@@ -2,6 +2,7 @@
 
 source ${PWD}/.env
 for f in ./scripts/*; do source $f; done
+__load_lastrun
 
 export GO111MODULE=on
 
