@@ -66,8 +66,8 @@ start_network() {
 
         stop_network
 
-        chaincode_build $FABKIT_CHAINCODE_RELATIVE_PATH
-        chaincode_test $FABKIT_CHAINCODE_RELATIVE_PATH
+        # chaincode_build $FABKIT_CHAINCODE_RELATIVE_PATH
+        # chaincode_test $FABKIT_CHAINCODE_RELATIVE_PATH
     fi
 
     log "==============" info
@@ -83,11 +83,11 @@ start_network() {
     if [ "${FABKIT_CONFIGTX_PROFILE_NETWORK}" == "${RAFT_ONE_ORG}" ]; then
         FABKIT_CONFIGTX_PROFILE_NETWORK=${RAFT_ONE_ORG}
         command+="docker-compose -f ${FABKIT_ROOT}/docker-compose.etcdraft.yaml up -d || exit 1;"
-    elif [ "${FABKIT_ORGS}" == "2" ] || [ "${FABKIT_CONFIGTX_PROFILE_NETWORK}" == "${TWO_ORGS}" ]; then
+    elif [ "${FABKIT_ORGS}" == "2" ]; then
         FABKIT_CONFIGTX_PROFILE_NETWORK=${TWO_ORGS}
         FABKIT_CONFIGTX_PROFILE_CHANNEL=TwoOrgsChannel
         command+="docker-compose -f ${FABKIT_ROOT}/docker-compose.org2.yaml up -d || exit 1;"
-    elif [ "${FABKIT_ORGS}" == "3" ] || [ "${FABKIT_CONFIGTX_PROFILE_NETWORK}" == "${THREE_ORGS}" ]; then
+    elif [ "${FABKIT_ORGS}" == "3" ]; then
         FABKIT_CONFIGTX_PROFILE_NETWORK=${THREE_ORGS}
         FABKIT_CONFIGTX_PROFILE_CHANNEL=ThreeOrgsChannel
         command+="docker-compose -f ${FABKIT_ROOT}/docker-compose.org2.yaml up -d || exit 1;"
@@ -141,9 +141,9 @@ stop_network() {
     log "=============" info
     echo
 
-    local command="docker-compose -f ${FABKIT_ROOT}/docker-compose.yaml down || exit 1;"
+    local command="docker-compose -f ${FABKIT_ROOT}/docker-compose.yaml down --remove-orphans || exit 1;"
     for ((i = 2; i <= $FABKIT_ORGS; i++)); do
-        command+="docker-compose -f ${FABKIT_ROOT}/docker-compose.org${i}.yaml down || exit 1;"
+        command+="docker-compose -f ${FABKIT_ROOT}/docker-compose.org${i}.yaml down --remove-orphans || exit 1;"
     done
     eval ${command}
 
