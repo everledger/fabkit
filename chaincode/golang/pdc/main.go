@@ -8,9 +8,9 @@ SPDX-License-Identifier: Apache-2.0
 // fabkit chaincode install pdc 1.0 golang/pdc 1 0
 // fabkit chaincode install pdc 1.0 golang/pdc 2 0
 // fabkit chaincode install pdc 1.0 golang/pdc 3 0
-// fabkit chaincode instantiate pdc 1.0 golang/pdc mychannel 1 0 --collections-config ${CHAINCODE_REMOTE_PATH}/golang/pdc/collections_config.json -P 'OR("Org1MSP.member","Org2MSP.member","Org3MSP.member")'
+// fabkit chaincode instantiate pdc 1.0 golang/pdc mychannel 1 0 --collections-config ${FABKIT_CHAINCODE_REMOTE_PATH}/golang/pdc/collections_config.json -P 'OR("Org1MSP.member","Org2MSP.member","Org3MSP.member")'
 // v2.x
-// fabkit chaincode lifecycle deploy pdc 1.0 golang/pdc mychannel 1 1 0 --collections-config ${CHAINCODE_REMOTE_PATH}/golang/pdc/collections_config.json
+// fabkit chaincode lifecycle deploy pdc 1.0 golang/pdc mychannel 1 1 0 --collections-config ${FABKIT_CHAINCODE_REMOTE_PATH}/golang/pdc/collections_config.json
 // ====CHAINCODE EXECUTION SAMPLES (CLI) ==================
 
 // ==== Invoke marbles, pass private data as base64 encoded bytes in transient map ====

@@ -1,4 +1,3 @@
-
 # SPDX-License-Identifier: Apache-2.0
 version: '2.1'
 
@@ -6,11 +5,11 @@ networks:
   default:
     external:
       # This value should be the same for fabric network and client
-      name: ${DOCKER_NETWORK}
+      name: ${FABKIT_DOCKER_NETWORK}
 
 services:
   explorerdb.mynetwork.com:
-    image: hyperledger/explorer-db:${EXPLORER_VERSION}
+    image: hyperledger/explorer-db:${FABKIT_EXPLORER_VERSION}
     container_name: explorerdb.mynetwork.com
     hostname: explorerdb.mynetwork.com
     environment:
@@ -18,7 +17,7 @@ services:
       - DATABASE_USERNAME=hppoc
       - DATABASE_PASSWORD=password
     healthcheck:
-      test: "pg_isready -h localhost -p 5432 -q -U postgres"
+      test: 'pg_isready -h localhost -p 5432 -q -U postgres'
       interval: 30s
       timeout: 10s
       retries: 5
@@ -26,7 +25,7 @@ services:
       - ../data/explorerdb:/var/lib/postgresql/data
 
   explorer.mynetwork.com:
-    image: hyperledger/explorer:${EXPLORER_VERSION}
+    image: hyperledger/explorer:${FABKIT_EXPLORER_VERSION}
     container_name: explorer.mynetwork.com
     hostname: explorer.mynetwork.com
     environment:
@@ -53,7 +52,7 @@ services:
 
   proms:
     container_name: proms
-    image: prom/prometheus:${PROMETHEUS_VERSION}
+    image: prom/prometheus:${FABKIT_PROMETHEUS_VERSION}
     volumes:
       - ./artifacts/operations/balance-transfer/prometheus.yml:/etc/prometheus/prometheus.yml
       - ../data/prometheus:/prometheus
@@ -62,7 +61,7 @@ services:
 
   grafana:
     container_name: grafana
-    image: grafana/grafana:${GRAFANA_VERSION}
+    image: grafana/grafana:${FABKIT_GRAFANA_VERSION}
     volumes:
       - ./artifacts/operations/balance-transfer/balance-transfer-grafana-dashboard.json:/var/lib/grafana/dashboards/mydashboard.json
       - ./artifacts/operations/grafana_conf/provisioning:/etc/grafana/provisioning

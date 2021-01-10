@@ -54,11 +54,11 @@ __loader() {
     set -e
 
     for i in $(seq 1 $1); do
-        local key=$(LC_CTYPE=C tr -cd '[:alnum:]' < /dev/urandom | fold -w12| head -n1)
+        local key=$(LC_CTYPE=C tr -cd '[:alnum:]' </dev/urandom | fold -w12 | head -n1)
         local value="$i"
 
         log "Writing <${key},${value}> pair in the ledger" debug
 
-        invoke $CHANNEL_NAME $CHAINCODE_NAME 1 0 "{\"Args\":[\"put\",\"${key}\",\"${value}\"]}" &>/dev/null
+        invoke $FABKIT_CHANNEL_NAME $FABKIT_CHAINCODE_NAME 1 0 "{\"Args\":[\"put\",\"${key}\",\"${value}\"]}" &>/dev/null
     done
 }

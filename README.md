@@ -91,7 +91,7 @@ Fabkit will save the options of the last deployed network. To redploy using the 
 The consensus mechanism for the Ordering Service so far fully supported by this repo is `SOLO`, however, there is a 1-org configuration made available for `Raft` as well and it can be used by replacing the following variable in the `.env` file:
 
 ```bash
-CONFIGTX_PROFILE_NETWORK=OneOrgOrdererEtcdRaft
+FABKIT_CONFIGTX_PROFILE_NETWORK=OneOrgOrdererEtcdRaft
 ```
 
 Then simply run the network with a single organization:
@@ -122,8 +122,8 @@ fabkit network restart
 
 Fabkit currently supports _golang_, _node_ and _java_ chaincodes. To deploy a chaincode from your own directory, you must set the following env variables before starting the network:
 
-- `CHAINCODE_PATH`: Absolute path to the directory to be mounted
-- `CHAINCODE_REMOTE_PATH`: Mount path inside the cli container. _Golang chaincodes must be mounted inside `GOPATH` ( `/opt/gopath/src` )_
+- `FABKIT_CHAINCODE_PATH`: Absolute path to the directory to be mounted
+- `FABKIT_CHAINCODE_REMOTE_PATH`: Mount path inside the cli container. _Golang chaincodes must be mounted inside `GOPATH` ( `/opt/gopath/src` )_
 
 To deploy chaincode using Fabkit's commands refer below.
 
@@ -284,13 +284,13 @@ fabkit chaincode install pdc 1.0 golang/pdc 2 0
 fabkit chaincode install pdc 1.0 golang/pdc 3 0
 
 # instantiate pdc chaincode on mychannel using org1 peer0
-fabkit chaincode instantiate pdc 1.0 golang/pdc mychannel 1 0 --collections-config ${CHAINCODE_REMOTE_PATH}/golang/pdc/collections_config.json -P 'OR("Org1MSP.member","Org2MSP.member","Org3MSP.member")'
+fabkit chaincode instantiate pdc 1.0 golang/pdc mychannel 1 0 --collections-config ${FABKIT_CHAINCODE_REMOTE_PATH}/golang/pdc/collections_config.json -P 'OR("Org1MSP.member","Org2MSP.member","Org3MSP.member")'
 ```
 
 ### v2.x
 
 ```bash
-fabkit chaincode lifecycle deploy pdc 1.0 golang/pdc mychannel 1 1 0 --collections-config ${CHAINCODE_REMOTE_PATH}/golang/pdc/collections_config.json
+fabkit chaincode lifecycle deploy pdc 1.0 golang/pdc mychannel 1 1 0 --collections-config ${FABKIT_CHAINCODE_REMOTE_PATH}/golang/pdc/collections_config.json
 ```
 
 Execute some actions:
@@ -501,7 +501,7 @@ parallel ./fabkit benchmark load {} ::: [entries])
 
 # e.g.
 parallel ./fabkit benchmark load {} ::: 20
-# prefix with DEBUG=true to see more logs
+# prefix with FABKIT_DEBUG=true to see more logs
 ```
 
 ### Troubleshooting
