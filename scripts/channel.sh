@@ -18,12 +18,12 @@ create_channel() {
     set_certs $org $peer
     set_peer_exec
 
-    log "Creating channel ${channel_name} using configuration file ${CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}_tx.pb" info
+    log "Creating channel ${channel_name} using configuration file ${FABKIT_CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}_tx.pb" info
 
-    if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
-        PEER_EXEC+="peer channel create -o $ORDERER_ADDRESS -c ${channel_name} -f $CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}_tx.pb --outputBlock $CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}.block"
+    if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" == "false" ]; then
+        PEER_EXEC+="peer channel create -o $FABKIT_ORDERER_ADDRESS -c ${channel_name} -f $FABKIT_CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}_tx.pb --outputBlock $FABKIT_CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}.block"
     else
-        PEER_EXEC+="peer channel create -o $ORDERER_ADDRESS -c ${channel_name} -f $CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}_tx.pb --outputBlock $CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}.block --tls $TLS_ENABLED --cafile $ORDERER_CA"
+        PEER_EXEC+="peer channel create -o $FABKIT_ORDERER_ADDRESS -c ${channel_name} -f $FABKIT_CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}_tx.pb --outputBlock $FABKIT_CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}.block --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA"
     fi
 
     __exec_command "${PEER_EXEC}"
@@ -49,10 +49,10 @@ join_channel() {
 
     log "Joining channel ${channel_name}" info
 
-    if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
-        PEER_EXEC+="peer channel join -b ${CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}.block"
+    if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" == "false" ]; then
+        PEER_EXEC+="peer channel join -b ${FABKIT_CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}.block"
     else
-        PEER_EXEC+="peer channel join -b ${CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}.block --tls $TLS_ENABLED --cafile $ORDERER_CA"
+        PEER_EXEC+="peer channel join -b ${FABKIT_CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}.block --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA"
     fi
 
     __exec_command "${PEER_EXEC}"
@@ -77,12 +77,12 @@ update_channel() {
     set_certs $org $peer
     set_peer_exec
 
-    log "Updating anchors peers on ${channel_name} using configuration file ${CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors.tx" info
+    log "Updating anchors peers on ${channel_name} using configuration file ${FABKIT_CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors.tx" info
 
-    if [ -z "$TLS_ENABLED" ] || [ "$TLS_ENABLED" == "false" ]; then
-        PEER_EXEC+="peer channel update -o $ORDERER_ADDRESS -c ${channel_name} -f ${CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors_tx.pb"
+    if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" == "false" ]; then
+        PEER_EXEC+="peer channel update -o $FABKIT_ORDERER_ADDRESS -c ${channel_name} -f ${FABKIT_CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors_tx.pb"
     else
-        PEER_EXEC+="peer channel update -o $ORDERER_ADDRESS -c ${channel_name} -f ${CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors_tx.pb --tls $TLS_ENABLED --cafile $ORDERER_CA"
+        PEER_EXEC+="peer channel update -o $FABKIT_ORDERER_ADDRESS -c ${channel_name} -f ${FABKIT_CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors_tx.pb --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA"
     fi
 
     __exec_command "${PEER_EXEC}"

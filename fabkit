@@ -1,11 +1,9 @@
 #!/usr/bin/env bash
 
-source $(pwd)/.env
+source ${PWD}/.env
 for f in ./scripts/*; do source $f; done
 
 export GO111MODULE=on
-# name of the working directory/project
-export WORKSPACE=$(basename ${ROOT})
 
 readonly ONE_ORG="OneOrgOrdererGenesis"
 readonly TWO_ORGS="TwoOrgsOrdererGenesis"
@@ -16,11 +14,11 @@ readonly START_TIME="$(date -u +%s)"
 unset PEER_EXEC
 
 __yq() {
-    docker run --rm -i -v "${PWD}":/workdir ${YQ_DOCKER_IMAGE} "$@"
+    docker run --rm -i -v "${PWD}":/workdir ${FABKIT_YQ_DOCKER_IMAGE} "$@"
 }
 
 __jq() {
-    docker run --rm -i -v "${PWD}":/workdir ${JQ_DOCKER_IMAGE} "$@"
+    docker run --rm -i -v "${PWD}":/workdir ${FABKIT_JQ_DOCKER_IMAGE} "$@"
 }
 
 __log_setup() {
@@ -28,44 +26,50 @@ __log_setup() {
     log "Init: setup" info
     log "===========" info
     echo
-    log "Docker network: $(log ${DOCKER_NETWORK} warning)" info
-    log "Fabric version: $(log ${FABRIC_VERSION} warning)" info
-    log "Fabric CA version: $(log ${FABRIC_CA_VERSION} warning)" info
-    log "Fabric third-party version: $(log ${FABRIC_THIRDPARTY_IMAGE_VERSION} warning)" info
-    log "Network configuration profile: $(log ${CONFIGTX_PROFILE_NETWORK} warning)" info
-    log "Channel configuration profile: $(log ${CONFIGTX_PROFILE_CHANNEL} warning)" info
-    log "Chaincode name: $(log ${CHAINCODE_NAME} warning)" info
-    log "Chaincode version: $(log ${CHAINCODE_VERSION} warning)" info
-    log "Organizations: $(log ${ORGS:-1} warning)" info
-    log "TLS enabled: $(log ${TLS_ENABLED} warning)" info
-    log "Debug mode: $(log ${DEBUG:-false} warning)" info
-    log "Fresh-start mode: $(log ${RESET:-false} warning)" info
+    log "Docker network: $(log ${FABKIT_DOCKER_NETWORK} warning)" info
+    log "Fabric version: $(log ${FABKIT_FABRIC_VERSION} warning)" info
+    log "Fabric CA version: $(log ${FABKIT_FABRIC_CA_VERSION} warning)" info
+    log "Fabric third-party version: $(log ${FABKIT_FABRIC_THIRDPARTY_IMAGE_VERSION} warning)" info
+    log "Network configuration profile: $(log ${FABKIT_CONFIGTX_PROFILE_NETWORK} warning)" info
+    log "Channel configuration profile: $(log ${FABKIT_CONFIGTX_PROFILE_CHANNEL} warning)" info
+    log "Chaincode name: $(log ${FABKIT_CHAINCODE_NAME} warning)" info
+    log "Chaincode version: $(log ${FABKIT_CHAINCODE_VERSION} warning)" info
+    log "Organizations: $(log ${FABKIT_ORGS:-1} warning)" info
+    log "TLS enabled: $(log ${FABKIT_TLS_ENABLED} warning)" info
+    log "Debug mode: $(log ${FABKIT_DEBUG:-false} warning)" info
+    log "Fresh-start mode: $(log ${FABKIT_RESET:-false} warning)" info
     echo
 }
 
 __set_params() {
+    if [[ $# -eq 0 ]]; then
+        __load_lastrun
+        return 0
+    fi
+
     while [[ $# -gt 0 ]]; do
         local param="${1}"
 
         case $param in
-        -c | --ci)
-            CI=true
+        -q | --quick-run)
+            FABKIT_QUICK_RUN=true
             shift
             ;;
         -d | --debug)
-            DEBUG=true
+            FABKIT_DEBUG=true
             shift
             ;;
         -r | --reset)
-            RESET=true
+            FABKIT_RESET=true
+            __clean_user_path
             shift
             ;;
         -o | --orgs)
-            ORGS="${2}"
+            FABKIT_ORGS="${2:-1}"
             shift 2
             ;;
         -v | --version)
-            FABRIC_VERSION="${2}"
+            FABKIT_FABRIC_VERSION="${2:-$FABKIT_FABRIC_VERSION}"
             shift 2
             ;;
         *)
@@ -85,15 +89,18 @@ if [ "$func" == "network" ]; then
     shift
     __check_deps deploy
     __check_docker_daemon
-    __set_params "$@"
-    __log_setup
     if [ "$param" == "install" ]; then
+        __log_setup
         install_network
     elif [ "$param" == "start" ]; then
+        __set_params "$@"
+        __validate_params
         start_network "$@"
     elif [ "$param" == "restart" ]; then
         restart_network
     elif [ "$param" == "stop" ]; then
+        __load_lastrun
+        __log_setup
         stop_network
     else
         help_network
@@ -124,6 +131,7 @@ elif [ "$func" == "chaincode" ]; then
     param="$1"
     shift
     if [ "$param" == "lifecycle" ]; then
+        __check_fabric_version 2
         param="$1"
         shift
         if [ "$param" == "package" ]; then

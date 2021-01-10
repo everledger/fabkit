@@ -9,9 +9,9 @@ register_user() {
     __ca_setup register
 
     docker run --rm \
-        -v ${CRYPTOS_PATH}:/crypto-config \
-        --network="${DOCKER_NETWORK}" \
-        hyperledger/fabric-ca:${FABRIC_CA_VERSION} \
+        -v ${FABKIT_CRYPTOS_PATH}:/crypto-config \
+        --network="${FABKIT_DOCKER_NETWORK}" \
+        hyperledger/fabric-ca:${FABKIT_FABRIC_CA_VERSION} \
         sh -c " \
         fabric-ca-client register -d \
             --home /crypto-config \
@@ -37,9 +37,9 @@ enroll_user() {
     __ca_setup enroll
 
     docker run --rm \
-        -v ${CRYPTOS_PATH}:/crypto-config \
-        --network="${DOCKER_NETWORK}" \
-        hyperledger/fabric-ca:${FABRIC_CA_VERSION} \
+        -v ${FABKIT_CRYPTOS_PATH}:/crypto-config \
+        --network="${FABKIT_DOCKER_NETWORK}" \
+        hyperledger/fabric-ca:${FABKIT_FABRIC_CA_VERSION} \
         sh -c " \
         fabric-ca-client enroll -d \
             --home /crypto-config \
@@ -50,7 +50,7 @@ enroll_user() {
         "
 
     # IMPORTANT: the CA requires this folder in case of the user is an admin
-    cp -r ${CRYPTOS_PATH}/${org}/users/${username}/signcerts ${CRYPTOS_PATH}/${org}/users/${username}/admincerts
+    cp -r ${FABKIT_CRYPTOS_PATH}/${org}/users/${username}/signcerts ${FABKIT_CRYPTOS_PATH}/${org}/users/${username}/admincerts
 }
 
 reenroll_user() {
@@ -62,9 +62,9 @@ reenroll_user() {
     __ca_setup enroll
 
     docker run --rm \
-        -v ${CRYPTOS_PATH}:/crypto-config \
-        --network="${DOCKER_NETWORK}" \
-        hyperledger/fabric-ca:${FABRIC_CA_VERSION} \
+        -v ${FABKIT_CRYPTOS_PATH}:/crypto-config \
+        --network="${FABKIT_DOCKER_NETWORK}" \
+        hyperledger/fabric-ca:${FABKIT_FABRIC_CA_VERSION} \
         sh -c " \
         fabric-ca-client reenroll -d \
             --home /crypto-config \
@@ -75,7 +75,7 @@ reenroll_user() {
         "
 
     # IMPORTANT: the CA requires this folder in case of the user is an admin
-    cp -r ${CRYPTOS_PATH}/${org}/users/${username}/signcerts ${CRYPTOS_PATH}/${org}/users/${username}/admincerts
+    cp -r ${FABKIT_CRYPTOS_PATH}/${org}/users/${username}/signcerts ${FABKIT_CRYPTOS_PATH}/${org}/users/${username}/admincerts
 }
 
 revoke_user() {
@@ -121,9 +121,9 @@ revoke_user() {
     echo
 
     docker run --rm \
-        -v ${CRYPTOS_PATH}:/crypto-config \
-        --network="${DOCKER_NETWORK}" \
-        hyperledger/fabric-ca:${FABRIC_CA_VERSION} \
+        -v ${FABKIT_CRYPTOS_PATH}:/crypto-config \
+        --network="${FABKIT_DOCKER_NETWORK}" \
+        hyperledger/fabric-ca:${FABKIT_FABRIC_CA_VERSION} \
         sh -c " \
         fabric-ca-client revoke -d \
             --home /crypto-config \
@@ -137,7 +137,7 @@ revoke_user() {
 
 __ca_setup() {
     log "Creating docker network..." info
-    docker network create ${DOCKER_NETWORK} 2>/dev/null
+    docker network create ${FABKIT_DOCKER_NETWORK} 2>/dev/null
 
     log "Insert the organization name of the user to register/enroll" info
     while [ -z "$org" ]; do
@@ -147,7 +147,7 @@ __ca_setup() {
     log $org success
     echo
 
-    users_dir="${CRYPTOS_PATH}/${org}/users"
+    users_dir="${FABKIT_CRYPTOS_PATH}/${org}/users"
 
     # workaround to avoid emtpy or existing directories
     admin_msp="a/s/d/f/g"
@@ -156,7 +156,7 @@ __ca_setup() {
         while [ ! -d "${admin_msp}" ]; do
             log "Set the root Admin MSP path containing admincert, signcert, etc. directories" info
             log "You can drag&drop in the terminal the top admin directory - e.g. if the certs are in ./admin/msp, simply drag in the ./admin folder " info
-            admin_path_default=$(find $NETWORK_PATH -path "*/peerOrganizations/*/Admin*org1*" | head -n 1)
+            admin_path_default=$(find $FABKIT_NETWORK_PATH -path "*/peerOrganizations/*/Admin*org1*" | head -n 1)
             read -p "Admin name/path: [${admin_path_default}] " admin_path
             admin_path=${admin_path:-${admin_path_default}}
             log "admin path: $admin_path" success
@@ -184,8 +184,8 @@ __ca_setup() {
 
     log "Insert the correct Hyperledger Fabric CA version to use (read Troubleshooting section)" info
     log "This should be the same used by your CA server (i.e. at the time of writing, IBPv1 is using 1.1.0)" info
-    read -p "CA Version: [${FABRIC_VERSION}] " fabric_version
-    export fabric_version=${fabric_version:-${FABRIC_VERSION}}
+    read -p "CA Version: [${FABKIT_FABRIC_VERSION}] " fabric_version
+    export fabric_version=${fabric_version:-${FABKIT_FABRIC_VERSION}}
     log $fabric_version success
     echo
 
@@ -226,14 +226,14 @@ __ca_setup() {
     echo
 
     log "Set CA TLS certificate path" info
-    ca_cert_default=$(find $NETWORK_PATH -name "tlsca*.pem" | head -n 1)
+    ca_cert_default=$(find $FABKIT_NETWORK_PATH -name "tlsca*.pem" | head -n 1)
     read -p "CA cert: [${ca_cert_default}] " ca_cert
     ca_cert=${ca_cert:-${ca_cert_default}}
     log $ca_cert success
     # copy the CA certificate to the main cryptos directory
-    mkdir -p ${CRYPTOS_PATH}/${org}
-    cp $ca_cert ${CRYPTOS_PATH}/${org}/cert.pem
-    export ca_cert=$(basename ${CRYPTOS_PATH}/${org}/cert.pem)
+    mkdir -p ${FABKIT_CRYPTOS_PATH}/${org}
+    cp $ca_cert ${FABKIT_CRYPTOS_PATH}/${org}/cert.pem
+    export ca_cert=$(basename ${FABKIT_CRYPTOS_PATH}/${org}/cert.pem)
     echo
 
     log "Insert CA hostname and port only (e.g. ca.example.com:7054)" info
