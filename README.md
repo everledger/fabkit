@@ -25,14 +25,14 @@ source ~/.bashrc
 or, if you do not know what shell you are using, you can let this script doing it for you:
 
 ```bash
-./scripts/runner.sh
+./scripts/runner.sh init
 ```
 
 Note: **this command needs to be executed only once (however, there will be no harm if accidentally you run it again 😉 )**
 
 ## Install
 
-Before starting our network, let's first install all the required dependencies:
+Before starting the network, let's first install all the required dependencies:
 
 ```bash
 fabkit network install
@@ -83,8 +83,9 @@ Or you might want to run a multi-org setup, in debug mode and on a specific vers
 fabkit network start -o 3 -d -v 1.4.9
 ```
 
-For the full list of params, check the helper by typing `fabkit network`.
+For the full list of params, check the helper by typing `fabkit network`. 
 
+Fabkit will save the options of the last deployed network. To redploy using the same configurations, simply run `fabkit network start`. To start afresh add the `-r` option to the command. 
 ### On ordering service
 
 The consensus mechanism for the Ordering Service so far fully supported by this repo is `SOLO`, however, there is a 1-org configuration made available for `Raft` as well and it can be used by replacing the following variable in the `.env` file:
