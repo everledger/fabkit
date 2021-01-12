@@ -1,10 +1,14 @@
-version: '2'
+version: '2.4'
 
 networks:
   default:
     external:
       # This value should be the same for fabric network and client
       name: ${FABKIT_DOCKER_NETWORK}
+
+volumes:
+  peer0.org2.example.com:
+  couchdb.peer0.org2.example.com:
 
 services:
   ca.org2.example.com:
@@ -48,12 +52,10 @@ services:
       - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=
       - GODEBUG=netdns=go
     volumes:
-      # trick: for security reasons some services such as Bitbucket Pipeline will not allow to mount volumes
-      # which are sitting outside the cloned/project directory
-      - ./docker.sock/:/host/var/run/
+      -  /var/run/docker.sock:/host/var/run/docker.sock
       - ./network/cryptos/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/msp:/etc/hyperledger/fabric/msp
       - ./network/cryptos/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls:/etc/hyperledger/fabric/tls
-      - ./data/peer0.org2.example.com:/var/hyperledger/production
+      - peer0.org2.example.com:/var/hyperledger/production
     ports:
       - 8051:8051
     depends_on:
@@ -70,6 +72,6 @@ services:
       - COUCHDB_USER=
       - COUCHDB_PASSWORD=
     volumes:
-      - ./data/couchdb.peer0.org2.example.com:/opt/couchdb/data
+      - couchdb.peer0.org2.example.com:/opt/couchdb/data
     ports:
       - 6984:5984

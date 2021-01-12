@@ -1,10 +1,16 @@
-version: '2'
+version: '2.4'
 
 networks:
   default:
     external:
       # This value should be the same for fabric network and client
       name: ${FABKIT_DOCKER_NETWORK}
+
+volumes:
+  orderer2.example.com:
+  orderer3.example.com:
+  orderer4.example.com:
+  orderer5.example.com:
 
 services:
   orderer2.example.com:
@@ -16,7 +22,7 @@ services:
       - ./network/channels/orderer-system-channel/genesis_block.pb:/var/hyperledger/orderer/orderer.genesis.block
       - ./network/cryptos/ordererOrganizations/example.com/orderers/orderer2.example.com/msp:/var/hyperledger/orderer/msp
       - ./network/cryptos/ordererOrganizations/example.com/orderers/orderer2.example.com/tls/:/var/hyperledger/orderer/tls
-      - ./data/orderer2.example.com:/var/hyperledger/production/orderer
+      - orderer2.example.com:/var/hyperledger/production/orderer
     ports:
       - 8050:7050
 
@@ -29,7 +35,7 @@ services:
       - ./network/channels/orderer-system-channel/genesis_block.pb:/var/hyperledger/orderer/orderer.genesis.block
       - ./network/cryptos/ordererOrganizations/example.com/orderers/orderer3.example.com/msp:/var/hyperledger/orderer/msp
       - ./network/cryptos/ordererOrganizations/example.com/orderers/orderer3.example.com/tls/:/var/hyperledger/orderer/tls
-      - ./data/orderer3.example.com:/var/hyperledger/production/orderer
+      - orderer3.example.com:/var/hyperledger/production/orderer
     ports:
       - 9050:7050
 
@@ -42,7 +48,7 @@ services:
       - ./network/channels/orderer-system-channel/genesis_block.pb:/var/hyperledger/orderer/orderer.genesis.block
       - ./network/cryptos/ordererOrganizations/example.com/orderers/orderer4.example.com/msp:/var/hyperledger/orderer/msp
       - ./network/cryptos/ordererOrganizations/example.com/orderers/orderer4.example.com/tls/:/var/hyperledger/orderer/tls
-      - ./data/orderer4.example.com:/var/hyperledger/production/orderer
+      - orderer4.example.com:/var/hyperledger/production/orderer
     ports:
       - 10050:7050
 
@@ -55,6 +61,6 @@ services:
       - ./network/channels/orderer-system-channel/genesis_block.pb:/var/hyperledger/orderer/orderer.genesis.block
       - ./network/cryptos/ordererOrganizations/example.com/orderers/orderer5.example.com/msp:/var/hyperledger/orderer/msp
       - ./network/cryptos/ordererOrganizations/example.com/orderers/orderer5.example.com/tls/:/var/hyperledger/orderer/tls
-      - ./data/orderer5.example.com:/var/hyperledger/production/orderer
+      - orderer5.example.com:/var/hyperledger/production/orderer
     ports:
       - 11050:7050
