@@ -113,10 +113,10 @@ services:
       - CORE_PEER_MSPCONFIGPATH=${FABKIT_PEER_REMOTE_BASEPATH}/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
     volumes:
       - /var/run/docker.sock:/host/var/run/docker.sock
-      - ${FABKIT_CHAINCODE_PATH}:${FABKIT_CHAINCODE_REMOTE_PATH}
+      - ${FABKIT_CHAINCODE_USER_PATH}:${FABKIT_CHAINCODE_REMOTE_PATH}
       - ./network/cryptos:${FABKIT_PEER_REMOTE_BASEPATH}/crypto
       - ./network/channels:${FABKIT_PEER_REMOTE_BASEPATH}/channels
-      - ./dist:${FABKIT_PEER_REMOTE_BASEPATH}/dist
+      - ${FABKIT_DIST_USER_PATH}:${FABKIT_PEER_REMOTE_BASEPATH}/dist
     depends_on:
       - ca.org1.example.com
       - orderer.example.com

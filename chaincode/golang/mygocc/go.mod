@@ -1,4 +1,4 @@
-module mychaincode
+module mygocc
 
 go 1.12
 

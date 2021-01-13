@@ -52,7 +52,7 @@ __delete_path() {
     fi
 }
 
-set_certs() {
+__set_certs() {
     CORE_PEER_ADDRESS=peer${2}.org${1}.example.com:$((6 + ${1}))051
     CORE_PEER_LOCALMSPID=Org${1}MSP
     CORE_PEER_TLS_ENABLED=false
@@ -69,8 +69,9 @@ set_certs() {
     echo
 }
 
-set_peer_exec() {
-    PEER_EXEC="docker exec -e CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
+__set_peer_exec() {
+    local __result=$1
+    local __cmd="docker exec -e CORE_PEER_ADDRESS=$CORE_PEER_ADDRESS \
             -e CORE_PEER_LOCALMSPID=$CORE_PEER_LOCALMSPID \
             -e CORE_PEER_TLS_ENABLED=$FABKIT_TLS_ENABLED \
             -e CORE_PEER_TLS_CERT_FILE=$CORE_PEER_TLS_CERT_FILE \
@@ -78,6 +79,8 @@ set_peer_exec() {
             -e CORE_PEER_TLS_ROOTCERT_FILE=$CORE_PEER_TLS_ROOTCERT_FILE \
             -e CORE_PEER_MSPCONFIGPATH=$CORE_PEER_MSPCONFIGPATH \
             $FABKIT_CHAINCODE_UTIL_CONTAINER "
+
+    eval $__result="'$__cmd'"
 }
 
 __exec_command() {

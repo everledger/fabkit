@@ -72,7 +72,7 @@ start_network() {
     log "==============" info
     echo
 
-    cd ${FABKIT_ROOT}
+    __chaincode_sync
 
     local command="docker-compose -f ${FABKIT_ROOT}/docker-compose.yaml up -d || exit 1;"
 
@@ -198,7 +198,7 @@ initialize_network() {
         for org in $(seq 1 ${FABKIT_ORGS}); do
             chaincode_install $FABKIT_CHAINCODE_NAME $FABKIT_CHAINCODE_VERSION $FABKIT_CHAINCODE_RELATIVE_PATH $org 0
         done
-        chaincode_instantiate $FABKIT_CHAINCODE_NAME $FABKIT_CHAINCODE_VERSION $FABKIT_CHAINCODE_RELATIVE_PATH $FABKIT_CHANNEL_NAME 1 0
+        chaincode_instantiate $FABKIT_CHAINCODE_NAME $FABKIT_CHAINCODE_VERSION $FABKIT_CHANNEL_NAME 1 0
     fi
 }
 
