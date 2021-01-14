@@ -169,14 +169,17 @@ elif [ "$func" == "chaincode" ]; then
         __check_docker_daemon
         chaincode_upgrade "$@"
     elif [ "$param" == "test" ]; then
+        __chaincode_sync
         chaincode_test "$@"
     elif [ "$param" == "build" ]; then
+        __chaincode_sync
         chaincode_build "$@"
     elif [ "$param" == "package" ]; then
         __check_deps deploy
         __check_docker_daemon
         chaincode_pack "$@"
     elif [ "$param" == "zip" ]; then
+        __chaincode_sync
         chaincode_zip "$@"
     elif [ "$param" == "query" ]; then
         __check_deps deploy
