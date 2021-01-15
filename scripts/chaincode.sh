@@ -168,7 +168,7 @@ __get_chaincode_language() {
 }
 
 __chaincode_sync() {
-    mdkir -p ${FABKIT_CHAINCODE_USER_PATH}
+    mkdir -p ${FABKIT_CHAINCODE_USER_PATH}
     rsync -aur --exclude='vendor' --exclude='node_modules' $FABKIT_CHAINCODE_PATH/golang/ $FABKIT_CHAINCODE_PATH/java/ $FABKIT_CHAINCODE_PATH/node/ ${FABKIT_CHAINCODE_USER_PATH} || exit 1
 }
 
