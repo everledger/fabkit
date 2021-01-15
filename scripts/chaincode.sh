@@ -168,9 +168,7 @@ __get_chaincode_language() {
 }
 
 __chaincode_sync() {
-    rsync -aur --exclude='vendor' --exclude='node_modules' $FABKIT_CHAINCODE_PATH/golang/ ${FABKIT_CHAINCODE_USER_PATH} || exit 1
-    rsync -aur --exclude='vendor' --exclude='node_modules' $FABKIT_CHAINCODE_PATH/java/ ${FABKIT_CHAINCODE_USER_PATH} || exit 1
-    rsync -aur --exclude='vendor' --exclude='node_modules' $FABKIT_CHAINCODE_PATH/node/ ${FABKIT_CHAINCODE_USER_PATH} || exit 1
+    rsync -aur --exclude='vendor' --exclude='node_modules' $FABKIT_CHAINCODE_PATH/golang/ $FABKIT_CHAINCODE_PATH/java/ $FABKIT_CHAINCODE_PATH/node/ ${FABKIT_CHAINCODE_USER_PATH} || exit 1
 }
 
 __copy_user_chaincode() {
@@ -445,18 +443,18 @@ chaincode_zip() {
     local timestamp=$(date +%Y-%m-%d-%H-%M-%S)
     local filename="$(basename $chaincode_path)_${timestamp}.zip"
 
-    if [ ! -d "${FABKIT_DIST_USER_PATH}" ]; then
-        mkdir -p ${FABKIT_DIST_USER_PATH}
+    if [ ! -d "${FABKIT_DIST_PATH}" ]; then
+        mkdir -p ${FABKIT_DIST_PATH}
     fi
 
     log "Zipping chaincode $chaincode_name from path ${chaincode_path} " info
 
-    zip -rqj ${FABKIT_DIST_USER_PATH}/${filename} $chaincode_path/** || {
+    zip -rqj ${FABKIT_DIST_PATH}/${filename} $chaincode_path/** || {
         log >&2 "Error creating chaincode archive." error
         exit 1
     }
 
-    log "Chaincode archive created in: ${FABKIT_DIST_USER_PATH}/${filename}" success
+    log "Chaincode archive created in: ${FABKIT_DIST_PATH}/${filename}" success
 }
 
 chaincode_pack() {
@@ -499,8 +497,8 @@ chaincode_pack() {
     local timestamp=$(date +%Y-%m-%d-%H-%M-%S)
     local filename="${chaincode_name}@${chaincode_version}_${timestamp}.cc"
 
-    if [ ! -d "${FABKIT_DIST_USER_PATH}" ]; then
-        mkdir -p ${FABKIT_DIST_USER_PATH}
+    if [ ! -d "${FABKIT_DIST_PATH}" ]; then
+        mkdir -p ${FABKIT_DIST_PATH}
     fi
 
     log "Packing chaincode $chaincode_name version $chaincode_version from path $chaincode_path " info
@@ -513,7 +511,7 @@ chaincode_pack() {
 
     __exec_command "${cmd}"
 
-    log "Chaincode package created in: ${FABKIT_DIST_USER_PATH}/${filename}" success
+    log "Chaincode package created in: ${FABKIT_DIST_PATH}/${filename}" success
 }
 
 invoke() {
