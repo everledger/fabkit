@@ -376,7 +376,7 @@ chaincode_instantiate() {
 }
 
 chaincode_upgrade() {
-    if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ]; then
+    if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ]; then
         log "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help" error
         exit 1
     fi
@@ -388,24 +388,23 @@ chaincode_upgrade() {
 
     local chaincode_name="$1"
     local chaincode_version="$2"
-    local chaincode_relative_path="$3"
-    local channel_name="$4"
-    local org="$5"
-    local peer="$6"
-    shift 6
+    local channel_name="$3"
+    local org="$4"
+    local peer="$5"
+    shift 5
 
     __set_certs $org $peer
     __set_peer_exec cmd
 
     __set_chaincode_options upgrade options $@
-    __get_chaincode_language $chaincode_relative_path chaincode_language
+    __get_chaincode_language ${FABKIT_CHAINCODE_USER_PATH}/${chaincode_name} chaincode_language
 
     log "Upgrading chaincode $chaincode_name to version $chaincode_version on channel: ${channel_name}" info
 
     if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" == "false" ]; then
-        cmd+="peer chaincode upgrade -n $chaincode_name -v $chaincode_version -C ${channel_name} -l ${chaincode_language} $options"
+        cmd+="peer chaincode upgrade -n $chaincode_name -v $chaincode_version -C $channel_name -l $chaincode_language $options"
     else
-        cmd+="peer chaincode upgrade -n $chaincode_name -v $chaincode_version -C ${channel_name} -l ${chaincode_language} $options --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA"
+        cmd+="peer chaincode upgrade -n $chaincode_name -v $chaincode_version -C $channel_name -l $chaincode_language $options --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA"
     fi
 
     __exec_command "${cmd}"
