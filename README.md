@@ -141,20 +141,20 @@ Run the following commands in order to install and instantiate a new chaincode:
 
 ```bash
 fabkit chaincode install [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no] [options]
-fabkit chaincode instantiate [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [org_no] [peer_no] [options]
+fabkit chaincode instantiate [chaincode_name] [chaincode_version] [channel_name] [org_no] [peer_no] [options]
 # e.g.
 fabkit chaincode install mynodecc 1.0 mynodecc 1 0
-fabkit chaincode instantiate mynodecc 1.0 mynodecc mychannel 1 0 '{"Args":["init","a","100","b","200"]}'
+fabkit chaincode instantiate mynodecc 1.0 mychannel 1 0 '{"Args":["init","a","100","b","200"]}'
 ```
 
 Run the following commands in order to install and instantiate a newer version of an existing chaincode:
 
 ```bash
 fabkit chaincode install [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no] [options]
-fabkit chaincode upgrade [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [org_no] [peer_no] [options]
+fabkit chaincode upgrade [chaincode_name] [chaincode_version] [channel_name] [org_no] [peer_no] [options]
 # e.g.
 fabkit chaincode install mynodecc 1.1 mynodecc 1 0
-fabkit chaincode upgrade mynodecc 1.1 mynodecc mychannel 1 0 '{"Args":["init","a","100","b","200"]}'
+fabkit chaincode upgrade mynodecc 1.1 mychannel 1 0 '{"Args":["init","a","100","b","200"]}'
 ```
 
 Be sure the `chaincode_version` is unique and never used before (otherwise an error will be prompted).
@@ -286,7 +286,7 @@ fabkit chaincode install pdc 1.0 pdc 2 0
 fabkit chaincode install pdc 1.0 pdc 3 0
 
 # instantiate pdc chaincode on mychannel using org1 peer0
-fabkit chaincode instantiate pdc 1.0 pdc mychannel 1 0 --collections-config ${FABKIT_CHAINCODE_REMOTE_PATH}/pdc/collections_config.json -P 'OR("Org1MSP.member","Org2MSP.member","Org3MSP.member")'
+fabkit chaincode instantiate pdc 1.0 mychannel 1 0 --collections-config ${FABKIT_CHAINCODE_REMOTE_PATH}/pdc/collections_config.json -P 'OR("Org1MSP.member","Org2MSP.member","Org3MSP.member")'
 ```
 
 ### v2.x
