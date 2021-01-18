@@ -194,6 +194,8 @@ __set_chaincode_absolute_path() {
     local __chaincode_relative_path=$1
     local __result=$2
 
+    __copy_user_chaincode $__chaincode_relative_path
+
     local __chaincode_path="${FABKIT_CHAINCODE_USER_PATH}/$(basename ${__chaincode_relative_path})"
 
     log "Chaincode absolute path: ${__chaincode_path}" debug
@@ -226,6 +228,17 @@ __set_chaincode_remote_path() {
     log "Chaincode remote path: ${__chaincode_remote_path}" debug
 
     eval $__result="'$__chaincode_remote_path'"
+}
+
+__rename_chaincode_path_to_name() {
+    local __chaincode_path=$1
+    local __chaincode_name=$2
+    local __result=$3
+    local __output_path="${__chaincode_path%/chaincodes/*}/chaincodes/${__chaincode_name}"
+
+    mv $__chaincode_path $__output_path
+
+    eval $__result="'$__output_path'"
 }
 
 __set_chaincode_options() {
@@ -315,8 +328,8 @@ chaincode_install() {
         chaincode_path=$result
     fi
 
-    mv $chaincode_path ${chaincode_path%/chaincode/*}/chaincode/${chaincode_name} 2>/dev/null
-    chaincode_path="${chaincode_path%/chaincode/*}/chaincode/${chaincode_name}"
+    __rename_chaincode_path_to_name $chaincode_path $chaincode_name result
+    chaincode_path=$result
 
     __set_chaincode_remote_path $chaincode_path $chaincode_language chaincode_remote_path
 
@@ -642,8 +655,8 @@ lc_chaincode_package() {
         chaincode_path=$result
     fi
 
-    mv $chaincode_path ${chaincode_path%/chaincode/*}/chaincode/${chaincode_name} 2>/dev/null
-    chaincode_path="${chaincode_path%/chaincode/*}/chaincode/${chaincode_name}"
+    __rename_chaincode_path_to_name $chaincode_path $chaincode_name result
+    chaincode_path=$result
 
     __set_chaincode_remote_path $chaincode_path $chaincode_language chaincode_remote_path
 
