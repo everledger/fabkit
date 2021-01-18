@@ -83,9 +83,10 @@ Or you might want to run a multi-org setup, in debug mode and on a specific vers
 fabkit network start -o 3 -d -v 1.4.9
 ```
 
-For the full list of params, check the helper by typing `fabkit network`. 
+For the full list of params, check the helper by typing `fabkit network`.
 
-Fabkit will save the options of the last deployed network. To redploy using the same configurations, simply run `fabkit network start`. To start afresh add the `-r` option to the command. 
+**Note: Fabkit will save the options of the last deployed network. To redeploy using the same configurations, simply run `fabkit network start`. To start afresh add the `-r` option to the command.**
+
 ### On ordering service
 
 The consensus mechanism for the Ordering Service so far fully supported by this repo is `SOLO`, however, there is a 1-org configuration made available for `Raft` as well and it can be used by replacing the following variable in the `.env` file:
@@ -127,10 +128,12 @@ Fabkit currently supports _golang_, _node_ and _java_ chaincodes. To deploy a ch
 
 To deploy chaincode using Fabkit's commands refer below.
 
-_Note `options` is an optional parameter. For more information about all the available options check the following documentations:_
+_Note: `options` is an optional parameter. For more information about all the available options check the following documentations:_
 
 - [v1.x Chaincode Commands](https://hyperledger-fabric.readthedocs.io/en/latest/commands/peerchaincode.html)
 - [v2.x Chaincode Commands](https://hyperledger-fabric.readthedocs.io/en/latest/commands/peerlifecycle.html)
+
+While inserting the `chaincode_path` in any of these commands, Fabkit allows the user to simply type in the basename of the directory when this path is under `$FABKIT_CHAINCODE_PATH` or `$FABKIT_CHAINCODE_USER_PATH`. For example, if you want to use the `mynodecc` chaincode, which is under `${FABKIT_CHAINCODE_PATH}/node/mynodecc`, then simply type `mynodecc`, Fabkit will do the rest!
 
 ### v1.x
 
@@ -140,8 +143,8 @@ Run the following commands in order to install and instantiate a new chaincode:
 fabkit chaincode install [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no] [options]
 fabkit chaincode instantiate [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [org_no] [peer_no] [options]
 # e.g.
-fabkit chaincode install mynodecc 1.0 node/mychaincode 1 0
-fabkit chaincode instantiate mynodecc 1.0 node/mychaincode mychannel 1 0 '{"Args":["init","a","100","b","200"]}'
+fabkit chaincode install mynodecc 1.0 mynodecc 1 0
+fabkit chaincode instantiate mynodecc 1.0 mynodecc mychannel 1 0 '{"Args":["init","a","100","b","200"]}'
 ```
 
 Run the following commands in order to install and instantiate a newer version of an existing chaincode:
@@ -150,12 +153,11 @@ Run the following commands in order to install and instantiate a newer version o
 fabkit chaincode install [chaincode_name] [chaincode_version] [chaincode_path] [org_no] [peer_no] [options]
 fabkit chaincode upgrade [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [org_no] [peer_no] [options]
 # e.g.
-fabkit chaincode install mynodecc 1.1 node/mychaincode 1 0
-fabkit chaincode upgrade mynodecc 1.1 node/mychaincode mychannel 1 0 '{"Args":["init","a","100","b","200"]}'
+fabkit chaincode install mynodecc 1.1 mynodecc 1 0
+fabkit chaincode upgrade mynodecc 1.1 mynodecc mychannel 1 0 '{"Args":["init","a","100","b","200"]}'
 ```
 
 Be sure the `chaincode_version` is unique and never used before (otherwise an error will be prompted).
-
 ### v2.x
 
 The new chaincode lifecycle flow implemented in v2.x decentralizes much more the way in which a chaincode gets deployed into the network, enforcing security and empowering governance. However, this choice comes with an increase in complexity at the full expense of user experience.
@@ -168,7 +170,7 @@ The commands below will install, approve, commit and initialize a newer version 
 fabkit chaincode lifecycle deploy [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [sequence_no] [org_no] [peer_no] [options]
 
 # e.g. considering previous chaincode_version was 1.0 and sequence_no was 1 (using default peer)
-fabkit chaincode lifecycle deploy abstore 1.1 node/abstore mychannel 2 1 0 '{"Args":["init","a","100","b","200"]}'
+fabkit chaincode lifecycle deploy mnynodeccv2 1.1 mynodeccv2 mychannel 2 1 0 '{"Args":["init","a","100","b","200"]}'
 ```
 
 However, if you want more control over the single command execution, you can reproduce the exact same results as above by splitting that into the following steps:
@@ -181,10 +183,10 @@ fabkit chaincode lifecycle approve [chaincode_name] [chaincode_version] [channel
 fabkit chaincode lifecycle commit [chaincode_name] [chaincode_version] [channel_name] [sequence_no] [org_no] [peer_no] [options]
 
 # e.g. considering previous chaincode_version was 1.0 and sequence_no was 1 (using default peer)
-fabkit chaincode lifecycle package abstore 1.1 node/abstore 1 0
-fabkit chaincode lifecycle install abstore 1.1 1 0
-fabkit chaincode lifecycle approve abstore 1.1 mychannel 2 1 0
-fabkit chaincode lifecycle commit abstore 1.1 mychannel 2 1 0 '{"Args":["init","a","100","b","200"]}'
+fabkit chaincode lifecycle package mnynodeccv2 1.1 mnynodeccv2 1 0
+fabkit chaincode lifecycle install mnynodeccv2 1.1 1 0
+fabkit chaincode lifecycle approve mnynodeccv2 1.1 mychannel 2 1 0
+fabkit chaincode lifecycle commit mnynodeccv2 1.1 mychannel 2 1 0 '{"Args":["init","a","100","b","200"]}'
 ```
 
 > If you are upgrading the chaincode binaries, you need to update the chaincode version and the package ID in the chaincode definition. You can also update your chaincode endorsement policy without having to repackage your chaincode binaries. Channel members simply need to approve a definition with the new policy. The new definition needs to increment the sequence variable in the definition by one.
@@ -225,7 +227,7 @@ It is possible to use the CLI to run and test functionalities via invoke and que
 fabkit chaincode invoke [channel_name] [chaincode_name] [org_no] [peer_no] [request]
 
 # e.g.
-fabkit chaincode invoke mychannel mychaincode 1 0 '{"Args":["put","key1","10"]}'
+fabkit chaincode invoke mychannel mygocc 1 0 '{"Args":["put","key1","10"]}'
 ```
 
 ### Query
@@ -234,7 +236,7 @@ fabkit chaincode invoke mychannel mychaincode 1 0 '{"Args":["put","key1","10"]}'
 fabkit chaincode query [channel_name] [chaincode_name] [org_no] [peer_no] [request]
 
 # e.g.
-fabkit chaincode query mychannel mychaincode 1 0 '{"Args":["get","key1"]}'
+fabkit chaincode query mychannel mygocc 1 0 '{"Args":["get","key1"]}'
 ```
 
 ## Private Data Collections
@@ -263,7 +265,7 @@ The network will be initialized with the following components:
 
 - orderer
 - ca.org1
-- peer0.org1 (mychaincode installed)
+- peer0.org1 (mygocc installed)
 - couchdb.peer0.org1
 - ca.org2
 - peer0.org2
@@ -279,19 +281,21 @@ Install and instantiate the `pdc` chaincode:
 
 ```bash
 # install the pdc chaincode on all the organizations' peer0
-fabkit chaincode install pdc 1.0 golang/pdc 1 0
-fabkit chaincode install pdc 1.0 golang/pdc 2 0
-fabkit chaincode install pdc 1.0 golang/pdc 3 0
+fabkit chaincode install pdc 1.0 pdc 1 0
+fabkit chaincode install pdc 1.0 pdc 2 0
+fabkit chaincode install pdc 1.0 pdc 3 0
 
 # instantiate pdc chaincode on mychannel using org1 peer0
-fabkit chaincode instantiate pdc 1.0 golang/pdc mychannel 1 0 --collections-config ${FABKIT_CHAINCODE_REMOTE_PATH}/golang/pdc/collections_config.json -P 'OR("Org1MSP.member","Org2MSP.member","Org3MSP.member")'
+fabkit chaincode instantiate pdc 1.0 pdc mychannel 1 0 --collections-config ${FABKIT_CHAINCODE_REMOTE_PATH}/pdc/collections_config.json -P 'OR("Org1MSP.member","Org2MSP.member","Org3MSP.member")'
 ```
 
 ### v2.x
 
 ```bash
-fabkit chaincode lifecycle deploy pdc 1.0 golang/pdc mychannel 1 1 0 --collections-config ${FABKIT_CHAINCODE_REMOTE_PATH}/golang/pdc/collections_config.json
+fabkit chaincode lifecycle deploy pdc 1.0 pdc mychannel 1 1 0 --collections-config ${FABKIT_CHAINCODE_REMOTE_PATH}/pdc/collections_config.json
 ```
+
+**Note: if you are deploying your own chaincode, remember that your remote basename path should match the chaincode name. e.g. if the chaincode name is `mycc`, then the full remote path should look like `${FABKIT_CHAINCODE_REMOTE_PATH}/mycc` .**
 
 Execute some actions:
 
@@ -349,6 +353,8 @@ fabkit explorer stop
 - Username: `admin` | Password: `admin`
 
 - Host: [http://localhost:3000](http://localhost:3000)
+
+Note: If you are using _docker-machine_ replace `localhost` with the docker-machine IP address. You can find this out by running `docker-machine ip`.
 
 ## Fabric CA and user certificates management
 
@@ -604,7 +610,7 @@ When asked to provide enrollment attributes be sure you are either using a corre
 While running the app with `fabkit network start` or trying to instantiate a chaincode, the following error occurs:
 
 ```bash
-Error: could not assemble transaction, err proposal response was not successful, error code 500, msg error starting container: error starting container: Post http://unix.sock/containers/create?name=dev-peer0.org1.example.com-mychaincode-1.0: dial unix /host/var/run/docker.sock: connect: no such file or directory
+Error: could not assemble transaction, err proposal response was not successful, error code 500, msg error starting container: error starting container: Post http://unix.sock/containers/create?name=dev-peer0.org1.example.com-mygocc-1.0: dial unix /host/var/run/docker.sock: connect: no such file or directory
 ```
 
 #### Possible solutions

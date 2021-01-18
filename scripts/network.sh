@@ -48,7 +48,7 @@ __docker_third_party_images_pull() {
 }
 
 start_network() {
-    if [[ ! $(docker volume ls | grep ${FABKIT_DOCKER_NETWORK}) && ! ${FABKIT_RESET} ]]; then
+    if [[ $(docker volume ls | grep ${FABKIT_DOCKER_NETWORK}) && ! ${FABKIT_RESET} ]]; then
         log "Found volumes" warning
         read -p "Do you wish to restart the network and reuse this data? [yes/no=default] " yn
         case $yn in
@@ -63,8 +63,8 @@ start_network() {
     stop_network
 
     if [ -z "${FABKIT_QUICK_RUN}" ]; then
-        chaincode_build $FABKIT_CHAINCODE_RELATIVE_PATH
-        chaincode_test $FABKIT_CHAINCODE_RELATIVE_PATH
+        chaincode_build $FABKIT_CHAINCODE_NAME
+        chaincode_test $FABKIT_CHAINCODE_NAME
     fi
 
     log "==============" info
@@ -182,11 +182,12 @@ initialize_network() {
     for org in $(seq 1 ${FABKIT_ORGS}); do
         join_channel $FABKIT_CHANNEL_NAME $org 0
     done
-    #TODO: Create txns for all orgs and place below command in above
+    
+    #TODO: [FND-101] Update channel with anchor peers for all orgs
     update_channel $FABKIT_CHANNEL_NAME $FABKIT_ORG_MSP 1 0
 
     if [[ "${FABKIT_FABRIC_VERSION}" =~ 2.* ]]; then
-        lc_chaincode_package $FABKIT_CHAINCODE_NAME $FABKIT_CHAINCODE_VERSION $FABKIT_CHAINCODE_RELATIVE_PATH 1 0
+        lc_chaincode_package $FABKIT_CHAINCODE_NAME $FABKIT_CHAINCODE_VERSION $FABKIT_CHAINCODE_NAME 1 0
 
         for org in $(seq 1 ${FABKIT_ORGS}); do
             lc_chaincode_install $FABKIT_CHAINCODE_NAME $FABKIT_CHAINCODE_VERSION $org 0
@@ -196,7 +197,7 @@ initialize_network() {
         lc_chaincode_commit $FABKIT_CHAINCODE_NAME $FABKIT_CHAINCODE_VERSION $FABKIT_CHANNEL_NAME 1 1 0
     else
         for org in $(seq 1 ${FABKIT_ORGS}); do
-            chaincode_install $FABKIT_CHAINCODE_NAME $FABKIT_CHAINCODE_VERSION $FABKIT_CHAINCODE_RELATIVE_PATH $org 0
+            chaincode_install $FABKIT_CHAINCODE_NAME $FABKIT_CHAINCODE_VERSION $FABKIT_CHAINCODE_NAME $org 0
         done
         chaincode_instantiate $FABKIT_CHAINCODE_NAME $FABKIT_CHAINCODE_VERSION $FABKIT_CHANNEL_NAME 1 0
     fi

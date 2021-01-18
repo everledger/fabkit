@@ -6,8 +6,8 @@ pipelines:
         - step:
             name: Run chaincode unit tests
             script:
-              - ./fabkit chaincode test golang/mygocc
+              - ./fabkit chaincode test mygocc
         - step:
             name: Run chaincode build
             script:
-              - ./fabkit chaincode build golang/mygocc
+              - ./fabkit chaincode build mygocc

@@ -127,6 +127,7 @@ elif [ "$func" == "dep" ]; then
         help_dep
     fi
 elif [ "$func" == "chaincode" ]; then
+    __load_lastrun
     param="$1"
     shift
     if [ "$param" == "lifecycle" ]; then
@@ -169,10 +170,8 @@ elif [ "$func" == "chaincode" ]; then
         __check_docker_daemon
         chaincode_upgrade "$@"
     elif [ "$param" == "test" ]; then
-        __chaincode_sync
         chaincode_test "$@"
     elif [ "$param" == "build" ]; then
-        __chaincode_sync
         chaincode_build "$@"
     elif [ "$param" == "package" ]; then
         __check_deps deploy

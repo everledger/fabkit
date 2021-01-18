@@ -115,7 +115,7 @@ chaincode_build() {
         __init_go_mod install ${chaincode_path}
 
         if [[ $(__check_deps test) ]]; then
-            (docker run --rm -v ${FABKIT_CHAINCODE_PATH}:/usr/src/myapp -w /usr/src/myapp/${chaincode_name} -e CGO_ENABLED=0 ${FABKIT_GOLANG_DOCKER_IMAGE} sh -c "go build -a -installsuffix nocgo ./... && rm -rf ./${chaincode_name} 2>/dev/null") || exit 1
+            (docker run --rm -v ${chaincode_path}:/usr/src/myapp -w /usr/src/myapp/${chaincode_name} -e CGO_ENABLED=0 ${FABKIT_GOLANG_DOCKER_IMAGE} sh -c "go build -a -installsuffix nocgo ./... && rm -rf ./${chaincode_name} 2>/dev/null") || exit 1
         else
             (cd ${chaincode_path} && CGO_ENABLED=0 go build -a -installsuffix nocgo ./... && rm -rf ./${chaincode_name} 2>/dev/null) || exit 1
         fi
@@ -136,11 +136,6 @@ __check_param_chaincode() {
 __get_chaincode_language() {
     if [ -z "$1" ]; then
         log "Missing chaincode relative path in argument" error
-        exit 1
-    fi
-
-    if [ -z "$FABKIT_CHAINCODE_PATH" ]; then
-        log "FABKIT_CHAINCODE_PATH not set" error
         exit 1
     fi
 
@@ -168,12 +163,29 @@ __get_chaincode_language() {
 }
 
 __chaincode_sync() {
-    mkdir -p ${FABKIT_CHAINCODE_USER_PATH}
-    rsync -aur --exclude='vendor' --exclude='node_modules' $FABKIT_CHAINCODE_PATH/golang/ $FABKIT_CHAINCODE_PATH/java/ $FABKIT_CHAINCODE_PATH/node/ ${FABKIT_CHAINCODE_USER_PATH} || exit 1
+    if [[ ! -d ${FABKIT_CHAINCODE_USER_PATH} ]]; then
+        mkdir -p ${FABKIT_CHAINCODE_USER_PATH}
+    fi
+
+    rsync -aur --exclude='vendor' --exclude='node_modules' ${FABKIT_CHAINCODE_PATH}/golang/ ${FABKIT_CHAINCODE_PATH}/java/ ${FABKIT_CHAINCODE_PATH}/node/ ${FABKIT_CHAINCODE_USER_PATH} || exit 1
 }
 
 __copy_user_chaincode() {
     local chaincode_absolute_path=$1
+    local chaincode_internal_path="$(find ${FABKIT_CHAINCODE_PATH} -type d -iname $(basename $chaincode_absolute_path))"
+
+    if ! [[ -d $chaincode_absolute_path || -d $chaincode_internal_path ]]; then
+        log "Path does not exist: ${chaincode_absolute_path}" error
+        exit 1
+    fi
+
+    if [[ ! -d ${FABKIT_CHAINCODE_USER_PATH} ]]; then
+        mkdir -p ${FABKIT_CHAINCODE_USER_PATH}
+    fi
+
+    if [[ ! "$chaincode_absolute_path" =~ ^/ && -d $chaincode_internal_path ]]; then
+        chaincode_absolute_path=$chaincode_internal_path
+    fi
 
     rsync -aur --exclude='vendor' --exclude='node_modules' ${chaincode_absolute_path} ${FABKIT_CHAINCODE_USER_PATH} || exit 1
 }
@@ -181,10 +193,6 @@ __copy_user_chaincode() {
 __set_chaincode_absolute_path() {
     local __chaincode_relative_path=$1
     local __result=$2
-
-    if [[ "$__chaincode_relative_path" =~ ^/ ]]; then
-        __copy_user_chaincode $__chaincode_relative_path
-    fi
 
     local __chaincode_path="${FABKIT_CHAINCODE_USER_PATH}/$(basename ${__chaincode_relative_path})"
 
@@ -444,18 +452,18 @@ chaincode_zip() {
     local timestamp=$(date +%Y-%m-%d-%H-%M-%S)
     local filename="$(basename $chaincode_path)_${timestamp}.zip"
 
-    if [ ! -d "${FABKIT_DIST_PATH}" ]; then
-        mkdir -p ${FABKIT_DIST_PATH}
+    if [ ! -d "${FABKIT_DIST_USER_PATH}" ]; then
+        mkdir -p ${FABKIT_DIST_USER_PATH}
     fi
 
     log "Zipping chaincode $chaincode_name from path ${chaincode_path} " info
 
-    zip -rqj ${FABKIT_DIST_PATH}/${filename} $chaincode_path/** || {
+    zip -rqj ${FABKIT_DIST_USER_PATH}/${filename} $chaincode_path/** || {
         log >&2 "Error creating chaincode archive." error
         exit 1
     }
 
-    log "Chaincode archive created in: ${FABKIT_DIST_PATH}/${filename}" success
+    log "Chaincode archive created in: ${FABKIT_DIST_USER_PATH}/${filename}" success
 }
 
 chaincode_pack() {
@@ -498,8 +506,8 @@ chaincode_pack() {
     local timestamp=$(date +%Y-%m-%d-%H-%M-%S)
     local filename="${chaincode_name}@${chaincode_version}_${timestamp}.cc"
 
-    if [ ! -d "${FABKIT_DIST_PATH}" ]; then
-        mkdir -p ${FABKIT_DIST_PATH}
+    if [ ! -d "${FABKIT_DIST_USER_PATH}" ]; then
+        mkdir -p ${FABKIT_DIST_USER_PATH}
     fi
 
     log "Packing chaincode $chaincode_name version $chaincode_version from path $chaincode_path " info
@@ -512,7 +520,7 @@ chaincode_pack() {
 
     __exec_command "${cmd}"
 
-    log "Chaincode package created in: ${FABKIT_DIST_PATH}/${filename}" success
+    log "Chaincode package created in: ${FABKIT_DIST_USER_PATH}/${filename}" success
 }
 
 invoke() {
@@ -628,15 +636,19 @@ lc_chaincode_package() {
 
     __set_chaincode_absolute_path $chaincode_relative_path chaincode_path
     __get_chaincode_language $chaincode_path chaincode_language
-    __set_chaincode_remote_path $chaincode_path $chaincode_language chaincode_remote_path
 
     if [ "${chaincode_language}" == "golang" ]; then
         __set_chaincode_module_main $chaincode_path result
         chaincode_path=$result
     fi
 
+    mv $chaincode_path ${chaincode_path%/chaincode/*}/chaincode/${chaincode_name} 2>/dev/null
+    chaincode_path="${chaincode_path%/chaincode/*}/chaincode/${chaincode_name}"
+
+    __set_chaincode_remote_path $chaincode_path $chaincode_language chaincode_remote_path
+
     log "Packaging chaincode $chaincode_name version $chaincode_version from path $chaincode_path" info
-    # TODO: explore issue which runs into deps error every so often
+
     cmd+="peer lifecycle chaincode package ${chaincode_name}_${chaincode_version}.tar.gz --path $chaincode_remote_path --label ${chaincode_name}_${chaincode_version} --lang $chaincode_language $options"
 
     __exec_command "${cmd}"
@@ -708,7 +720,7 @@ lc_chaincode_approve() {
     __set_peer_exec cmd
 
     log "Approve chaincode for my organization" info
-    # TODO: policy to be passed as input argument
+
     if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" == "false" ]; then
         cmd+="peer lifecycle chaincode approveformyorg --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --package-id $PACKAGE_ID --sequence $sequence_no --waitForEvent --signature-policy '${signature_policy}' $options"
     else
@@ -771,17 +783,17 @@ lc_chaincode_commit() {
         cmd+="peer lifecycle chaincode commit --channelID $channel_name --name $chaincode_name --version $chaincode_version --sequence $sequence_no --init-required --peerAddresses $CORE_PEER_ADDRESS --signature-policy '${signature_policy}' $options"
     else
         cmd+="peer lifecycle chaincode commit --channelID $channel_name --name $chaincode_name --version $chaincode_version --sequence $sequence_no --init-required  --signature-policy '${signature_policy}' $options --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA"
-        cmd=${cmd}
+        forall=${cmd}
         for o in $(seq 1 ${FABKIT_ORGS}); do
             #TODO: Create from endorsement policy and make endorsement policy dynamic
             lc_query_package_id $chaincode_name $chaincode_version $o $peer
             if [ ! -z "$PACKAGE_ID" ]; then
                 __set_certs $o $peer
-                cmd+=" --peerAddresses $CORE_PEER_ADDRESS --tlsRootCertFiles $CORE_PEER_TLS_ROOTCERT_FILE "
+                forall+=" --peerAddresses $CORE_PEER_ADDRESS --tlsRootCertFiles $CORE_PEER_TLS_ROOTCERT_FILE "
             fi
         done
     fi
-    __exec_command "${cmd}"
+    __exec_command "${forall}"
 
     log "Query the chaincode definitions that have been committed to the channel" info
 
