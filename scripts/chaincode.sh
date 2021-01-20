@@ -173,8 +173,9 @@ __chaincode_sync() {
 __copy_user_chaincode() {
     local chaincode_absolute_path=$1
     local chaincode_internal_path="$(find ${FABKIT_CHAINCODE_PATH} -type d -iname $(basename $chaincode_absolute_path))"
+    local chaincode_user_path="$(find ${FABKIT_CHAINCODE_USER_PATH} -type d -iname $(basename $chaincode_absolute_path))"
 
-    if ! [[ -d $chaincode_absolute_path || -d $chaincode_internal_path ]]; then
+    if ! [[ -d $chaincode_absolute_path || -d $chaincode_internal_path || -d $chaincode_user_path ]]; then
         log "Path does not exist: ${chaincode_absolute_path}" error
         exit 1
     fi
@@ -185,6 +186,8 @@ __copy_user_chaincode() {
 
     if [[ ! "$chaincode_absolute_path" =~ ^/ && -d $chaincode_internal_path ]]; then
         chaincode_absolute_path=$chaincode_internal_path
+    elif [[ ! "$chaincode_absolute_path" =~ ^/ && -d $chaincode_user_path ]]; then
+        chaincode_absolute_path=$chaincode_user_path
     fi
 
     rsync -aur --exclude='vendor' --exclude='node_modules' ${chaincode_absolute_path} ${FABKIT_CHAINCODE_USER_PATH} || exit 1
@@ -413,12 +416,27 @@ chaincode_upgrade() {
 __chaincode_module_pack() {
     local chaincode_path=$1
 
-    # trick to allow chaincode packed as modules to work when deployed against remote environments
-    log "Copying chaincode files into vendor..." info
-    mkdir -p ./vendor/${chaincode_path} && rsync -ar --exclude='vendor' --exclude='META-INF' . ./vendor/${chaincode_path} || {
-        log >&2 "Error copying chaincode into vendor directory." error
-        exit 1
-    }
+    if [[ ! $(find ${chaincode_path} -type f -name 'main.go' -maxdepth 1 2>/dev/null) && -d "${chaincode_path}/cmd" ]]; then
+        # trick to allow chaincode packed as modules to work when deployed against remote environments
+        log "Copying chaincode files into vendor..." debug
+        chaincode_name=$(basename $chaincode_path)
+        rsync -ar ${chaincode_path}/ ${FABKIT_USER_PATH}/.${chaincode_name}.bk
+        rsync -r --ignore-existing --exclude='vendor' --exclude='*.mod' --exclude='*.sum' ${chaincode_path}/cmd/ ${chaincode_path}
+        rm -rf ${chaincode_path}/cmd
+        __module=$(cat ${chaincode_path}/go.mod | awk '($1 ~ /module/) {print $2}')
+        mkdir -p ${chaincode_path}/vendor/${module}
+        rsync -ar --exclude='vendor' --exclude='META-INF' ${chaincode_path}/ ${chaincode_path}/vendor/${module}
+    fi
+}
+
+__chaincode_module_restore() {
+    local chaincode_path=$1
+    local chaincode_name=$(basename $chaincode_path)
+
+    if [[ -d ${FABKIT_USER_PATH}/.${chaincode_name}.bk ]]; then
+        rm -r $chaincode_path
+        mv ${FABKIT_USER_PATH}/.${chaincode_name}.bk $chaincode_path
+    fi
 }
 
 __set_chaincode_module_main() {
@@ -428,7 +446,7 @@ __set_chaincode_module_main() {
     __init_go_mod install $__chaincode_path
     # Golang: workaround for chaincode written as modules
     # make the install to work when main files are not in the main directory but in cmd
-    if [[ ! $(find ${__chaincode_path} -type f -name '*.go' -maxdepth 1 2>/dev/null) && -d "${__chaincode_path}/cmd" ]]; then
+    if [[ ! $(find ${__chaincode_path} -type f -name 'main.go' -maxdepth 1 2>/dev/null) && -d "${__chaincode_path}/cmd" ]]; then
         __chaincode_path+="/cmd"
     fi
 
@@ -461,8 +479,9 @@ chaincode_zip() {
         __chaincode_module_pack $chaincode_path
     fi
 
+    local chaincode_name=$(basename $chaincode_path)
     local timestamp=$(date +%Y-%m-%d-%H-%M-%S)
-    local filename="$(basename $chaincode_path)_${timestamp}.zip"
+    local filename="${chaincode_name}_${timestamp}.zip"
 
     if [ ! -d "${FABKIT_DIST_USER_PATH}" ]; then
         mkdir -p ${FABKIT_DIST_USER_PATH}
@@ -470,10 +489,17 @@ chaincode_zip() {
 
     log "Zipping chaincode $chaincode_name from path ${chaincode_path} " info
 
-    zip -rqj ${FABKIT_DIST_USER_PATH}/${filename} $chaincode_path/** || {
+    cd $chaincode_path && zip -rq ${FABKIT_DIST_USER_PATH}/${filename} . || {
         log >&2 "Error creating chaincode archive." error
+        if [[ "$chaincode_language" == "golang" ]]; then
+            __chaincode_module_restore
+        fi
         exit 1
     }
+
+    if [[ "$chaincode_language" == "golang" ]]; then
+        __chaincode_module_restore
+    fi
 
     log "Chaincode archive created in: ${FABKIT_DIST_USER_PATH}/${filename}" success
 }
@@ -515,6 +541,7 @@ chaincode_pack() {
         __chaincode_module_pack $chaincode_path
     fi
 
+    local chaincode_name=$(basename $chaincode_path)
     local timestamp=$(date +%Y-%m-%d-%H-%M-%S)
     local filename="${chaincode_name}@${chaincode_version}_${timestamp}.cc"
 
@@ -531,6 +558,11 @@ chaincode_pack() {
     fi
 
     __exec_command "${cmd}"
+
+    if [[ "$chaincode_language" == "golang" && -d ${FABKIT_USER_PATH}/.${chaincode_name}.bk ]]; then
+        rm -r $chaincode_path
+        mv ${FABKIT_USER_PATH}/.${chaincode_name}.bk $chaincode_path
+    fi
 
     log "Chaincode package created in: ${FABKIT_DIST_USER_PATH}/${filename}" success
 }

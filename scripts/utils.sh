@@ -91,6 +91,7 @@ __exec_command() {
     log "$message" debug
     echo
 
+    # TODO: Return error and let the caller to handle it
     eval "$message || exit 1"
 }
 
