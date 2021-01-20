@@ -326,13 +326,13 @@ chaincode_install() {
     __set_chaincode_absolute_path $chaincode_relative_path chaincode_path
     __get_chaincode_language $chaincode_path chaincode_language
 
+    __rename_chaincode_path_to_name $chaincode_path $chaincode_name result
+    chaincode_path=$result
+
     if [ "${chaincode_language}" == "golang" ]; then
         __set_chaincode_module_main $chaincode_path result
         chaincode_path=$result
     fi
-
-    __rename_chaincode_path_to_name $chaincode_path $chaincode_name result
-    chaincode_path=$result
 
     __set_chaincode_remote_path $chaincode_path $chaincode_language chaincode_remote_path
 
@@ -681,13 +681,13 @@ lc_chaincode_package() {
     __set_chaincode_absolute_path $chaincode_relative_path chaincode_path
     __get_chaincode_language $chaincode_path chaincode_language
 
+    __rename_chaincode_path_to_name $chaincode_path $chaincode_name result
+    chaincode_path=$result
+
     if [ "${chaincode_language}" == "golang" ]; then
         __set_chaincode_module_main $chaincode_path result
         chaincode_path=$result
     fi
-
-    __rename_chaincode_path_to_name $chaincode_path $chaincode_name result
-    chaincode_path=$result
 
     __set_chaincode_remote_path $chaincode_path $chaincode_language chaincode_remote_path
 
