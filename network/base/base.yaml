@@ -1,4 +1,4 @@
-version: '2'
+version: '2.4'
 
 # good samples here: https://github.com/yeasy/docker-compose-files/blob/master/hyperledger_fabric
 
