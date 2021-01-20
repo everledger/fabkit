@@ -223,6 +223,10 @@ __set_chaincode_remote_path() {
             exit 1
             ;;
         esac
+
+        if [[ ! $(find ${__chaincode_relative_path} -type f -name '*.go' -maxdepth 1 2>/dev/null) && -d "${__chaincode_relative_path}/cmd" ]]; then
+            __chaincode_remote_path+="/cmd"
+        fi
     # TODO: complete for each supported chaincode language
     else
         local __chaincode_remote_path="${FABKIT_CHAINCODE_REMOTE_PATH}/${__chaincode_name}"
@@ -239,7 +243,10 @@ __rename_chaincode_path_to_name() {
     local __result=$3
     local __output_path="${__chaincode_path%/chaincodes/*}/chaincodes/${__chaincode_name}"
 
-    mv $__chaincode_path $__output_path
+    if [[ "$__chaincode_path" != "$__output_path" ]]; then
+        rm -rf $__output_path 2>/dev/null
+        mv $__chaincode_path $__output_path
+    fi
 
     eval $__result="'$__output_path'"
 }
@@ -330,9 +337,10 @@ chaincode_install() {
     chaincode_path=$result
 
     if [ "${chaincode_language}" == "golang" ]; then
-        __set_chaincode_module_main $chaincode_path result
-        chaincode_path=$result
+        __init_go_mod install $chaincode_path
     fi
+
+    __chaincode_module_pack $chaincode_path
 
     __set_chaincode_remote_path $chaincode_path $chaincode_language chaincode_remote_path
 
@@ -423,7 +431,7 @@ __chaincode_module_pack() {
         rsync -ar ${chaincode_path}/ ${FABKIT_USER_PATH}/.${chaincode_name}.bk
         rsync -r --ignore-existing --exclude='vendor' --exclude='*.mod' --exclude='*.sum' ${chaincode_path}/cmd/ ${chaincode_path}
         rm -rf ${chaincode_path}/cmd
-        __module=$(cat ${chaincode_path}/go.mod | awk '($1 ~ /module/) {print $2}')
+        module=$(cat ${chaincode_path}/go.mod | awk '($1 ~ /module/) {print $2}')
         mkdir -p ${chaincode_path}/vendor/${module}
         rsync -ar --exclude='vendor' --exclude='META-INF' ${chaincode_path}/ ${chaincode_path}/vendor/${module}
     fi
@@ -685,9 +693,10 @@ lc_chaincode_package() {
     chaincode_path=$result
 
     if [ "${chaincode_language}" == "golang" ]; then
-        __set_chaincode_module_main $chaincode_path result
-        chaincode_path=$result
+        __init_go_mod install $chaincode_path
     fi
+
+    __chaincode_module_pack $chaincode_path
 
     __set_chaincode_remote_path $chaincode_path $chaincode_language chaincode_remote_path
 
