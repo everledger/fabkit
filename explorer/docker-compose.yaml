@@ -1,11 +1,14 @@
-# SPDX-License-Identifier: Apache-2.0
-version: '2.1'
+version: '2.4'
 
 networks:
   default:
     external:
       # This value should be the same for fabric network and client
       name: ${FABKIT_DOCKER_NETWORK}
+
+volumes:
+  pgdata:
+  walletstore:
 
 services:
   explorerdb.mynetwork.com:
@@ -22,7 +25,7 @@ services:
       timeout: 10s
       retries: 5
     volumes:
-      - ../data/explorerdb:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
 
   explorer.mynetwork.com:
     image: hyperledger/explorer:${FABKIT_EXPLORER_VERSION}
@@ -43,7 +46,7 @@ services:
       - ./config.json:/opt/explorer/app/platform/fabric/config.json
       - ./connection-profile:/opt/explorer/app/platform/fabric/connection-profile
       - ./../network/cryptos:/tmp/crypto
-      - ../data/walletstore:/opt/wallet
+      - walletstore:/opt/wallet
     ports:
       - 8090:8080
     depends_on:

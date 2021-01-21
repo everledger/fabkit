@@ -1,10 +1,15 @@
-version: '2'
+version: '2.4'
 
 networks:
   default:
     external:
       # This value should be the same for fabric network and client
       name: ${FABKIT_DOCKER_NETWORK}
+
+volumes:
+  orderer.example.com:
+  peer0.org1.example.com:
+  couchdb.peer0.org1.example.com:
 
 services:
   orderer.example.com:
@@ -19,7 +24,7 @@ services:
       - ./network/channels/orderer-system-channel/genesis_block.pb:/var/hyperledger/orderer/orderer.genesis.block
       - ./network/cryptos/ordererOrganizations/example.com/orderers/orderer.example.com/msp:/var/hyperledger/orderer/msp
       - ./network/cryptos/ordererOrganizations/example.com/orderers/orderer.example.com/tls/:/var/hyperledger/orderer/tls
-      - ./data/orderer.example.com:/var/hyperledger/production/orderer
+      - orderer.example.com:/var/hyperledger/production/orderer
     ports:
       - 7050:7050
 
@@ -67,12 +72,10 @@ services:
       - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=
       - GODEBUG=netdns=go
     volumes:
-      # trick: for security reasons some services such as Bitbucket Pipeline will not allow to mount volumes
-      # which are sitting outside the cloned/project directory
-      - ./docker.sock/:/host/var/run/
+      - /var/run/docker.sock:/host/var/run/docker.sock
       - ./network/cryptos/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp:/etc/hyperledger/fabric/msp
       - ./network/cryptos/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls:/etc/hyperledger/fabric/tls
-      - ./data/peer0.org1.example.com:/var/hyperledger/production
+      - peer0.org1.example.com:/var/hyperledger/production
     ports:
       - 7051:7051
     depends_on:
@@ -88,9 +91,8 @@ services:
     environment:
       - COUCHDB_USER=
       - COUCHDB_PASSWORD=
-    # TODO: Inspect why, while using VBox and boot2docker, the couchdb will exit if this volume is mounted (no logs)
     volumes:
-      - ./data/couchdb.peer0.org1.example.com:/opt/couchdb/data
+      - couchdb.peer0.org1.example.com:/opt/couchdb/data
     ports:
       - 5984:5984
 
@@ -110,13 +112,11 @@ services:
       - CORE_PEER_TLS_ROOTCERT_FILE=${FABKIT_PEER_REMOTE_BASEPATH}/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
       - CORE_PEER_MSPCONFIGPATH=${FABKIT_PEER_REMOTE_BASEPATH}/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
     volumes:
-      # trick: for security reasons some services such as Bitbucket Pipeline will not allow to mount volumes
-      # which are sitting outside the cloned/project directory
-      - ./docker.sock/:/host/var/run/
-      - ${FABKIT_CHAINCODE_PATH}:${FABKIT_CHAINCODE_REMOTE_PATH}
+      - /var/run/docker.sock:/host/var/run/docker.sock
+      - ${FABKIT_CHAINCODE_USER_PATH}:${FABKIT_CHAINCODE_REMOTE_PATH}
       - ./network/cryptos:${FABKIT_PEER_REMOTE_BASEPATH}/crypto
       - ./network/channels:${FABKIT_PEER_REMOTE_BASEPATH}/channels
-      - ./dist:${FABKIT_PEER_REMOTE_BASEPATH}/dist
+      - ${FABKIT_DIST_USER_PATH}:${FABKIT_PEER_REMOTE_BASEPATH}/dist
     depends_on:
       - ca.org1.example.com
       - orderer.example.com

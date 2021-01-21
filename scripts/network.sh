@@ -48,11 +48,8 @@ __docker_third_party_images_pull() {
 }
 
 start_network() {
-    # Note: this trick may allow the network to work also in strict-security platform
-    rm -rf ./docker.sock 2>/dev/null && ln -sf /var/run ./docker.sock
-
-    if [ -d "$FABKIT_DATA_PATH" ] && [ "${FABKIT_RESET}" == "false" ]; then
-        log "Found data directory: ${FABKIT_DATA_PATH}" warning
+    if [[ $(docker volume ls | grep ${FABKIT_DOCKER_NETWORK}) && ! ${FABKIT_RESET} ]]; then
+        log "Found volumes" warning
         read -p "Do you wish to restart the network and reuse this data? [yes/no=default] " yn
         case $yn in
         [Yy]*)
@@ -66,8 +63,8 @@ start_network() {
     stop_network
 
     if [ -z "${FABKIT_QUICK_RUN}" ]; then
-        chaincode_build $FABKIT_CHAINCODE_RELATIVE_PATH
-        chaincode_test $FABKIT_CHAINCODE_RELATIVE_PATH
+        chaincode_build $FABKIT_CHAINCODE_NAME
+        chaincode_test $FABKIT_CHAINCODE_NAME
     fi
 
     log "==============" info
@@ -75,7 +72,7 @@ start_network() {
     log "==============" info
     echo
 
-    cd ${FABKIT_ROOT}
+    __chaincode_sync
 
     local command="docker-compose -f ${FABKIT_ROOT}/docker-compose.yaml up -d || exit 1;"
 
@@ -116,8 +113,8 @@ restart_network() {
     log "================" info
     echo
 
-    if [ ! -d "${FABKIT_DATA_PATH}" ]; then
-        log "Data directory not found in: ${FABKIT_DATA_PATH}. Run a normal start." error
+    if [[ ! $(docker volume ls | grep ${FABKIT_DOCKER_NETWORK}) ]]; then
+        log "No volumes from a previous run found. Run a normal start." error
         exit 1
     fi
 
@@ -158,16 +155,18 @@ stop_network() {
     docker system prune -f 2>/dev/null
 
     if [ "${FABKIT_RESET}" == "true" ]; then
-        __delete_path $FABKIT_DATA_PATH
+        docker volume prune -f $(docker volume ls | awk '($2 ~ /${FABKIT_DOCKER_NETWORK}/) {print $2}') 2>/dev/null
         return 0
     fi
 
-    if [ -d "${FABKIT_DATA_PATH}" ]; then
+    if [[ $(docker volume ls | grep ${FABKIT_DOCKER_NETWORK}) ]]; then
         log "!!!!! ATTENTION !!!!!" error
-        log "Found data directory: ${FABKIT_DATA_PATH}" error
+        log "Found volumes" error
         read -p "Do you wish to remove this data? [yes/no=default] " yn
         case $yn in
-        [Yy]*) __delete_path $FABKIT_DATA_PATH ;;
+        [Yy]*)
+            docker volume prune -f $(docker volume ls | awk '($2 ~ /${FABKIT_DOCKER_NETWORK}/) {print $2}') 2>/dev/null
+            ;;
         *) return 0 ;;
         esac
     fi
@@ -183,11 +182,12 @@ initialize_network() {
     for org in $(seq 1 ${FABKIT_ORGS}); do
         join_channel $FABKIT_CHANNEL_NAME $org 0
     done
-    #TODO: Create txns for all orgs and place below command in above
+    
+    #TODO: [FND-101] Update channel with anchor peers for all orgs
     update_channel $FABKIT_CHANNEL_NAME $FABKIT_ORG_MSP 1 0
 
     if [[ "${FABKIT_FABRIC_VERSION}" =~ 2.* ]]; then
-        lc_chaincode_package $FABKIT_CHAINCODE_NAME $FABKIT_CHAINCODE_VERSION $FABKIT_CHAINCODE_RELATIVE_PATH 1 0
+        lc_chaincode_package $FABKIT_CHAINCODE_NAME $FABKIT_CHAINCODE_VERSION $FABKIT_CHAINCODE_NAME 1 0
 
         for org in $(seq 1 ${FABKIT_ORGS}); do
             lc_chaincode_install $FABKIT_CHAINCODE_NAME $FABKIT_CHAINCODE_VERSION $org 0
@@ -197,9 +197,9 @@ initialize_network() {
         lc_chaincode_commit $FABKIT_CHAINCODE_NAME $FABKIT_CHAINCODE_VERSION $FABKIT_CHANNEL_NAME 1 1 0
     else
         for org in $(seq 1 ${FABKIT_ORGS}); do
-            chaincode_install $FABKIT_CHAINCODE_NAME $FABKIT_CHAINCODE_VERSION $FABKIT_CHAINCODE_RELATIVE_PATH $org 0
+            chaincode_install $FABKIT_CHAINCODE_NAME $FABKIT_CHAINCODE_VERSION $FABKIT_CHAINCODE_NAME $org 0
         done
-        chaincode_instantiate $FABKIT_CHAINCODE_NAME $FABKIT_CHAINCODE_VERSION $FABKIT_CHAINCODE_RELATIVE_PATH $FABKIT_CHANNEL_NAME 1 0
+        chaincode_instantiate $FABKIT_CHAINCODE_NAME $FABKIT_CHAINCODE_VERSION $FABKIT_CHANNEL_NAME 1 0
     fi
 }
 
@@ -432,7 +432,7 @@ generate_cryptos() {
 
     if [ "${FABKIT_RESET}" == "true" ]; then
         __delete_path ${cryptos_path}
-        __delete_path ${FABKIT_CRYPTOS_SHARED_PATH}
+        __delete_path ${FABKIT_CRYPTOS_USER_PATH}
     fi
 
     if [ -d "${cryptos_path}" ]; then
@@ -460,16 +460,16 @@ generate_cryptos() {
     fi
 
     # copy cryptos into a shared folder available for client applications (sdk)
-    if [ -d "${FABKIT_CRYPTOS_SHARED_PATH}" ]; then
-        log "Shared crypto-config directory ${FABKIT_CRYPTOS_SHARED_PATH} already exists" warning
+    if [ -d "${FABKIT_CRYPTOS_USER_PATH}" ]; then
+        log "Shared crypto-config directory ${FABKIT_CRYPTOS_USER_PATH} already exists" warning
         read -p "Do you want to overwrite this shared data with your local crypto-config directory? [yes/no=default] " yn
         case $yn in
         [Yy]*)
-            __delete_path ${FABKIT_CRYPTOS_SHARED_PATH}
+            __delete_path ${FABKIT_CRYPTOS_USER_PATH}
             ;;
         *) return 0 ;;
         esac
     fi
-    mkdir -p ${FABKIT_CRYPTOS_SHARED_PATH}
-    cp -r ${cryptos_path}/** ${FABKIT_CRYPTOS_SHARED_PATH}
+    mkdir -p ${FABKIT_CRYPTOS_USER_PATH}
+    cp -r ${cryptos_path}/** ${FABKIT_CRYPTOS_USER_PATH}
 }

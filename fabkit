@@ -9,9 +9,7 @@ readonly ONE_ORG="OneOrgOrdererGenesis"
 readonly TWO_ORGS="TwoOrgsOrdererGenesis"
 readonly THREE_ORGS="ThreeOrgsOrdererGenesis"
 readonly RAFT_ONE_ORG="OneOrgOrdererEtcdRaft"
-readonly START_TIME="$(date -u +%s)"
-
-unset PEER_EXEC
+readonly FABKIT_FABRIC_AVAILABLE_VERSIONS=("2.3.0" "2.3" "2.2.1" "2.2" "2.2.0" "2.1.0" "2.1" "2.0.1" "2.0.0" "2.0.0-alpha" "1.4" "1.4.9" "1.4.8" "1.4.7" "1.4.6" "1.4.5" "1.4.4" "1.4.3" "1.4.2" "1.4.1" "1.4.0" "1.3.0" "1.2.1" "1.2.0" "1.1.0")
 
 __yq() {
     docker run --rm -i -v "${PWD}":/workdir ${FABKIT_YQ_DOCKER_IMAGE} "$@"
@@ -83,6 +81,7 @@ __set_params() {
 readonly func="$1"
 shift
 
+readonly START_TIME="$(date -u +%s)"
 title
 if [ "$func" == "network" ]; then
     param="$1"
@@ -128,6 +127,7 @@ elif [ "$func" == "dep" ]; then
         help_dep
     fi
 elif [ "$func" == "chaincode" ]; then
+    __load_lastrun
     param="$1"
     shift
     if [ "$param" == "lifecycle" ]; then
@@ -178,6 +178,7 @@ elif [ "$func" == "chaincode" ]; then
         __check_docker_daemon
         chaincode_pack "$@"
     elif [ "$param" == "zip" ]; then
+        __chaincode_sync
         chaincode_zip "$@"
     elif [ "$param" == "query" ]; then
         __check_deps deploy
@@ -257,6 +258,5 @@ elif [ "$func" == "utils" ]; then
 else
     help
 fi
-
-END_TIME="$(date -u +%s)"
-__timer ${START_TIME} ${END_TIME}
+readonly END_TIME="$(date -u +%s)"
+__timer $START_TIME $END_TIME

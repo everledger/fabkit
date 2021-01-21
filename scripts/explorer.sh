@@ -42,4 +42,5 @@ stop_explorer() {
     echo
 
     docker-compose -f ${FABKIT_EXPLORER_PATH}/docker-compose.yaml down || exit 1
+    docker volume prune -f $(docker volume ls | awk '($2 ~ /explorer/) {print $2}') 2>/dev/null
 }
