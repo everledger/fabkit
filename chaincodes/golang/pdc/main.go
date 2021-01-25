@@ -4,41 +4,26 @@ Copyright IBM Corp. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-// v1.x
-// fabkit chaincode install pdc 1.0 golang/pdc 1 0
-// fabkit chaincode install pdc 1.0 golang/pdc 2 0
-// fabkit chaincode install pdc 1.0 golang/pdc 3 0
-// fabkit chaincode instantiate pdc 1.0 golang/pdc mychannel 1 0 --collections-config ${FABKIT_CHAINCODE_REMOTE_PATH}/golang/pdc/collections_config.json -P 'OR("Org1MSP.member","Org2MSP.member","Org3MSP.member")'
-// v2.x
-// fabkit chaincode lifecycle deploy pdc 1.0 golang/pdc mychannel 1 1 0 --collections-config ${FABKIT_CHAINCODE_REMOTE_PATH}/golang/pdc/collections_config.json
 // ====CHAINCODE EXECUTION SAMPLES (CLI) ==================
 
 // ==== Invoke marbles, pass private data as base64 encoded bytes in transient map ====
 //
 // export MARBLE=$(echo -n "{\"name\":\"marble1\",\"color\":\"blue\",\"size\":35,\"owner\":\"tom\",\"price\":99}" | base64 | tr -d \\n)
-// fabkit chaincode invoke mychannel pdc 1 0 '{"Args":["initMarble"]}' --transient '{"marble":"$MARBLE"}'
 // peer chaincode invoke -C mychannel -n marblesp -c '{"Args":["initMarble"]}' --transient "{\"marble\":\"$MARBLE\"}"
 //
 // export MARBLE=$(echo -n "{\"name\":\"marble2\",\"color\":\"red\",\"size\":50,\"owner\":\"tom\",\"price\":102}" | base64 | tr -d \\n)
-// fabkit chaincode invoke mychannel pdc 1 0 '{"Args":["initMarble"]}' --transient '{"marble":"$MARBLE"}'
 // peer chaincode invoke -C mychannel -n marblesp -c '{"Args":["initMarble"]}' --transient "{\"marble\":\"$MARBLE\"}"
 //
 // export MARBLE=$(echo -n "{\"name\":\"marble3\",\"color\":\"blue\",\"size\":70,\"owner\":\"tom\",\"price\":103}" | base64 | tr -d \\n)
-// fabkit chaincode invoke mychannel pdc 1 0 '{"Args":["initMarble"]}' --transient '{"marble":"$MARBLE"}'
 // peer chaincode invoke -C mychannel -n marblesp -c '{"Args":["initMarble"]}' --transient "{\"marble\":\"$MARBLE\"}"
 //
 // export MARBLE_OWNER=$(echo -n "{\"name\":\"marble2\",\"owner\":\"jerry\"}" | base64 | tr -d \\n)
-// fabkit chaincode invoke mychannel pdc 1 0 '{"Args":["transferMarble"]}' --transient '{"marble_owner":"$MARBLE_OWNER"}'
 // peer chaincode invoke -C mychannel -n marblesp -c '{"Args":["transferMarble"]}' --transient "{\"marble_owner\":\"$MARBLE_OWNER\"}"
 //
 // export MARBLE_DELETE=$(echo -n "{\"name\":\"marble1\"}" | base64 | tr -d \\n)
-// fabkit chaincode invoke mychannel pdc 1 0 '{"Args":["delete"]}' --transient '{"marble_delete":"$MARBLE_DELETE"}'
 // peer chaincode invoke -C mychannel -n marblesp -c '{"Args":["delete"]}' --transient "{\"marble_delete\":\"$MARBLE_DELETE\"}"
 
 // ==== Query marbles, since queries are not recorded on chain we don't need to hide private data in transient map ====
-// fabkit chaincode query mychannel pdc 1 0 '{"Args":["readMarble","marble1"]}'
-// fabkit chaincode query mychannel pdc 1 0 '{"Args":["readMarblePrivateDetails","marble1"]}'
-// fabkit chaincode query mychannel pdc 1 0 '{"Args":["getMarblesByRange","marble1","marble4"]}'
 // peer chaincode query -C mychannel -n marblesp -c '{"Args":["readMarble","marble1"]}'
 // peer chaincode query -C mychannel -n marblesp -c '{"Args":["readMarblePrivateDetails","marble1"]}'
 // peer chaincode query -C mychannel -n marblesp -c '{"Args":["getMarblesByRange","marble1","marble4"]}'
@@ -46,10 +31,6 @@ SPDX-License-Identifier: Apache-2.0
 // Rich Query (Only supported if CouchDB is used as state database):
 //   peer chaincode query -C mychannel -n marblesp -c '{"Args":["queryMarblesByOwner","tom"]}'
 //   peer chaincode query -C mychannel -n marblesp -c '{"Args":["queryMarbles","{\"selector\":{\"owner\":\"tom\"}}"]}'
-// fabkit chaincode query mychannel pdc 1 0 '{"Args":["queryMarblesByOwner","tom"]}'
-// fabkit chaincode query mychannel pdc 1 0 '{"Args":["queryMarbles","{\"selector\":{\"owner\":\"tom\"}}"]}'
-// fabkit chaincode query mychannel pdc 1 0 '{"Args":["queryMarbles","{\"selector\":{\"docType\":\"marble\",\"owner\":\"tom\"}, \"use_index\":[\"_design/indexOwnerDoc\", \"indexOwner\"]}"]}'
-// fabkit chaincode query mychannel pdc 1 0 '{"Args":["queryMarbles","{\"selector\":{\"docType\":{\"$eq\":\"marble\"},\"owner\":{\"$eq\":\"tom\"},\"size\":{\"$gt\":0}},\"fields\":[\"docType\",\"owner\",\"size\"],\"sort\":[{\"size\":\"desc\"}],\"use_index\":\"_design/indexSizeSortDoc\"}"]}'
 
 // INDEXES TO SUPPORT COUCHDB RICH QUERIES
 //
