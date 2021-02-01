@@ -6,31 +6,45 @@
 - [Docker](https://www.docker.com/get-started) [>= 18.05]
 - [Docker-compose](https://www.docker.com/get-started) [>= 1.24]
 
-## Pre-install
+## Install
 
 In order to run commands with ease, we recommend to add `fabkit` as an alias in your default shell profile.
 
-You can perform this step manually, as follows:
-
 ```bash
-# for bash users
-echo "alias fabkit=./fabkit" >> ~/.bashrc
-source ~/.bashrc
-
-# for zsh users
-echo "alias fabkit=./fabkit" >> ~/.zshrc
-source ~/.bashrc
+curl -sL https://bitbucket..../fabkit/releases/../installer.sh | bash
 ```
 
-or, if you do not know what shell you are using, you can let this script doing it for you:
+or, if you prefer to perform this step manually, check below what lines you will need to add to your shell profile `.profile`, `.bashrc`, `.zshrc` or similar.
+
+For Linux and Mac users:
 
 ```bash
-./scripts/runner.sh init
+# Fabkit stuff
+export FABKIT_ROOT="${HOME}/.fabkit"
+alias fabkit=${FABKIT_ROOT}/fabkit
+alias fk="fabkit"
 ```
+
+For Windows and other OS (or if you simply want to run Fabkit in a docker container):
+
+```bash
+# Fabkit stuff (with docker!)
+export FABKIT_ROOT="${HOME}/.fabkit"
+alias fabkit='docker run -it --rm --name fabkit -e "FABKIT_ROOT=/home/fabkit" -e "FABKIT_HOST_ROOT=$FABKIT_ROOT" -v /var/run/docker.sock:/var/run/docker.sock -v "$FABKIT_ROOT":/home/fabkit -v "$FABKIT_ROOT":/root/.fabkit everledgerio/fabkit:latest ./fabkit "$@"'
+alias fk='fabkit'
+```
+
+Finally source these changes with: `source full/path/of/your/shell/profile`
 
 Note: **this command needs to be executed only once (however, there will be no harm if accidentally you run it again 😉 )**
 
-## Install
+To purge `fabkit` from your system you can run anytime this simply script:
+
+```bash
+curl -sL https://bitbucket..../fabkit/releases/../uninstaller.sh | bash
+```
+
+## Getting started
 
 Before starting the network, let's first install all the required dependencies:
 
