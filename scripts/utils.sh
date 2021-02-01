@@ -123,8 +123,8 @@ __validate_params() {
 }
 
 __set_lastrun() {
-    if [ ! -f ${FABKIT_USER_PATH} ]; then
-        mkdir -p ${FABKIT_USER_PATH}
+    if [ ! -f ${FABKIT_ROOT} ]; then
+        mkdir -p ${FABKIT_ROOT}
     fi
 
     unset FABKIT_RESET
@@ -132,17 +132,17 @@ __set_lastrun() {
     (
         set -o posix
         set | grep "FABKIT_"
-    ) >${FABKIT_USER_PATH}/.lastrun
+    ) >${FABKIT_ROOT}/.lastrun
 
     __load_lastrun
 }
 
 __load_lastrun() {
-    source ${FABKIT_USER_PATH}/.lastrun 2>/dev/null
+    source ${FABKIT_ROOT}/.lastrun 2>/dev/null
 }
 
 __clean_user_path() {
-    __delete_path ${FABKIT_USER_PATH}/.lastrun
+    __delete_path ${FABKIT_ROOT}/.lastrun
 }
 
 log() {

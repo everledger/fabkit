@@ -12,7 +12,7 @@ _Note: `options` is an optional parameter. For more information about all the av
 - [v1.x Chaincode Commands](https://hyperledger-fabric.readthedocs.io/en/latest/commands/peerchaincode.html)
 - [v2.x Chaincode Commands](https://hyperledger-fabric.readthedocs.io/en/latest/commands/peerlifecycle.html)
 
-While inserting the `chaincode_path` in any of these commands, Fabkit allows the user to simply type in the basename of the directory when this path is under `$FABKIT_CHAINCODE_PATH` or `$FABKIT_CHAINCODE_USER_PATH`. For example, if you want to use the `mynodecc` chaincode, which is under `${FABKIT_CHAINCODE_PATH}/node/mynodecc`, then simply type `mynodecc`, Fabkit will do the rest!
+While inserting the `chaincode_path` in any of these commands, Fabkit allows the user to simply type in the basename of the directory when this path is under `$FABKIT_CHAINCODE_PATH`. For example, if you want to use the `mynodecc` chaincode, which is under `${FABKIT_CHAINCODE_PATH}/node/mynodecc`, then simply type `mynodecc`, Fabkit will do the rest!
 
 ## v1.x
 

@@ -29,7 +29,7 @@ start_explorer() {
         sed -i'.bak' -e 's/grpcs/grpc/g' -e 's/https/http/g' ${config}.json && rm ${config}.json.bak
     fi
 
-    docker-compose -f ${FABKIT_EXPLORER_PATH}/docker-compose.yaml up --force-recreate -d || exit 1
+    docker-compose --env-file ${FABKIT_ROOT}/.env -f ${FABKIT_EXPLORER_PATH}/docker-compose.yaml up --force-recreate -d || exit 1
 
     log "Blockchain Explorer default user is exploreradmin/exploreradminpw - http://localhost:8090" warning
     log "Grafana default user is admin/admin - http://localhost:3000" warning
@@ -41,6 +41,6 @@ stop_explorer() {
     log "==============" info
     echo
 
-    docker-compose -f ${FABKIT_EXPLORER_PATH}/docker-compose.yaml down || exit 1
+    docker-compose --env-file ${FABKIT_ROOT}/.env -f ${FABKIT_EXPLORER_PATH}/docker-compose.yaml down || exit 1
     docker volume prune -f $(docker volume ls | awk '($2 ~ /explorer/) {print $2}') 2>/dev/null
 }

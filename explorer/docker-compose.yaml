@@ -7,8 +7,10 @@ networks:
       name: ${FABKIT_DOCKER_NETWORK}
 
 volumes:
-  pgdata:
+  explorerdb:
   walletstore:
+  prometheus:
+  grafana:
 
 services:
   explorerdb.mynetwork.com:
@@ -25,7 +27,7 @@ services:
       timeout: 10s
       retries: 5
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - explorerdb:/var/lib/postgresql/data
 
   explorer.mynetwork.com:
     image: hyperledger/explorer:${FABKIT_EXPLORER_VERSION}
@@ -58,7 +60,7 @@ services:
     image: prom/prometheus:${FABKIT_PROMETHEUS_VERSION}
     volumes:
       - ./artifacts/operations/balance-transfer/prometheus.yml:/etc/prometheus/prometheus.yml
-      - ../data/prometheus:/prometheus
+      - prometheus:/prometheus
     ports:
       - 9090:9090
 
@@ -68,6 +70,6 @@ services:
     volumes:
       - ./artifacts/operations/balance-transfer/balance-transfer-grafana-dashboard.json:/var/lib/grafana/dashboards/mydashboard.json
       - ./artifacts/operations/grafana_conf/provisioning:/etc/grafana/provisioning
-      - ../data/grafana:/var/lib/grafana
+      - grafana:/var/lib/grafana
     ports:
       - 3000:3000

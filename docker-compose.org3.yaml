@@ -19,7 +19,7 @@ services:
     environment:
       - FABRIC_CA_SERVER_CA_NAME=ca.org3.example.com
     volumes:
-      - ./network/cryptos/peerOrganizations/org3.example.com/ca/:/etc/hyperledger/fabric-ca-server-config
+      - $FABKIT_HOST_ROOT/network/cryptos/peerOrganizations/org3.example.com/ca/:/etc/hyperledger/fabric-ca-server-config
     ports:
       - 9054:7054
 
@@ -53,8 +53,8 @@ services:
       - GODEBUG=netdns=go
     volumes:
       - /var/run/docker.sock:/host/var/run/docker.sock
-      - ./network/cryptos/peerOrganizations/org3.example.com/peers/peer0.org3.example.com/msp:/etc/hyperledger/fabric/msp
-      - ./network/cryptos/peerOrganizations/org3.example.com/peers/peer0.org3.example.com/tls:/etc/hyperledger/fabric/tls
+      - $FABKIT_HOST_ROOT/network/cryptos/peerOrganizations/org3.example.com/peers/peer0.org3.example.com/msp:/etc/hyperledger/fabric/msp
+      - $FABKIT_HOST_ROOT/network/cryptos/peerOrganizations/org3.example.com/peers/peer0.org3.example.com/tls:/etc/hyperledger/fabric/tls
       - peer0.org3.example.com:/var/hyperledger/production
     ports:
       - 9051:9051

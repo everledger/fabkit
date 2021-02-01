@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-source ${PWD}/.env
-for f in ./scripts/*; do source $f; done
+source ${FABKIT_ROOT}/.env
+for f in ${FABKIT_ROOT}/scripts/*; do source $f; done
 
 export GO111MODULE=on
 
@@ -10,14 +10,6 @@ readonly TWO_ORGS="TwoOrgsOrdererGenesis"
 readonly THREE_ORGS="ThreeOrgsOrdererGenesis"
 readonly RAFT_ONE_ORG="OneOrgOrdererEtcdRaft"
 readonly FABKIT_FABRIC_AVAILABLE_VERSIONS=("2.3.0" "2.3" "2.2.1" "2.2" "2.2.0" "2.1.0" "2.1" "2.0.1" "2.0.0" "2.0.0-alpha" "1.4" "1.4.9" "1.4.8" "1.4.7" "1.4.6" "1.4.5" "1.4.4" "1.4.3" "1.4.2" "1.4.1" "1.4.0" "1.3.0" "1.2.1" "1.2.0" "1.1.0")
-
-__yq() {
-    docker run --rm -i -v "${PWD}":/workdir ${FABKIT_YQ_DOCKER_IMAGE} "$@"
-}
-
-__jq() {
-    docker run --rm -i -v "${PWD}":/workdir ${FABKIT_JQ_DOCKER_IMAGE} "$@"
-}
 
 __log_setup() {
     log "===========" info
@@ -37,6 +29,14 @@ __log_setup() {
     log "Debug mode: $(log ${FABKIT_DEBUG:-false} warning)" info
     log "Fresh-start mode: $(log ${FABKIT_RESET:-false} warning)" info
     echo
+}
+
+__yq() {
+    (type -p yq &>/dev/null && yq "$@") || docker run --rm -i -v "${PWD}":/workdir ${FABKIT_YQ_DOCKER_IMAGE} "$@"
+}
+
+__jq() {
+    (type -p jq &>/dev/null && jq "$@") || docker run --rm -i -v "${PWD}":/workdir ${FABKIT_JQ_DOCKER_IMAGE} "$@"
 }
 
 __set_params() {

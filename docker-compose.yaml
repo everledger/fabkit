@@ -21,9 +21,9 @@ services:
       - GRPC_VERBOSITY=info
       - FABRIC_LOGGING_SPEC=info
     volumes:
-      - ./network/channels/orderer-system-channel/genesis_block.pb:/var/hyperledger/orderer/orderer.genesis.block
-      - ./network/cryptos/ordererOrganizations/example.com/orderers/orderer.example.com/msp:/var/hyperledger/orderer/msp
-      - ./network/cryptos/ordererOrganizations/example.com/orderers/orderer.example.com/tls/:/var/hyperledger/orderer/tls
+      - ${FABKIT_HOST_ROOT}/network/channels/orderer-system-channel/genesis_block.pb:/var/hyperledger/orderer/orderer.genesis.block
+      - ${FABKIT_HOST_ROOT}/network/cryptos/ordererOrganizations/example.com/orderers/orderer.example.com/msp:/var/hyperledger/orderer/msp
+      - ${FABKIT_HOST_ROOT}/network/cryptos/ordererOrganizations/example.com/orderers/orderer.example.com/tls/:/var/hyperledger/orderer/tls
       - orderer.example.com:/var/hyperledger/production/orderer
     ports:
       - 7050:7050
@@ -36,7 +36,7 @@ services:
     environment:
       - FABRIC_CA_SERVER_CA_NAME=ca.org1.example.com
     volumes:
-      - ./network/cryptos/peerOrganizations/org1.example.com/ca/:/etc/hyperledger/fabric-ca-server-config
+      - ${FABKIT_HOST_ROOT}/network/cryptos/peerOrganizations/org1.example.com/ca/:/etc/hyperledger/fabric-ca-server-config
     ports:
       - 7054:7054
 
@@ -73,8 +73,8 @@ services:
       - GODEBUG=netdns=go
     volumes:
       - /var/run/docker.sock:/host/var/run/docker.sock
-      - ./network/cryptos/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp:/etc/hyperledger/fabric/msp
-      - ./network/cryptos/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls:/etc/hyperledger/fabric/tls
+      - ${FABKIT_HOST_ROOT}/network/cryptos/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp:/etc/hyperledger/fabric/msp
+      - ${FABKIT_HOST_ROOT}/network/cryptos/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls:/etc/hyperledger/fabric/tls
       - peer0.org1.example.com:/var/hyperledger/production
     ports:
       - 7051:7051
@@ -113,10 +113,10 @@ services:
       - CORE_PEER_MSPCONFIGPATH=${FABKIT_PEER_REMOTE_BASEPATH}/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
     volumes:
       - /var/run/docker.sock:/host/var/run/docker.sock
-      - ${FABKIT_CHAINCODE_USER_PATH}:${FABKIT_CHAINCODE_REMOTE_PATH}
-      - ./network/cryptos:${FABKIT_PEER_REMOTE_BASEPATH}/crypto
-      - ./network/channels:${FABKIT_PEER_REMOTE_BASEPATH}/channels
-      - ${FABKIT_DIST_USER_PATH}:${FABKIT_PEER_REMOTE_BASEPATH}/dist
+      - ${FABKIT_HOST_ROOT}/chaincodes:${FABKIT_CHAINCODE_REMOTE_PATH}
+      - ${FABKIT_HOST_ROOT}/network/cryptos:${FABKIT_PEER_REMOTE_BASEPATH}/crypto
+      - ${FABKIT_HOST_ROOT}/network/channels:${FABKIT_PEER_REMOTE_BASEPATH}/channels
+      - ${FABKIT_HOST_ROOT}/dist:${FABKIT_PEER_REMOTE_BASEPATH}/dist
     depends_on:
       - ca.org1.example.com
       - orderer.example.com
