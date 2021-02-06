@@ -14,19 +14,19 @@ services:
   ca.org3.example.com:
     container_name: ca.org3.example.com
     extends:
-      file: network/base/base.yaml
+      file: ${FABKIT_NETWORK_PATH}/base/base.yaml
       service: ca-base
     environment:
       - FABRIC_CA_SERVER_CA_NAME=ca.org3.example.com
     volumes:
-      - $FABKIT_HOST_ROOT/network/cryptos/peerOrganizations/org3.example.com/ca/:/etc/hyperledger/fabric-ca-server-config
+      - ${FABKIT_HOST_ROOT}/network/cryptos/peerOrganizations/org3.example.com/ca/:/etc/hyperledger/fabric-ca-server-config
     ports:
       - 9054:7054
 
   peer0.org3.example.com:
     container_name: peer0.org3.example.com
     extends:
-      file: network/base/base.yaml
+      file: ${FABKIT_NETWORK_PATH}/base/base.yaml
       service: peer-base
     environment:
       # Change this value aligning with the defined docker network name
@@ -53,8 +53,8 @@ services:
       - GODEBUG=netdns=go
     volumes:
       - /var/run/docker.sock:/host/var/run/docker.sock
-      - $FABKIT_HOST_ROOT/network/cryptos/peerOrganizations/org3.example.com/peers/peer0.org3.example.com/msp:/etc/hyperledger/fabric/msp
-      - $FABKIT_HOST_ROOT/network/cryptos/peerOrganizations/org3.example.com/peers/peer0.org3.example.com/tls:/etc/hyperledger/fabric/tls
+      - ${FABKIT_HOST_ROOT}/network/cryptos/peerOrganizations/org3.example.com/peers/peer0.org3.example.com/msp:/etc/hyperledger/fabric/msp
+      - ${FABKIT_HOST_ROOT}/network/cryptos/peerOrganizations/org3.example.com/peers/peer0.org3.example.com/tls:/etc/hyperledger/fabric/tls
       - peer0.org3.example.com:/var/hyperledger/production
     ports:
       - 9051:9051
@@ -64,7 +64,7 @@ services:
   couchdb.peer0.org3.example.com:
     container_name: couchdb.peer0.org3.example.com
     extends:
-      file: network/base/base.yaml
+      file: ${FABKIT_NETWORK_PATH}/base/base.yaml
       service: couchdb-base
     # Populate the COUCHDB_USER and COUCHDB_PASSWORD to set an admin user and password
     # for CouchDB.  This will prevent CouchDB from operating in an "Admin Party" mode.

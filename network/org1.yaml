@@ -15,7 +15,7 @@ services:
   orderer.example.com:
     container_name: orderer.example.com
     extends:
-      file: network/base/base.yaml
+      file: ${FABKIT_NETWORK_PATH}/base/base.yaml
       service: orderer-base
     environment:
       - GRPC_VERBOSITY=info
@@ -31,7 +31,7 @@ services:
   ca.org1.example.com:
     container_name: ca.org1.example.com
     extends:
-      file: network/base/base.yaml
+      file: ${FABKIT_NETWORK_PATH}/base/base.yaml
       service: ca-base
     environment:
       - FABRIC_CA_SERVER_CA_NAME=ca.org1.example.com
@@ -43,7 +43,7 @@ services:
   peer0.org1.example.com:
     container_name: peer0.org1.example.com
     extends:
-      file: network/base/base.yaml
+      file: ${FABKIT_NETWORK_PATH}/base/base.yaml
       service: peer-base
     environment:
       - FABRIC_LOGGING_SPEC=info
@@ -84,7 +84,7 @@ services:
   couchdb.peer0.org1.example.com:
     container_name: couchdb.peer0.org1.example.com
     extends:
-      file: network/base/base.yaml
+      file: ${FABKIT_NETWORK_PATH}/base/base.yaml
       service: couchdb-base
     # Populate the COUCHDB_USER and COUCHDB_PASSWORD to set an admin user and password
     # for CouchDB.  This will prevent CouchDB from operating in an "Admin Party" mode.
@@ -99,7 +99,7 @@ services:
   fabric-cli:
     container_name: ${FABKIT_CHAINCODE_UTIL_CONTAINER}
     extends:
-      file: network/base/base.yaml
+      file: ${FABKIT_NETWORK_PATH}/base/base.yaml
       service: tools-base
     tty: true
     environment:

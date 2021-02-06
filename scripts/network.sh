@@ -72,23 +72,20 @@ start_network() {
     log "==============" info
     echo
 
-    __chaincode_sync
-
-    local command="docker-compose --env-file ${FABKIT_ROOT}/.env -f ${FABKIT_ROOT}/docker-compose.yaml up -d || exit 1;"
+    for org in $(seq 1 ${FABKIT_ORGS}); do
+        local command+="docker-compose --env-file ${FABKIT_ROOT}/.env -f ${FABKIT_NETWORK_PATH}/org${org}.yaml up -d || exit 1;"
+    done
 
     # TODO: create raft profiles for different network topologies (multi-org support)
     if [ "${FABKIT_CONFIGTX_PROFILE_NETWORK}" == "${RAFT_ONE_ORG}" ]; then
         FABKIT_CONFIGTX_PROFILE_NETWORK=${RAFT_ONE_ORG}
-        command+="docker-compose --env-file ${FABKIT_ROOT}/.env -f ${FABKIT_ROOT}/docker-compose.etcdraft.yaml up -d || exit 1;"
+        command+="docker-compose --env-file ${FABKIT_ROOT}/.env -f ${FABKIT_NETWORK_PATH}/raft.yaml up -d || exit 1;"
     elif [ "${FABKIT_ORGS}" == "2" ]; then
         FABKIT_CONFIGTX_PROFILE_NETWORK=${TWO_ORGS}
         FABKIT_CONFIGTX_PROFILE_CHANNEL=TwoOrgsChannel
-        command+="docker-compose --env-file ${FABKIT_ROOT}/.env -f ${FABKIT_ROOT}/docker-compose.org2.yaml up -d || exit 1;"
     elif [ "${FABKIT_ORGS}" == "3" ]; then
         FABKIT_CONFIGTX_PROFILE_NETWORK=${THREE_ORGS}
         FABKIT_CONFIGTX_PROFILE_CHANNEL=ThreeOrgsChannel
-        command+="docker-compose --env-file ${FABKIT_ROOT}/.env -f ${FABKIT_ROOT}/docker-compose.org2.yaml up -d || exit 1;"
-        command+="docker-compose --env-file ${FABKIT_ROOT}/.env -f ${FABKIT_ROOT}/docker-compose.org3.yaml up -d || exit 1;"
     fi
 
     generate_cryptos $FABKIT_CONFIG_PATH $FABKIT_CRYPTOS_PATH
@@ -123,9 +120,8 @@ restart_network() {
 
     docker network create ${FABKIT_DOCKER_NETWORK} 2>/dev/null
 
-    local command="docker-compose --env-file ${FABKIT_ROOT}/.env -f ${FABKIT_ROOT}/docker-compose.yaml up --force-recreate -d || exit 1;"
-    for ((i = 2; i <= $FABKIT_ORGS; i++)); do
-        command+="docker-compose --env-file ${FABKIT_ROOT}/.env -f ${FABKIT_ROOT}/docker-compose.org${i}.yaml up --force-recreate -d || exit 1;"
+    for org in $(seq 1 ${FABKIT_ORGS}); do
+        local command+="docker-compose --env-file ${FABKIT_ROOT}/.env -f ${FABKIT_NETWORK_PATH}/org${org}.yaml --force-recreate -d || exit 1;"
     done
     eval ${command}
 
@@ -138,9 +134,8 @@ stop_network() {
     log "=============" info
     echo
 
-    local command="docker-compose --env-file ${FABKIT_ROOT}/.env -f ${FABKIT_ROOT}/docker-compose.yaml down --remove-orphans || exit 1;"
-    for ((i = 2; i <= $FABKIT_ORGS; i++)); do
-        command+="docker-compose --env-file ${FABKIT_ROOT}/.env -f ${FABKIT_ROOT}/docker-compose.org${i}.yaml down --remove-orphans || exit 1;"
+    for org in $(seq 1 ${FABKIT_ORGS}); do
+        local command+="docker-compose --env-file ${FABKIT_ROOT}/.env -f ${FABKIT_NETWORK_PATH}/org${org}.yaml down --remove-orphans || exit 1;"
     done
     eval ${command}
 
@@ -281,7 +276,7 @@ generate_genesis() {
     __replace_config_capabilities
 
     # generate genesis block for orderer
-    docker run --rm -v /var/run/:/host/var/run \
+    docker run --rm -v /var/run/docker.sock:/host/var/run/docker.sock \
         -v ${config_path/$FABKIT_ROOT/$FABKIT_HOST_ROOT}/configtx.yaml:/configtx.yaml \
         -v ${channel_dir/$FABKIT_ROOT/$FABKIT_HOST_ROOT}:/channels/orderer-system-channel \
         -v ${cryptos_path/$FABKIT_ROOT/$FABKIT_HOST_ROOT}:/crypto-config \
@@ -379,7 +374,7 @@ generate_channeltx() {
     __replace_config_capabilities
 
     # generate channel configuration transaction
-    docker run --rm -v /var/run/:/host/var/run \
+    docker run --rm -v /var/run/docker.sock:/host/var/run/docker.sock \
         -v ${config_path/$FABKIT_ROOT/$FABKIT_HOST_ROOT}/configtx.yaml:/configtx.yaml \
         -v ${channel_dir/$FABKIT_ROOT/$FABKIT_HOST_ROOT}:/channels/${channel_name} \
         -v ${cryptos_path/$FABKIT_ROOT/$FABKIT_HOST_ROOT}:/crypto-config \
@@ -396,7 +391,7 @@ generate_channeltx() {
     fi
 
     # generate anchor peer transaction
-    docker run --rm -v /var/run/:/host/var/run \
+    docker run --rm -v /var/run/docker.sock:/host/var/run/docker.sock \
         -v ${config_path/$FABKIT_ROOT/$FABKIT_HOST_ROOT}/configtx.yaml:/configtx.yaml \
         -v ${channel_dir/$FABKIT_ROOT/$FABKIT_HOST_ROOT}:/channels/${channel_name} \
         -v ${cryptos_path/$FABKIT_ROOT/$FABKIT_HOST_ROOT}:/crypto-config \
@@ -450,7 +445,7 @@ generate_cryptos() {
         mkdir -p ${cryptos_path}
 
         # generate crypto material
-        docker run --rm -v /var/run/:/host/var/run \
+        docker run --rm -v /var/run/docker.sock:/host/var/run/docker.sock \
             -v ${config_path/$FABKIT_ROOT/$FABKIT_HOST_ROOT}/crypto-config.yaml:/crypto-config.yaml \
             -v ${cryptos_path/$FABKIT_ROOT/$FABKIT_HOST_ROOT}:/crypto-config \
             -u $(id -u):$(id -g) \
