@@ -6,18 +6,14 @@ ctrlc_count=0
 
 FABKIT_DEFAULT_PATH="${HOME}/.fabkit"
 FABKIT_DOCKER_IMAGE="everledgerio/fabkit"
-FABKIT_RUNNER="${FABKIT_ROOT}/fabkit"
-FABKIT_RUNNER_DOCKER='docker run -it --rm --name fabkit -e "FABKIT_ROOT=/home/fabkit" -e "FABKIT_HOST_ROOT=$FABKIT_ROOT" -v /var/run/docker.sock:/var/run/docker.sock -v "$FABKIT_ROOT":/home/fabkit -v "$FABKIT_ROOT":/root/.fabkit everledgerio/fabkit:latest ./fabkit "$@"'
 
 __quit() {
     ((ctrlc_count++))
     echo
     if [[ $ctrlc_count == 1 ]]; then
-        echo "Stop that."
-    elif [[ $ctrlc_count == 2 ]]; then
-        echo "Once more and I quit."
+        logwarn "Do you really want to quit?"
     else
-        echo "That's it.  I quit."
+        echo "Ok byyye"
         exit
     fi
 }
@@ -48,74 +44,112 @@ __add_aliases() {
     fi
 }
 
-echo "Hiya! Welcome to the Fabkit's interactive setup"
-read -p "Press any key to get started! (or CTRL-C to exit) "
-echo "Pick any available version:"
+loghead() {
+    printf "\033[1;35m%s${1}\033[0m\n"
+}
+
+logerr() {
+    printf "\033[1;31m%s${1}\033[0m\n"
+}
+
+logsucc() {
+    printf "\033[1;32m%s${1}\033[0m\n"
+}
+
+logwarn() {
+    printf "\033[1;33m%s${1}\033[0m\n"
+}
+
+loginfo() {
+    printf "\033[1;34m%s${1}\033[0m\n"
+}
+
+logdebu() {
+    printf "\033[1;36m%s${1}\033[0m\n"
+}
+
+loghead "
+        ╔═╗┌─┐┌┐ ┬┌─ ┬┌┬┐
+        ╠╣ ├─┤├┴┐├┴┐ │ │ 
+        ╚  ┴ ┴└─┘┴ ┴ ┴ ┴ 
+             ■-■-■               
+    "
+loginfo "Hiya! Welcome to the Hyperledger Fabric Toolkit 🧰 (aka Fabkit) interactive setup"
 echo
-echo "1) 0.1.0 (latest)"
-echo "2) 0.1.0-alpha"
+read -p "Press any key to start! (or CTRL-C to exit) "
+echo
+loginfo "Which version would you like to install? (press RETURN to get the latest):"
+echo
+logdebu "1) 0.1.0 (latest)"
+logdebu "2) 0.1.0-alpha"
 read n
 case $n in
-1) # retrieve latest
+*)
+    # retrieve latest
     FABKIT_VERSION="0.1.0"
-    FABKIT_DOCKER_IMAGE+=":${FABKIT_VERSION}"
     ;;
 esac
+logsucc "$FABKIT_VERSION"
+
+FABKIT_DOCKER_IMAGE+=":${FABKIT_VERSION}"
 FABKIT_TARBALL="fabkit-${FABKIT_VERSION}.tar.gz"
-# curl -sL https:/bitbucket.org/everledger/${FABKIT_TARBALL}
-read -p "Where would you like to install Fabkit? [${FABKIT_DEFAULT_PATH}] " path
-path=${path:-${FABKIT_DEFAULT_PATH}}
-if [ -w "$path" ]; then
-    # tar -C "$path" -xzvf "${FABKIT_TARBALL}"
-    echo "Extracting..."
+echo "Downloading $(logdebu $FABKIT_TARBALL) ..."
+# curl -L https:/bitbucket.org/everledger/${FABKIT_TARBALL}
+read -p "Where would you like to install Fabkit? [$(logwarn ${FABKIT_DEFAULT_PATH})] " FABKIT_ROOT
+export FABKIT_ROOT=${FABKIT_ROOT:-${FABKIT_DEFAULT_PATH}}
+export FABKIT_RUNNER="${FABKIT_ROOT}/fabkit"
+export FABKIT_RUNNER_DOCKER='docker run -it --rm --name fabkit -e "FABKIT_HOST_ROOT=$FABKIT_ROOT" -v /var/run/docker.sock:/var/run/docker.sock -v "$FABKIT_ROOT":/home/fabkit everledgerio/fabkit:latest ./fabkit "$@"'
+if [ -w "$FABKIT_ROOT" ]; then
+    lodebu "Extracting..."
+    # tar -C "$FABKIT_ROOT" -xzvf "${FABKIT_TARBALL}"
+    # rm ${FABKIT_TARBALL}
 else
-    echo "!!!!! ATTENTION !!!!!"
-    echo "Directory \"${path}\" requires superuser permissions"
-    read -p "Do you wish to continue? [yes/no=default] " yn
-    case $yn in
-    [Yy]*)
-        # sudo tar -C "$path" -xzvf "${FABKIT_TARBALL}"
-        echo "Extracting..."
-        ;;
-    *)
-        echo "OK. Roger. Going to stop here. Check the README if you prefer a manual installation! Byebye"
-        exit
-        ;;
-    esac
+    lowarn "!!!!! ATTENTION !!!!!"
+    loginfo "Directory \"${FABKIT_ROOT}\" requires superuser permissions"
+    loginfo "I am going to close for now. Be sure you are setting an installation path accessible from your current user (preferably under ${HOME}). Cheers!"
+    exit
 fi
-echo "Kewl! Fabkit is now installed. Let me help you with a couple of more things :)"
+logsucc "Kewl! 👍 Fabkit is now installed. Let me help you with a couple of more things ✨"
+echo
 
 OS="$(uname)"
 case $OS in
 Linux | FreeBSD | Darwin)
-    echo "Great! It looks like your system supports natively Fabric, but you can also run it a docker container if you prefer!"
-    echo "Choose any of these options: "
+    loginfo "Great! It looks like your system supports natively Fabric, but you can also run it a docker container if you prefer!"
     echo
-    echo "1) As is"
-    echo "2) Pull the docker image and use it instead"
+    loginfo "Choose any of these options: "
+    echo
+    logdebu "1) Local installation (recommended)"
+    logdebu "2) Docker installation"
+
     read n
     case $n in
-    1) FABKIT_CMD="${FABKIT_RUNNER}" ;;
-    2) FABKIT_CMD="${FABKIT_RUNNER_DOCKER}" ;;
+    1)
+        FABKIT_CMD="${FABKIT_RUNNER}"
+        logsucc "Roger. Going for local installation!"
+        ;;
+    2)
+        FABKIT_CMD="${FABKIT_RUNNER_DOCKER}"
+        logsucc "Roger. Going for docker installation!"
+        ;;
     esac
     ;;
 *)
-    echo "It looks like your system DOES not support natively Fabric :( but do not worry, we got you covered! :)"
-    echo "Fabkit could run in a docker container everywhere! We only need to download one more thing. Bear with me ;)"
+    logwarn "It looks like your system does NOT support natively Fabric, but do not worry, we got you covered! 😉"
     FABKIT_CMD="${FABKIT_RUNNER_DOCKER}"
     ;;
 esac
 
 if [ "$FABKIT_CMD" == "$FABKIT_RUNNER_DOCKER" ]; then
-    echo "Downloading docker image ${FABKIT_DOCKER_IMAGE}..."
-    # docker pull "${FABKIT_DOCKER_IMAGE}"
-else
-    sed -i'.bak' "s|.*FABKIT_HOST_ROOT.*|FABKIT_HOST_ROOT=\"${FABKIT_ROOT}\"|" ${FABKIT_ROOT}/.env && rm ${FABKIT_ROOT}/.env.bak
+    loginfo "Fabkit could run in a docker container everywhere! 😵‍💫🌎 We only need to download the image. Bear with me 😉"
+    echo "Downloading docker image $(logdebu ${FABKIT_DOCKER_IMAGE}) ..."
+    docker pull "${FABKIT_DOCKER_IMAGE}"
 fi
 
-echo "Got it!"
+logsucc "Got it!"
 echo
-echo "And now the last few touches to run fabkit anywhere!"
+logdebu "And now the last few touches to run fabkit anywhere!"
+logwarn "Setting up your runners..."
 
 case $SHELL in
 *bash)
@@ -129,7 +163,8 @@ case $SHELL in
     ;;
 esac
 
-echo "Fabkit aliases have been added to your default shell! Try now to use any of - $(for a in "${ALIASES[@]}"; do printf "%s$a "; done) - with something like:"
-echo "fabkit network start"
+logsucc "Fabkit aliases have been added to your default shell! Try now to use any of - $(for a in "${ALIASES[@]}"; do printf %s${a}; done) - with something like:"
 echo
-echo "Have fun!"
+logdebu ">>> fabkit network start"
+echo
+logsucc "Have fun! 💃🏽🕺"
