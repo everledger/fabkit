@@ -8,7 +8,7 @@ register_user() {
 
     __ca_setup register
 
-    docker run --rm -v /var/run/:/host/var/run \
+    docker run --rm -v /var/run/docker.sock:/host/var/run/docker.sock \
         -v ${FABKIT_CRYPTOS_PATH}:/crypto-config \
         --network="${FABKIT_DOCKER_NETWORK}" \
         hyperledger/fabric-ca:${FABKIT_FABRIC_CA_VERSION} \
@@ -36,7 +36,7 @@ enroll_user() {
 
     __ca_setup enroll
 
-    docker run --rm -v /var/run/:/host/var/run \
+    docker run --rm -v /var/run/docker.sock:/host/var/run/docker.sock \
         -v ${FABKIT_CRYPTOS_PATH}:/crypto-config \
         --network="${FABKIT_DOCKER_NETWORK}" \
         hyperledger/fabric-ca:${FABKIT_FABRIC_CA_VERSION} \
@@ -61,7 +61,7 @@ reenroll_user() {
 
     __ca_setup enroll
 
-    docker run --rm -v /var/run/:/host/var/run \
+    docker run --rm -v /var/run/docker.sock:/host/var/run/docker.sock \
         -v ${FABKIT_CRYPTOS_PATH}:/crypto-config \
         --network="${FABKIT_DOCKER_NETWORK}" \
         hyperledger/fabric-ca:${FABKIT_FABRIC_CA_VERSION} \
@@ -120,7 +120,7 @@ revoke_user() {
     log ${reason} success
     echo
 
-    docker run --rm -v /var/run/:/host/var/run \
+    docker run --rm -v /var/run/docker.sock:/host/var/run/docker.sock \
         -v ${FABKIT_CRYPTOS_PATH}:/crypto-config \
         --network="${FABKIT_DOCKER_NETWORK}" \
         hyperledger/fabric-ca:${FABKIT_FABRIC_CA_VERSION} \

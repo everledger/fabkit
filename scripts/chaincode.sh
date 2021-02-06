@@ -93,8 +93,7 @@ chaincode_test() {
 __check_test_deps() {
     type ginkgo >/dev/null 2>&1 || {
         log >&2 "Ginkgo module missing. Going to install..." warning
-        GO111MODULE=off go get -u github.com/onsi/ginkgo/ginkgo
-        GO111MODULE=off go get -u github.com/onsi/gomega/...
+        go get -u github.com/onsi/ginkgo/ginkgo
     }
 }
 
@@ -160,14 +159,6 @@ __get_chaincode_language() {
     log "Chaincode language: $__chaincode_language" debug
 
     eval $__result="'$__chaincode_language'"
-}
-
-__chaincode_sync() {
-    if [[ ! -d ${FABKIT_CHAINCODE_PATH} ]]; then
-        mkdir -p ${FABKIT_CHAINCODE_PATH}
-    fi
-
-    rsync -aur --exclude='vendor' --exclude='node_modules' ${FABKIT_CHAINCODE_PATH}/golang/ ${FABKIT_CHAINCODE_PATH}/java/ ${FABKIT_CHAINCODE_PATH}/node/ ${FABKIT_CHAINCODE_PATH} || exit 1
 }
 
 __copy_user_chaincode() {
@@ -366,7 +357,7 @@ chaincode_instantiate() {
     local peer="$5"
     shift 5
 
-    __set_chaincode_options instantiate options $@
+    __set_chaincode_options instantiate options "$@"
     __get_chaincode_language ${FABKIT_CHAINCODE_PATH}/${chaincode_name} chaincode_language
 
     __set_certs $org $peer
@@ -404,7 +395,7 @@ chaincode_upgrade() {
     __set_certs $org $peer
     __set_peer_exec cmd
 
-    __set_chaincode_options upgrade options $@
+    __set_chaincode_options upgrade options "$@"
     __get_chaincode_language ${FABKIT_CHAINCODE_PATH}/${chaincode_name} chaincode_language
 
     log "Upgrading chaincode $chaincode_name to version $chaincode_version on channel: ${channel_name}" info
@@ -589,7 +580,7 @@ invoke() {
     local peer="$4"
     shift 4
 
-    __set_chaincode_options invoke options $@
+    __set_chaincode_options invoke options "$@"
     __set_certs $org $peer
     __set_peer_exec cmd
 
@@ -622,11 +613,11 @@ query() {
     local request="$5"
     shift 5
 
-    __set_chaincode_options query options $@
+    __set_chaincode_options query options "$@"
     __set_certs $org $peer
     __set_peer_exec cmd
 
-    log "Querying chaincode $chaincode_name on channel ${channel_name} as org${org} and peer${peer} with the following params '$request $@'" info
+    log "Querying chaincode $chaincode_name on channel ${channel_name} as org${org} and peer${peer} with the following params '$request $*'" info
 
     if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" == "false" ]; then
         cmd+="peer chaincode query -o $FABKIT_ORDERER_ADDRESS -C $channel_name -n $chaincode_name -c '$request' $options"
@@ -679,7 +670,7 @@ lc_chaincode_package() {
     local peer="$5"
     shift 5
 
-    __set_chaincode_options package options $@
+    __set_chaincode_options package options "$@"
     __set_certs $org $peer
     __set_peer_exec cmd
 
@@ -721,7 +712,7 @@ lc_chaincode_install() {
     local peer="$4"
     shift 4
 
-    __set_chaincode_options install options $@
+    __set_chaincode_options install options "$@"
     __set_certs $org $peer
     __set_peer_exec cmd
 
@@ -755,7 +746,7 @@ lc_chaincode_approve() {
     local peer="$6"
     shift 6
 
-    __set_chaincode_options approve options $@
+    __set_chaincode_options approve options "$@"
     # TODO: Accept as input or build dynamically
     local signature_policy='OR("Org1MSP.member","Org2MSP.member","Org3MSP.member")'
 
@@ -799,7 +790,7 @@ lc_chaincode_commit() {
     local peer="$6"
     shift 6
 
-    __set_chaincode_options commit options $@
+    __set_chaincode_options commit options "$@"
 
     # TODO: Accept as input or build dynamically
     local signature_policy='OR("Org1MSP.member","Org2MSP.member","Org3MSP.member")'
@@ -858,7 +849,7 @@ lc_chaincode_commit() {
 
     log "Init the chaincode" info
 
-    invoke $channel_name $chaincode_name $org $peer $@ --isInit
+    invoke $channel_name $chaincode_name $org $peer "$@" --isInit
 }
 
 # TODO: Enable fabric options for chaincode deploy
@@ -877,10 +868,10 @@ lc_chaincode_deploy() {
     local peer="$7"
     shift 7
 
-    lc_chaincode_package $chaincode_name $chaincode_version $chaincode_relative_path $org $peer $@
+    lc_chaincode_package $chaincode_name $chaincode_version $chaincode_relative_path $org $peer "$@"
     for o in $(seq 1 ${FABKIT_ORGS}); do
-        lc_chaincode_install $chaincode_name $chaincode_version $o $peer $@
-        lc_chaincode_approve $chaincode_name $chaincode_version $channel_name $sequence_no $o $peer $@
+        lc_chaincode_install $chaincode_name $chaincode_version $o $peer "$@"
+        lc_chaincode_approve $chaincode_name $chaincode_version $channel_name $sequence_no $o $peer "$@"
     done
-    lc_chaincode_commit $chaincode_name $chaincode_version $channel_name $sequence_no $org $peer $@
+    lc_chaincode_commit $chaincode_name $chaincode_version $channel_name $sequence_no $org $peer "$@"
 }

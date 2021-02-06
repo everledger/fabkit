@@ -11,7 +11,7 @@ title() {
 
 help_header() {
     log "
-        Usage: $@ [command]
+        Usage: $* [command]
         
         Commands:" info
 }

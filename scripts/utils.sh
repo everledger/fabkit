@@ -101,7 +101,7 @@ __timer() {
 
     local elapsed_time="$(($end_time - $start_time))"
 
-    log "\nTotal elapsed time: $(($elapsed_time / 60))m$(($elapsed_time % 60))s" debug
+    log "\n⏰ We made in: $(($elapsed_time / 60))m$(($elapsed_time % 60))s" debug
 }
 
 __validate_params() {
@@ -173,9 +173,34 @@ log() {
 }
 
 tostring() {
-    echo "$@" | __jq tostring 2>/dev/null || echo ${@//\"/\\\"}
+    echo "$@" | __jq tostring 2>/dev/null || echo "${@//\"/\\\"}"
 }
 
 tojson() {
     echo "$@" | __jq .
+}
+
+loghead() {
+    printf "\033[1;35m%s${1}\033[0m\n"
+}
+
+logerr() {
+    printf "\033[1;31m%s${1}\033[0m\n"
+}
+
+logsucc() {
+    printf "\033[1;32m%s${1}\033[0m\n"
+}
+
+logwarn() {
+    printf "\033[1;33m${1}\033[0m\n"
+}
+
+loginfo() {
+    printf "\033[1;34m%s${1}\033[0m\n"
+}
+
+logdebu() {
+    if [ -z "${FABKIT_DEBUG}" ] || [ "${FABKIT_DEBUG}" == "false" ]; then return; fi
+    printf "\033[1;36m%s${1}\033[0m\n"
 }
