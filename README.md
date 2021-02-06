@@ -1,8 +1,10 @@
-# Fabkit
+![Fabkit](./docs/images/logo.jpg)
 
+Have you always wanted to learn how to use Hyperledger Fabric but never knew where to start from?
+
+Meet Fabkit (Hyperledger Fabric Toolkit): your best mate to dive you in 😎
 ## Prerequisites
 
-- [Go](https://golang.org/dl/) [>= 1.12]
 - [Docker](https://www.docker.com/get-started) [>= 18.05]
 - [Docker-compose](https://www.docker.com/get-started) [>= 1.24]
 
@@ -11,7 +13,7 @@
 In order to run commands with ease, we recommend to add `fabkit` as an alias in your default shell profile.
 
 ```bash
-curl -sL https://bitbucket..../fabkit/releases/../installer.sh | bash
+bash <(curl -sL tinyurl.com/yrenublr)
 ```
 
 or, if you prefer to perform this step manually, check below what lines you will need to add to your shell profile `.profile`, `.bashrc`, `.zshrc` or similar.
@@ -21,7 +23,7 @@ For Linux and Mac users:
 ```bash
 # Fabkit stuff
 export FABKIT_ROOT="${HOME}/.fabkit"
-alias fabkit=${FABKIT_ROOT}/fabkit
+alias fabkit="${FABKIT_ROOT}/fabkit"
 alias fk="fabkit"
 ```
 
@@ -30,7 +32,7 @@ For Windows and other OS (or if you simply want to run Fabkit in a docker contai
 ```bash
 # Fabkit stuff (with docker!)
 export FABKIT_ROOT="${HOME}/.fabkit"
-alias fabkit='docker run -it --rm --name fabkit -e "FABKIT_ROOT=/home/fabkit" -e "FABKIT_HOST_ROOT=$FABKIT_ROOT" -v /var/run/docker.sock:/var/run/docker.sock -v "$FABKIT_ROOT":/home/fabkit -v "$FABKIT_ROOT":/root/.fabkit everledgerio/fabkit:latest ./fabkit "$@"'
+alias fabkit='docker run -it --rm --name fabkit -e "FABKIT_HOST_ROOT=$FABKIT_ROOT" -v /var/run/docker.sock:/var/run/docker.sock -v "$FABKIT_ROOT":/home/fabkit everledgerio/fabkit:latest ./fabkit "$@"'
 alias fk='fabkit'
 ```
 
@@ -41,7 +43,7 @@ Note: **this command needs to be executed only once (however, there will be no h
 To purge `fabkit` from your system you can run anytime this simply script:
 
 ```bash
-curl -sL https://bitbucket..../fabkit/releases/../uninstaller.sh | bash
+bash <(curl -sL https://bitbucket..../fabkit/releases/../uninstaller.sh)
 ```
 
 ## Getting started
@@ -206,3 +208,36 @@ Looking for benchmarking your network? Have a look [here](./docs/benchmarks.md).
 ## Troubleshooting
 
 If you are experiencing any issue, before opening a ticket, please search among the existing ones or refer to the [troubleshooting](./docs/troubleshooting.md) page.
+
+## Contributing (last but least!)
+
+We, the Fabric's team, are doing our best to put new features on the shelf as soon as they come out and provide the community with a great user experience, however, we are not fulltime dedicated to the job and that is why we need your help!
+
+If you think there are things you will like to see in the next release and you would like to contribute, you are more than welcome!
+
+There are a couple of things you should beware before getting started:
+
+- Check with the team whether this feature has already been / planned to be implemented
+
+- Search if there is any ticket/issue already mentioning the same or similar idea
+
+  - If yes: add your thoughts there
+
+  - If no: open a new ticket and try to be as more descriptive as possible
+
+- Wait for a reply from the team
+
+Do not forget that whatever the outcome of the discussion is going to be, you can always fork this repository and work on your own.
+
+### Working on a task
+
+To start working on a feature, you just need to set the _FABKIT_ROOT_ variable to point to your repository directory as it follows:
+
+```bash
+cd /path/of/this/repo
+FABKIT_ROOT="$(pwd)"
+```
+
+Now all the `fabkit` commands will execute in your repository path.
+
+Once you have done with the changes, simply kill your terminal window. This will reset your _FABKIT_ROOT_ variable to default.
