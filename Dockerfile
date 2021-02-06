@@ -4,6 +4,7 @@ RUN echo "https://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repo
 
 RUN apk --update add --no-cache \
     bash \
+    git \
     zip \
     rsync \
     jq \
@@ -12,8 +13,21 @@ RUN apk --update add --no-cache \
     npm \
     openjdk11 \
     docker-cli \
-    docker-compose
+    docker-compose && \
+    rm -rf \
+		/usr/local/go/pkg/*/cmd \
+		/usr/local/go/pkg/bootstrap \
+		/usr/local/go/pkg/obj \
+		/usr/local/go/pkg/tool/*/api \
+		/usr/local/go/pkg/tool/*/go_bootstrap \
+		/usr/local/go/src/cmd/dist/dist
 
-COPY . /home/fabkit
+ENV GOPATH /go
+ENV PATH /usr/local/go/bin:$GOPATH/bin:$PATH
+RUN mkdir -p "$GOPATH/src" "$GOPATH/bin" && chmod -R 777 "$GOPATH"
 
-WORKDIR /home/fabkit
+RUN go get -u github.com/onsi/ginkgo/ginkgo
+
+ENV FABKIT_ROOT /home/fabkit
+
+WORKDIR $FABKIT_ROOT
