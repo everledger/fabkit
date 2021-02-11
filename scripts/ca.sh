@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
 register_user() {
-    log "=================" info
-    log "CA User: register" info
-    log "=================" info
+    loginfo "=================\n"
+    loginfo "CA User: register\n"
+    loginfo "=================\n"
     echo
 
     __ca_setup register
@@ -25,13 +25,13 @@ register_user() {
             --id.type $user_type
          "
 
-    log "!! IMPORTANT: Note down these lines containing the information of the registered user" success
+    logsucc "!! IMPORTANT: Note down these lines containing the information of the registered user"
 }
 
 enroll_user() {
-    log "===============" info
-    log "CA User: enroll" info
-    log "===============" info
+    loginfo "===============\n"
+    loginfo "CA User: enroll\n"
+    loginfo "===============\n"
     echo
 
     __ca_setup enroll
@@ -54,9 +54,9 @@ enroll_user() {
 }
 
 reenroll_user() {
-    log "=================" info
-    log "CA User: reenroll" info
-    log "=================" info
+    loginfo "=================\n"
+    loginfo "CA User: reenroll\n"
+    loginfo "=================\n"
     echo
 
     __ca_setup enroll
@@ -79,9 +79,9 @@ reenroll_user() {
 }
 
 revoke_user() {
-    log "===============" info
-    log "CA User: revoke" info
-    log "===============" info
+    loginfo "===============\n"
+    loginfo "CA User: revoke\n"
+    loginfo "===============\n"
     echo
 
     __ca_setup revoke
@@ -100,8 +100,8 @@ revoke_user() {
     10: aacompromise"
 
     while [ -z "$reason" ]; do
-        log "Select one of the reason for the revoke from this list: " info
-        log "${reason_list}" info
+        loginfo "Select one of the reason for the revoke from this list: \n"
+        loginfo "${reason_list}\n"
         read -p "Select a number from the list above: [1] " reason
         case $reason in
         1) reason="unspecified" ;;
@@ -114,10 +114,10 @@ revoke_user() {
         8) reason="removefromcrl" ;;
         9) reason="privilegewithdrawn" ;;
         10) reason="aacompromise" ;;
-        *) log "Please select any of the reason from the list by typying in the corresponding number" warning ;;
+        *) logwarn "Please select any of the reason from the list by typying in the corresponding number" ;;
         esac
     done
-    log ${reason} success
+    logsucc ${reason}
     echo
 
     docker run --rm -v /var/run/docker.sock:/host/var/run/docker.sock \
@@ -136,15 +136,15 @@ revoke_user() {
 }
 
 __ca_setup() {
-    log "Creating docker network..." info
+    loginfo "Creating docker network...\n"
     docker network create ${FABKIT_DOCKER_NETWORK} 2>/dev/null
 
-    log "Insert the organization name of the user to register/enroll" info
+    loginfo "Insert the organization name of the user to register/enroll\n"
     while [ -z "$org" ]; do
         read -p "Organization: [] " org
     done
     export org
-    log $org success
+    logsucc $org
     echo
 
     users_dir="${FABKIT_CRYPTOS_PATH}/${org}/users"
@@ -154,19 +154,19 @@ __ca_setup() {
     if [ "$1" == "register" ]; then
         # set admin msp path
         while [ ! -d "${admin_msp}" ]; do
-            log "Set the root Admin MSP path containing admincert, signcert, etc. directories" info
-            log "You can drag&drop in the terminal the top admin directory - e.g. if the certs are in ./admin/msp, simply drag in the ./admin folder " info
+            loginfo "Set the root Admin MSP path containing admincert, signcert, etc. directories\n"
+            loginfo "You can drag&drop in the terminal the top admin directory - e.g. if the certs are in ./admin/msp, simply drag in the ./admin folder \n"
             admin_path_default=$(find $FABKIT_NETWORK_PATH -path "*/peerOrganizations/*/Admin*org1*" | head -n 1)
             read -p "Admin name/path: [${admin_path_default}] " admin_path
             admin_path=${admin_path:-${admin_path_default}}
-            log "admin path: $admin_path" success
+            logsucc "admin path: $admin_path"
             export admin=$(basename ${admin_path})
-            log "admin: $admin" success
+            logsucc "admin: $admin"
             admin_msp=$(dirname $(find ${admin_path} -type d -name signcert* 2>/dev/null) 2>/dev/null)
-            log "admin msp: $admin_msp" success
+            logsucc "admin msp: $admin_msp"
 
             if [ ! -d "${admin_msp}" ]; then
-                log "Admin MSP signcerts directory not found in: ${admin_path}. Please be sure the selected Admin MSP directory exists." warning
+                logwarn "Admin MSP signcerts directory not found in: ${admin_path}. Please be sure the selected Admin MSP directory exists."
             fi
         done
 
@@ -178,18 +178,18 @@ __ca_setup() {
             # mv ${users_dir}/${admin}/signcert*/* ${users_dir}/${admin}/signcert*/cert.pem
             cp -r ${users_dir}/${admin}/signcert*/ ${users_dir}/${admin}/admincerts/
         else
-            log "Admin MSP directory is already in place under ${users_dir}/${admin}. Be sure the certificate are up to date or remove that directory and restart this process." warning
+            logwarn "Admin MSP directory is already in place under ${users_dir}/${admin}. Be sure the certificate are up to date or remove that directory and restart this process."
         fi
     fi
 
-    log "Insert the correct Hyperledger Fabric CA version to use (read Troubleshooting section)" info
-    log "This should be the same used by your CA server (i.e. at the time of writing, IBPv1 is using 1.1.0)" info
+    loginfo "Insert the correct Hyperledger Fabric CA version to use (read Troubleshooting section)\n"
+    loginfo "This should be the same used by your CA server (i.e. at the time of writing, IBPv1 is using 1.1.0)\n"
     read -p "CA Version: [${FABKIT_FABRIC_VERSION}] " fabric_version
     export fabric_version=${fabric_version:-${FABKIT_FABRIC_VERSION}}
-    log $fabric_version success
+    logsucc $fabric_version
     echo
 
-    log "Insert the username of the user to register/enroll" info
+    loginfo "Insert the username of the user to register/enroll\n"
     username_default="user_"$(
         LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 5
         echo
@@ -197,78 +197,78 @@ __ca_setup() {
     read -p "Username: [${username_default}] " username
     export username=${username:-${username_default}}
     mkdir -p ${users_dir}/${username}
-    log $username success
+    logsucc $username
     echo
 
-    log "Insert password of the user. It will be used by the CA as secret to generate the user certificate and key" info
+    loginfo "Insert password of the user. It will be used by the CA as secret to generate the user certificate and key\n"
     password_default=$(
         LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 20
         echo
     )
     read -p "Password: [${password_default}] " password
     export password=${password:-${password_default}}
-    log $password success
-    log "!! IMPORTANT: Take note of this password before continuing. If you loose this password you will not be able to manage the credentials of this user any longer." warning
+    logsucc $password
+    logwarn "!! IMPORTANT: Take note of this password before continuing. If you loose this password you will not be able to manage the credentials of this user any longer."
     echo
 
-    log "CA secure connection (https)" info
+    loginfo "CA secure connection (https)\n"
     read -p "Using TLS secure connection? (if your CA address starts with https)? [yes/no=default] " yn
     case $yn in
     [Yy]*)
         export ca_protocol="https://"
-        log "Secure TLS connection: enabled" success
+        logsucc "Secure TLS connection: enabled"
         ;;
     *)
         export ca_protocol="http://"
-        log "Secure TLS connection: disabled" success
+        logsucc "Secure TLS connection: disabled"
         ;;
     esac
     echo
 
-    log "Set CA TLS certificate path" info
+    loginfo "Set CA TLS certificate path\n"
     ca_cert_default=$(find $FABKIT_NETWORK_PATH -name "tlsca*.pem" | head -n 1)
     read -p "CA cert: [${ca_cert_default}] " ca_cert
     ca_cert=${ca_cert:-${ca_cert_default}}
-    log $ca_cert success
+    logsucc $ca_cert
     # copy the CA certificate to the main cryptos directory
     mkdir -p ${FABKIT_CRYPTOS_PATH}/${org}
     cp $ca_cert ${FABKIT_CRYPTOS_PATH}/${org}/cert.pem
     export ca_cert=$(basename ${FABKIT_CRYPTOS_PATH}/${org}/cert.pem)
     echo
 
-    log "Insert CA hostname and port only (e.g. ca.example.com:7054)" info
+    loginfo "Insert CA hostname and port only (e.g. ca.example.com:7054)\n"
     ca_url_default="ca.example.com:7054"
     read -p "CA hostname and port: [${ca_url_default}] " ca_url
     export ca_url=${ca_url:-${ca_url_default}}
-    log ${ca_url} success
+    logsucc ${ca_url}
     echo
 
     if [ "$1" == "register" ] || [ "$1" == "enroll" ]; then
-        log "Insert user attributes (e.g. admin=false:ecert)" info
-        log "Wiki: https://hyperledger-fabric-ca.readthedocs.io/en/latest/users-guide.html#registering-a-new-identity" info
+        loginfo "Insert user attributes (e.g. admin=false:ecert)\n"
+        loginfo "Wiki: https://hyperledger-fabric-ca.readthedocs.io/en/latest/users-guide.html#registering-a-new-identity\n"
         echo
-        log "A few examples:" info
-        log "If enrolling an admin: 'hf.Registrar.Roles,hf.Registrar.Attributes,hf.AffiliationMgr'" warning
-        log "If registering a user: 'admin=false:ecert,email=app@example.org:ecert,application=app'" warning
-        log "If enrolling a user: 'admin:opt,email:opt,application:opt'" warning
+        loginfo "A few examples:\n"
+        logwarn "If enrolling an admin: 'hf.Registrar.Roles,hf.Registrar.Attributes,hf.AffiliationMgr'"
+        logwarn "If registering a user: 'admin=false:ecert,email=app@example.org:ecert,application=app'"
+        logwarn "If enrolling a user: 'admin:opt,email:opt,application:opt'"
         read -p "User attributes: [admin=false:ecert] " user_attributes
         export user_attributes=${user_attributes:-"admin=false:ecert"}
-        log $user_attributes success
+        logsucc $user_attributes
         echo
     fi
 
     # registering a user requires additional information
     if [ "$1" == "register" ]; then
-        log "Insert user type (e.g. client, peer, orderer)" info
+        loginfo "Insert user type (e.g. client, peer, orderer)\n"
         read -p "User type: [client] " user_type
         export user_type=${user_type:-client}
-        log $user_type success
+        logsucc $user_type
         echo
 
-        log "Insert user affiliation (default value is usually enough)" info
+        loginfo "Insert user affiliation (default value is usually enough)\n"
         read -p "User affiliation: [${org}] " user_affiliation
         export user_affiliation=${user_affiliation:-${org}}
-        log $user_affiliation success
+        logsucc $user_affiliation
         echo
     fi
 }

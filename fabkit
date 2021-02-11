@@ -13,23 +13,23 @@ readonly FABKIT_FABRIC_AVAILABLE_VERSIONS=("2.3.0" "2.3" "2.2.1" "2.2" "2.2.0" "
 export FABKIT_HOST_ROOT="${FABKIT_HOST_ROOT:-$FABKIT_ROOT}"
 
 __log_setup() {
-    log "===========" info
-    log "Init: setup" info
-    log "===========" info
+    loginfo "===========\n"
+    loginfo "Init: setup\n"
+    loginfo "===========\n"
     echo
-    log "Root directory: $(log ${FABKIT_HOST_ROOT} warning)" info
-    log "Docker network: $(log ${FABKIT_DOCKER_NETWORK} warning)" info
-    log "Fabric version: $(log ${FABKIT_FABRIC_VERSION} warning)" info
-    log "Fabric CA version: $(log ${FABKIT_FABRIC_CA_VERSION} warning)" info
-    log "Fabric third-party version: $(log ${FABKIT_FABRIC_THIRDPARTY_IMAGE_VERSION} warning)" info
-    log "Network configuration profile: $(log ${FABKIT_CONFIGTX_PROFILE_NETWORK} warning)" info
-    log "Channel configuration profile: $(log ${FABKIT_CONFIGTX_PROFILE_CHANNEL} warning)" info
-    log "Chaincode name: $(log ${FABKIT_CHAINCODE_NAME} warning)" info
-    log "Chaincode version: $(log ${FABKIT_CHAINCODE_VERSION} warning)" info
-    log "Organizations: $(log ${FABKIT_ORGS:-1} warning)" info
-    log "TLS enabled: $(log ${FABKIT_TLS_ENABLED} warning)" info
-    log "Debug mode: $(log ${FABKIT_DEBUG:-false} warning)" info
-    log "Fresh-start mode: $(log ${FABKIT_RESET:-false} warning)" info
+    loginfo "Root directory: $(logwarn ${FABKIT_HOST_ROOT})\n"
+    loginfo "Docker network: $(logwarn ${FABKIT_DOCKER_NETWORK})\n"
+    loginfo "Fabric version: $(logwarn ${FABKIT_FABRIC_VERSION})\n"
+    loginfo "Fabric CA version: $(logwarn ${FABKIT_FABRIC_CA_VERSION})\n"
+    loginfo "Fabric third-party version: $(logwarn ${FABKIT_FABRIC_THIRDPARTY_IMAGE_VERSION})\n"
+    loginfo "Network configuration profile: $(logwarn ${FABKIT_CONFIGTX_PROFILE_NETWORK})\n"
+    loginfo "Channel configuration profile: $(logwarn ${FABKIT_CONFIGTX_PROFILE_CHANNEL})\n"
+    loginfo "Chaincode name: $(logwarn ${FABKIT_CHAINCODE_NAME})\n"
+    loginfo "Chaincode version: $(logwarn ${FABKIT_CHAINCODE_VERSION})\n"
+    loginfo "Organizations: $(logwarn ${FABKIT_ORGS:-1})\n"
+    loginfo "TLS enabled: $(logwarn ${FABKIT_TLS_ENABLED})\n"
+    loginfo "Debug mode: $(logwarn ${FABKIT_DEBUG:-false})\n"
+    loginfo "Fresh-start mode: $(logwarn ${FABKIT_RESET:-false})\n"
     echo
 }
 
@@ -73,7 +73,7 @@ __set_params() {
             shift 2
             ;;
         *)
-            log "${1} paramater not recognized. Please run the help." error
+            logerr "${1} paramater not recognized. Please run the help.\n"
             exit 1
             ;;
         esac

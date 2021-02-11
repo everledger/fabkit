@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 __exec_jobs() {
     if [[ $# == 1 ]]; then
@@ -10,23 +10,23 @@ __exec_jobs() {
     local entries=$2
 
     if [ -z "$jobs" ]; then
-        echo "Provide a number of jobs to run in parallel"
+        logerr "Provide a number of jobs to run in parallel\n"
         exit 1
     fi
     if [ -z "$entries" ]; then
-        echo "Provide a number of entries per job"
+        logerr "Provide a number of entries per job\n"
         exit 1
     fi
 
-    log "==================" info
-    log "Network: benchmark" info
-    log "==================" info
+    loginfo "==================\n"
+    loginfo "Network: benchmark\n"
+    loginfo "==================\n"
     echo
 
-    log "Running in parallel:
+    loginfo "Running in parallel:
     Jobs: $jobs
     Entries: $entries
-    " info
+    \n"
 
     local start_time="$(date -u +%s)"
 
@@ -41,13 +41,13 @@ __exec_jobs() {
     local end_time="$(date -u +%s)"
     local elapsed="$(($end_time - $start_time))"
 
-    log "Total of $elapsed seconds elapsed for process" warning
-    log "$(($jobs * $entries)) entries added" success
+    logwarn "Total of $elapsed seconds elapsed for process\n"
+    logsucc "$(($jobs * $entries)) entries added\n"
 }
 
 __loader() {
     if [ -z "$1" ]; then
-        log "Provide a number of entries for put" error
+        logerr "Provide a number of entries for put\n"
         exit 1
     fi
 
@@ -57,7 +57,7 @@ __loader() {
         local key=$(LC_CTYPE=C tr -cd '[:alnum:]' </dev/urandom | fold -w12 | head -n1)
         local value="$i"
 
-        log "Writing <${key},${value}> pair in the ledger" debug
+        logdebu "Writing <${key},${value}> pair in the ledger\n"
 
         invoke $FABKIT_CHANNEL_NAME $FABKIT_CHAINCODE_NAME 1 0 "{\"Args\":[\"put\",\"${key}\",\"${value}\"]}" &>/dev/null
     done

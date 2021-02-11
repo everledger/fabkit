@@ -3,18 +3,18 @@
 start_explorer() {
     stop_explorer
 
-    log "===============" info
-    log "Explorer: start" info
-    log "===============" info
+    loginfo "===============\n"
+    loginfo "Explorer: start\n"
+    loginfo "===============\n"
     echo
 
     if [[ ! $(docker ps | grep fabric) ]]; then
-        log "No Fabric networks running. First launch fabkit start" error
+        logerr "No Fabric networks running. First launch fabkit start\n"
         exit 1
     fi
 
     if [ ! -d "${FABKIT_CRYPTOS_PATH}" ]; then
-        log "Cryptos path ${FABKIT_CRYPTOS_PATH} does not exist." error
+        logerr "Cryptos path ${FABKIT_CRYPTOS_PATH} does not exist.\n"
     fi
 
     # replacing private key path in connection profile
@@ -31,14 +31,14 @@ start_explorer() {
 
     docker-compose --env-file ${FABKIT_ROOT}/.env -f ${FABKIT_EXPLORER_PATH}/docker-compose.yaml up --force-recreate -d || exit 1
 
-    log "Blockchain Explorer default user is exploreradmin/exploreradminpw - http://localhost:8090" warning
-    log "Grafana default user is admin/admin - http://localhost:3000" warning
+    logwarn "Blockchain Explorer default user is exploreradmin/exploreradminpw - http://localhost:8090\n"
+    logwarn "Grafana default user is admin/admin - http://localhost:3000\n"
 }
 
 stop_explorer() {
-    log "==============" info
-    log "Explorer: stop" info
-    log "==============" info
+    loginfo "==============\n"
+    loginfo "Explorer: stop\n"
+    loginfo "==============\n"
     echo
 
     docker-compose --env-file ${FABKIT_ROOT}/.env -f ${FABKIT_EXPLORER_PATH}/docker-compose.yaml down || exit 1

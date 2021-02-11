@@ -2,7 +2,7 @@
 
 __check_fabric_version() {
     if [[ ! "${FABKIT_FABRIC_VERSION}" =~ ${1}.* ]]; then
-        log "This command is not enabled on Fabric v${FABKIT_FABRIC_VERSION}. In order to run, run your network with the flag: -v|--version [version]" error
+        logerr "This command is not enabled on Fabric v${FABKIT_FABRIC_VERSION}. In order to run, run your network with the flag: -v|--version [version]\n"
         exit 1
     fi
 }
@@ -10,16 +10,16 @@ __check_fabric_version() {
 __check_deps() {
     if [ "${1}" == "deploy" ]; then
         type docker >/dev/null 2>&1 || {
-            log >&2 "docker required but it is not installed. Aborting." error
+            logerr >&2 "docker required but it is not installed. Aborting.\n"
             exit 1
         }
         type docker-compose >/dev/null 2>&1 || {
-            log >&2 "docker-compose required but it is not installed. Aborting." error
+            logerr >&2 "docker-compose required but it is not installed. Aborting.\n"
             exit 1
         }
     elif [ "${1}" == "test" ]; then
         type go >/dev/null 2>&1 || {
-            log >&2 "Go binary is missing in your PATH. Running the dockerised version..." warning
+            logwarn >&2 "Go binary is missing in your PATH. Running the dockerised version...\n"
             echo $?
         }
     fi
@@ -27,7 +27,7 @@ __check_deps() {
 
 __check_docker_daemon() {
     if [ "$(docker info --format '{{json .}}' | grep "Cannot connect" 2>/dev/null)" ]; then
-        log "Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?" error
+        logerr "Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?\n"
         exit 1
     fi
 }
@@ -35,15 +35,15 @@ __check_docker_daemon() {
 # delete path recursively and asks for root permissions if needed
 __delete_path() {
     if [ ! -d "${1}" ]; then
-        log "Directory \"${1}\" does not exist. Skipping delete. All good :)" warning
+        logwarn "Directory \"${1}\" does not exist. Skipping delete. All good :)\n"
         return
     fi
 
     if [ -w "${1}" ]; then
         rm -rf ${1}
     else
-        log "!!!!! ATTENTION !!!!!" error
-        log "Directory \"${1}\" requires superuser permissions" error
+        logerr "!!!!! ATTENTION !!!!!\n"
+        logerr "Directory \"${1}\" requires superuser permissions\n"
         read -p "Do you wish to continue? [yes/no=default] " yn
         case $yn in
         [Yy]*) sudo rm -rf ${1} ;;
@@ -55,17 +55,17 @@ __delete_path() {
 __set_certs() {
     CORE_PEER_ADDRESS=peer${2}.org${1}.example.com:$((6 + ${1}))051
     CORE_PEER_LOCALMSPID=Org${1}MSP
-    CORE_PEER_TLS_ENABLED=false
+    CORE_PEER_TLS_ENABLED=${FABKIT_TLS_ENABLED}
     CORE_PEER_TLS_CERT_FILE=${FABKIT_PEER_REMOTE_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/peers/peer${2}.org${1}.example.com/tls/server.crt
     CORE_PEER_TLS_KEY_FILE=${FABKIT_PEER_REMOTE_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/peers/peer${2}.org${1}.example.com/tls/server.key
     CORE_PEER_TLS_ROOTCERT_FILE=${FABKIT_PEER_REMOTE_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/peers/peer${2}.org${1}.example.com/tls/ca.crt
     CORE_PEER_MSPCONFIGPATH=${FABKIT_PEER_REMOTE_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/users/Admin@org${1}.example.com/msp
     ORDERER_CA=${FABKIT_PEER_REMOTE_BASEPATH}/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
 
-    log "===========================================" info
-    log "Peer address: ${CORE_PEER_ADDRESS}" info
-    log "Peer cert: ${CORE_PEER_TLS_CERT_FILE}" info
-    log "===========================================" info
+    loginfo "===========================================\n"
+    loginfo "Peer address: ${CORE_PEER_ADDRESS}\n"
+    loginfo "Peer cert: ${CORE_PEER_TLS_CERT_FILE}\n"
+    loginfo "===========================================\n"
     echo
 }
 
@@ -85,10 +85,10 @@ __set_peer_exec() {
 
 __exec_command() {
     echo
-    log "Excecuting command: " debug
+    logdebu "Excecuting command: "
     echo
     local message=$1
-    log "$message" debug
+    logdebu "$message"
     echo
 
     # TODO: Return error and let the caller to handle it
@@ -101,7 +101,9 @@ __timer() {
 
     local elapsed_time="$(($end_time - $start_time))"
 
-    log "\n⏰ We made in: $(($elapsed_time / 60))m$(($elapsed_time % 60))s" debug
+    echo "
+    ⏰ We made in: $(logsucc $(($elapsed_time / 60))m$(($elapsed_time % 60))s)
+    "
 }
 
 __validate_params() {
@@ -112,12 +114,12 @@ __validate_params() {
         fi
     done
     if [ "$version_exists" == "false" ]; then
-        log "Fabric version ${FABKIT_FABRIC_VERSION} does not exist. For the complete list of releases visit: https://github.com/hyperledger/fabric/tags" error
+        logerr "Fabric version ${FABKIT_FABRIC_VERSION} does not exist. For the complete list of releases visit: https://github.com/hyperledger/fabric/tags\n"
         exit 1
     fi
 
     if [[ $FABKIT_ORGS -lt 1 ]]; then
-        log "-o,--orgs cannot be lower than 1" error
+        logerr "-o,--orgs cannot be lower than 1\n"
         exit 1
     fi
 }
@@ -145,33 +147,6 @@ __clean_user_path() {
     __delete_path ${FABKIT_ROOT}/.lastrun
 }
 
-log() {
-    if [[ ${#} != 2 ]]; then
-        echo "usage: ${FUNCNAME} <string> [debug|info|warning|error|success]"
-        exit 1
-    fi
-
-    local message="${1}"
-    local level=$(echo ${2} | awk '{print tolower($0)}')
-    local default_colour="\033[0m"
-
-    case $level in
-    header) colour_code="\033[1;35m" ;;
-    error) colour_code="\033[1;31m" ;;
-    success) colour_code="\033[1;32m" ;;
-    warning) colour_code="\033[1;33m" ;;
-    info) colour_code="\033[1;34m" ;;
-    debug)
-        if [ -z "${FABKIT_DEBUG}" ] || [ "${FABKIT_DEBUG}" == "false" ]; then return; fi
-        colour_code="\033[1;36m"
-        ;;
-    *) colour_code=${default_colour} ;;
-    esac
-
-    # Print out the message and reset
-    echo -e "${colour_code}${message}${default_colour}"
-}
-
 tostring() {
     echo "$@" | __jq tostring 2>/dev/null || echo "${@//\"/\\\"}"
 }
@@ -181,26 +156,26 @@ tojson() {
 }
 
 loghead() {
-    printf "\033[1;35m%s${1}\033[0m\n"
+    echo -en "\033[1;35m${1}\033[0m"
 }
 
 logerr() {
-    printf "\033[1;31m%s${1}\033[0m\n"
+    echo -en "\033[1;31m${1}\033[0m"
 }
 
 logsucc() {
-    printf "\033[1;32m%s${1}\033[0m\n"
+    echo -en "\033[1;32m${1}\033[0m"
 }
 
 logwarn() {
-    printf "\033[1;33m${1}\033[0m\n"
+    echo -en "\033[1;33m${1}\033[0m"
 }
 
 loginfo() {
-    printf "\033[1;34m%s${1}\033[0m\n"
+    echo -en "\033[1;34m${1}\033[0m"
 }
 
 logdebu() {
     if [ -z "${FABKIT_DEBUG}" ] || [ "${FABKIT_DEBUG}" == "false" ]; then return; fi
-    printf "\033[1;36m%s${1}\033[0m\n"
+    echo -en "\033[1;36m${1}\033[0m"
 }

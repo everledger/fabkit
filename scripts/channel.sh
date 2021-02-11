@@ -2,13 +2,13 @@
 
 create_channel() {
     if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
-        log "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help" error
+        logerr "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help\n"
         exit 1
     fi
 
-    log "===============" info
-    log "Channel: create" info
-    log "===============" info
+    loginfo "===============\n"
+    loginfo "Channel: create\n"
+    loginfo "===============\n"
     echo
 
     local channel_name="$1"
@@ -18,7 +18,7 @@ create_channel() {
     __set_certs $org $peer
     __set_peer_exec cmd
 
-    log "Creating channel ${channel_name} using configuration file ${FABKIT_CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}_tx.pb" info
+    loginfo "Creating channel ${channel_name} using configuration file ${FABKIT_CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}_tx.pb\n"
 
     if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" == "false" ]; then
         cmd+="peer channel create -o $FABKIT_ORDERER_ADDRESS -c ${channel_name} -f $FABKIT_CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}_tx.pb --outputBlock $FABKIT_CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}.block"
@@ -31,13 +31,13 @@ create_channel() {
 
 join_channel() {
     if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
-        log "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help" error
+        logerr "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help\n"
         exit 1
     fi
 
-    log "=============" info
-    log "Channel: join" info
-    log "=============" info
+    loginfo "=============\n"
+    loginfo "Channel: join\n"
+    loginfo "=============\n"
     echo
 
     local channel_name="$1"
@@ -47,7 +47,7 @@ join_channel() {
     __set_certs $org $peer
     __set_peer_exec cmd
 
-    log "Joining channel ${channel_name}" info
+    loginfo "Joining channel ${channel_name}\n"
 
     if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" == "false" ]; then
         cmd+="peer channel join -b ${FABKIT_CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}.block"
@@ -60,13 +60,13 @@ join_channel() {
 
 update_channel() {
     if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ]; then
-        log "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help" error
+        logerr "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help\n"
         exit 1
     fi
 
-    log "===============" info
-    log "Channel: update" info
-    log "===============" info
+    loginfo "===============\n"
+    loginfo "Channel: update\n"
+    loginfo "===============\n"
     echo
 
     local channel_name="$1"
@@ -77,7 +77,7 @@ update_channel() {
     __set_certs $org $peer
     __set_peer_exec cmd
 
-    log "Updating anchors peers on ${channel_name} using configuration file ${FABKIT_CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors.tx" info
+    loginfo "Updating anchors peers on ${channel_name} using configuration file ${FABKIT_CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors.tx\n"
 
     if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" == "false" ]; then
         cmd+="peer channel update -o $FABKIT_ORDERER_ADDRESS -c ${channel_name} -f ${FABKIT_CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors_tx.pb"

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
 install_network() {
-    log "================" info
-    log "Network: install" info
-    log "================" info
+    loginfo "================\n"
+    loginfo "Network: install\n"
+    loginfo "================\n"
     echo
 
     __docker_fabric_pull
@@ -12,20 +12,20 @@ install_network() {
 
 __docker_fabric_pull() {
     for image in peer orderer ccenv tools; do
-        log "==> FABRIC IMAGE: hyperledger/fabric-$image:${FABKIT_FABRIC_VERSION}" info
+        loginfo "==> FABRIC IMAGE: hyperledger/fabric-$image:${FABKIT_FABRIC_VERSION}\n"
         echo
         docker pull hyperledger/fabric-$image:${FABKIT_FABRIC_VERSION} || exit 1
         docker tag hyperledger/fabric-$image:${FABKIT_FABRIC_VERSION} hyperledger/fabric-$image:latest
         echo
     done
 
-    log "==> FABRIC CA IMAGE: hyperledger/fabric-ca:${FABKIT_FABRIC_CA_VERSION}" info
+    loginfo "==> FABRIC CA IMAGE: hyperledger/fabric-ca:${FABKIT_FABRIC_CA_VERSION}\n"
     echo
     docker pull hyperledger/fabric-ca:${FABKIT_FABRIC_CA_VERSION} || exit 1
     docker tag hyperledger/fabric-ca:${FABKIT_FABRIC_CA_VERSION} hyperledger/fabric-ca:latest
     echo
 
-    log "==> COUCHDB IMAGE: hyperledger/fabric-couchdb:${FABKIT_FABRIC_THIRDPARTY_IMAGE_VERSION}" info
+    loginfo "==> COUCHDB IMAGE: hyperledger/fabric-couchdb:${FABKIT_FABRIC_THIRDPARTY_IMAGE_VERSION}\n"
     echo
     docker pull hyperledger/fabric-couchdb:${FABKIT_FABRIC_THIRDPARTY_IMAGE_VERSION} || exit 1
     docker tag hyperledger/fabric-couchdb:${FABKIT_FABRIC_THIRDPARTY_IMAGE_VERSION} hyperledger/fabric-couchdb:latest
@@ -33,15 +33,15 @@ __docker_fabric_pull() {
 }
 
 __docker_third_party_images_pull() {
-    log "==> GOLANG IMAGE: ${FABKIT_GOLANG_DOCKER_IMAGE}" info
+    loginfo "==> GOLANG IMAGE: ${FABKIT_GOLANG_DOCKER_IMAGE}\n"
     echo
     docker pull ${FABKIT_GOLANG_DOCKER_IMAGE}
     echo
-    log "==> JQ IMAGE: ${FABKIT_JQ_DOCKER_IMAGE}" info
+    loginfo "==> JQ IMAGE: ${FABKIT_JQ_DOCKER_IMAGE}\n"
     echo
     docker pull ${FABKIT_JQ_DOCKER_IMAGE}
     echo
-    log "==> YQ IMAGE: ${FABKIT_YQ_DOCKER_IMAGE}" info
+    loginfo "==> YQ IMAGE: ${FABKIT_YQ_DOCKER_IMAGE}\n"
     echo
     docker pull ${FABKIT_YQ_DOCKER_IMAGE}
     echo
@@ -49,7 +49,7 @@ __docker_third_party_images_pull() {
 
 start_network() {
     if [[ $(docker volume ls | grep ${FABKIT_DOCKER_NETWORK}) && ! ${FABKIT_RESET} ]]; then
-        log "Found volumes" warning
+        loginfo "Found volumes" warning
         read -p "Do you wish to restart the network and reuse this data? [yes/no=default] " yn
         case $yn in
         [Yy]*)
@@ -67,9 +67,9 @@ start_network() {
         chaincode_test $FABKIT_CHAINCODE_NAME
     fi
 
-    log "==============" info
-    log "Network: start" info
-    log "==============" info
+    loginfo "==============\n"
+    loginfo "Network: start\n"
+    loginfo "==============\n"
     echo
 
     for org in $(seq 1 ${FABKIT_ORGS}); do
@@ -105,13 +105,13 @@ start_network() {
 }
 
 restart_network() {
-    log "================" info
-    log "Network: restart" info
-    log "================" info
+    loginfo "================\n"
+    loginfo "Network: restart\n"
+    loginfo "================\n"
     echo
 
     if [[ ! $(docker volume ls | grep ${FABKIT_DOCKER_NETWORK}) ]]; then
-        log "No volumes from a previous run found. Run a normal start." error
+        logerr "No volumes from a previous run found. Run a normal start.\n"
         exit 1
     fi
 
@@ -125,13 +125,13 @@ restart_network() {
     done
     eval ${command}
 
-    log "The chaincode container will be instantiated automatically once the peer executes the first invoke or query" warning
+    lofwarn "The chaincode container will be instantiated automatically once the peer executes the first invoke or query\n"
 }
 
 stop_network() {
-    log "=============" info
-    log "Network: stop" info
-    log "=============" info
+    loginfo "=============\n"
+    loginfo "Network: stop\n"
+    loginfo "=============\n"
     echo
 
     for org in $(seq 1 ${FABKIT_ORGS}); do
@@ -143,7 +143,7 @@ stop_network() {
         stop_explorer
     fi
 
-    log "Cleaning docker leftovers containers and images" info
+    loginfo "Cleaning docker leftovers containers and images\n"
     docker rm -f $(docker ps -a | awk '($2 ~ /${FABKIT_DOCKER_NETWORK}|dev-/) {print $1}') 2>/dev/null
     docker rmi -f $(docker images -qf "dangling=true") 2>/dev/null
     docker rmi -f $(docker images | awk '($1 ~ /^<none>|dev-/) {print $3}') 2>/dev/null
@@ -155,8 +155,8 @@ stop_network() {
     fi
 
     if [[ $(docker volume ls | grep ${FABKIT_DOCKER_NETWORK}) ]]; then
-        log "!!!!! ATTENTION !!!!!" error
-        log "Found volumes" error
+        logerr "!!!!! ATTENTION !!!!!\n"
+        logerr "Found volumes\n"
         read -p "Do you wish to remove this data? [yes/no=default] " yn
         case $yn in
         [Yy]*)
@@ -168,9 +168,9 @@ stop_network() {
 }
 
 initialize_network() {
-    log "=============" info
-    log "Network: init" info
-    log "=============" info
+    loginfo "=============\n"
+    loginfo "Network: init\n"
+    loginfo "=============\n"
     echo
 
     create_channel $FABKIT_CHANNEL_NAME 1 0
@@ -224,19 +224,19 @@ __replace_config_capabilities() {
 # $4: network profile name
 generate_genesis() {
     if [ -z "$1" ]; then
-        log "Base path missing" error
+        logerr "Base path missing\n"
         exit 1
     fi
     if [ -z "$2" ]; then
-        log "Config path missing" error
+        logerr "Config path missing\n"
         exit 1
     fi
     if [ -z "$3" ]; then
-        log "Crypto material path missing" error
+        logerr "Crypto material path missing\n"
         exit 1
     fi
     if [ -z "$4" ]; then
-        log "Network profile name" error
+        logerr "Network profile name\n"
         exit 1
     fi
 
@@ -251,7 +251,7 @@ generate_genesis() {
     fi
 
     if [ -d "$channel_dir" ]; then
-        log "Channel directory ${channel_dir} already exists" warning
+        logwarn "Channel directory ${channel_dir} already exists\n"
         read -p "Do you wish to re-generate channel config? [yes/no=default] " yn
         case $yn in
         [Yy]*) ;;
@@ -260,14 +260,14 @@ generate_genesis() {
         __delete_path $channel_dir
     fi
 
-    log "========================" info
-    log "Generating genesis block" info
-    log "========================" info
+    loginfo "========================\n"
+    loginfo "Generating genesis block\n"
+    loginfo "========================\n"
     echo
-    log "Base path: $base_path" debug
-    log "Config path: $config_path" debug
-    log "Cryptos path: $cryptos_path" debug
-    log "Network profile: $network_profile" debug
+    logdebu "Base path: $base_path" debug
+    logdebu "Config path: $config_path" debug
+    logdebu "Cryptos path: $cryptos_path" debug
+    loginfo "Network profile: $network_profile" debug
 
     if [ ! -d "$channel_dir" ]; then
         mkdir -p $channel_dir
@@ -288,7 +288,7 @@ generate_genesis() {
                         configtxgen -inspectBlock /channels/orderer-system-channel/genesis_block.pb
                     "
     if [ "$?" -ne 0 ]; then
-        log "Failed to generate orderer genesis block..." error
+        logerr "Failed to generate orderer genesis block...\n"
         exit 1
     fi
 }
@@ -303,31 +303,31 @@ generate_genesis() {
 # $7: org msp
 generate_channeltx() {
     if [ -z "$1" ]; then
-        log "Channel name missing" error
+        logerr "Channel name missing\n"
         exit 1
     fi
     if [ -z "$2" ]; then
-        log "Base path missing" error
+        logerr "Base path missing\n"
         exit 1
     fi
     if [ -z "$3" ]; then
-        log "Config path missing" error
+        logerr "Config path missing\n"
         exit 1
     fi
     if [ -z "$4" ]; then
-        log "Crypto material path missing" error
+        logerr "Crypto material path missing\n"
         exit 1
     fi
     if [ -z "$5" ]; then
-        log "Network profile missing" error
+        logerr "Network profile missing\n"
         exit 1
     fi
     if [ -z "$6" ]; then
-        log "Channel profile missing" error
+        logerr "Channel profile missing\n"
         exit 1
     fi
     if [ -z "$7" ]; then
-        log "MSP missing" error
+        logerr "MSP missing\n"
         exit 1
     fi
 
@@ -345,7 +345,7 @@ generate_channeltx() {
     fi
 
     if [ -d "$channel_dir" ]; then
-        log "Channel directory ${channel_dir} already exists" warning
+        logwarn "Channel directory ${channel_dir} already exists\n"
         read -p "Do you wish to re-generate channel config? [yes/no=default] " yn
         case $yn in
         [Yy]*) ;;
@@ -354,18 +354,18 @@ generate_channeltx() {
         __delete_path $channel_dir
     fi
 
-    log "=========================" info
-    log "Generating channel config" info
-    log "=========================" info
+    loginfo "=========================\n"
+    loginfo "Generating channel config\n"
+    loginfo "=========================\n"
     echo
-    log "Channel: $channel_name" debug
-    log "Base path: $base_path" debug
-    log "Config path: $config_path" debug
-    log "Cryptos path: $cryptos_path" debug
-    log "Channel dir: $channel_dir" debug
-    log "Network profile: $network_profile" debug
-    log "Channel profile: $channel_profile" debug
-    log "Org MSP: $org_msp" debug
+    logdebu "Channel: $channel_name" debug
+    logdebu "Base path: $base_path" debug
+    logdebu "Config path: $config_path" debug
+    logdebu "Cryptos path: $cryptos_path" debug
+    logdebu "Channel dir: $channel_dir" debug
+    logdebu "Network profile: $network_profile" debug
+    logdebu "Channel profile: $channel_profile" debug
+    logdebu "Org MSP: $org_msp" debug
 
     if [ ! -d "$channel_dir" ]; then
         mkdir -p $channel_dir
@@ -386,7 +386,7 @@ generate_channeltx() {
                         configtxgen -inspectChannelCreateTx /channels/${channel_name}/${channel_name}_tx.pb
                     "
     if [ "$?" -ne 0 ]; then
-        log "Failed to generate channel configuration transaction..." error
+        logerr "Failed to generate channel configuration transaction...\n"
         exit 1
     fi
 
@@ -400,7 +400,7 @@ generate_channeltx() {
         hyperledger/fabric-tools:${FABKIT_FABRIC_VERSION} \
         configtxgen -profile $channel_profile -outputAnchorPeersUpdate /channels/${channel_name}/${org_msp}_anchors_tx.pb -channelID ${channel_name} -asOrg $org_msp /configtx.yaml
     if [ "$?" -ne 0 ]; then
-        log "Failed to generate anchor peer update for $org_msp..." error
+        logerr "Failed to generate anchor peer update for $org_msp...\n"
         exit 1
     fi
 }
@@ -410,30 +410,30 @@ generate_channeltx() {
 # $2: certificates output directory
 generate_cryptos() {
     if [ -z "$1" ]; then
-        log "Config path missing" error
+        logerr "Config path missing\n"
         exit 1
     fi
     if [ -z "$2" ]; then
-        log "Cryptos path missing" error
+        logerr "Cryptos path missing\n"
         exit 1
     fi
 
     local config_path="$1"
     local cryptos_path="$2"
 
-    log "==================" info
-    log "Generating cryptos" info
-    log "==================" info
+    loginfo "==================\n"
+    loginfo "Generating cryptos\n"
+    loginfo "==================\n"
     echo
-    log "Config path: $config_path" debug
-    log "Cryptos path: $cryptos_path" debug
+    logdebu "Config path: $config_path" debug
+    logdebu "Cryptos path: $cryptos_path" debug
 
     if [ "${FABKIT_RESET}" == "true" ]; then
         __delete_path ${cryptos_path}
     fi
 
     if [ -d "${cryptos_path}" ]; then
-        log "crypto-config already exists" warning
+        logwarn "crypto-config already exists\n"
         read -p "Do you wish to remove crypto-config and generate new ones? [yes/no=default] " yn
         case $yn in
         [Yy]*) __delete_path ${cryptos_path} ;;
@@ -452,7 +452,7 @@ generate_cryptos() {
             hyperledger/fabric-tools:${FABKIT_FABRIC_VERSION} \
             cryptogen generate --config=/crypto-config.yaml --output=/crypto-config
         if [ "$?" -ne 0 ]; then
-            log "Failed to generate crypto material..." error
+            logerr "Failed to generate crypto material...\n"
             exit 1
         fi
     fi
