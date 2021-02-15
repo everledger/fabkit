@@ -237,6 +237,7 @@ To start working on a feature, you just need to set the _FABKIT_ROOT_ variable t
 ```bash
 cd /path/of/this/repo
 FABKIT_ROOT="$(pwd)"
+alias fabkit="${FABKIT_ROOT}/fabkit"
 ```
 
 Now all the `fabkit` commands will execute in your repository path.

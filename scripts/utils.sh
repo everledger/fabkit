@@ -1,5 +1,30 @@
 #!/usr/bin/env bash
 
+loghead() {
+    echo -en "\033[1;35m${1}\033[0m"
+}
+
+logerr() {
+    echo -en "\033[1;31m${1}\033[0m"
+}
+
+logsucc() {
+    echo -en "\033[1;32m${1}\033[0m"
+}
+
+logwarn() {
+    echo -en "\033[1;33m${1}\033[0m"
+}
+
+loginfo() {
+    echo -en "\033[1;34m${1}\033[0m"
+}
+
+logdebu() {
+    if [ -z "${FABKIT_DEBUG}" ] || [ "${FABKIT_DEBUG}" == "false" ]; then return; fi
+    echo -en "\033[1;36m${1}\033[0m"
+}
+
 __check_fabric_version() {
     if [[ ! "${FABKIT_FABRIC_VERSION}" =~ ${1}.* ]]; then
         logerr "This command is not enabled on Fabric v${FABKIT_FABRIC_VERSION}. In order to run, run your network with the flag: -v|--version [version]\n"
@@ -34,19 +59,19 @@ __check_docker_daemon() {
 
 # delete path recursively and asks for root permissions if needed
 __delete_path() {
-    if [ ! -d "${1}" ]; then
-        logwarn "Directory \"${1}\" does not exist. Skipping delete. All good :)\n"
+    if [ ! -d "$1" ]; then
+        logdebu "Directory \"${1}\" does not exist. Skipping delete. All good :)\n"
         return
     fi
 
-    if [ -w "${1}" ]; then
-        rm -rf ${1}
+    if [ -w "$1" ]; then
+        rm -rf "$1"
     else
         logerr "!!!!! ATTENTION !!!!!\n"
         logerr "Directory \"${1}\" requires superuser permissions\n"
-        read -p "Do you wish to continue? [yes/no=default] " yn
+        read -rp "Do you wish to continue? [yes/no=default] " yn
         case $yn in
-        [Yy]*) sudo rm -rf ${1} ;;
+        [Yy]*) sudo rm -rf "$1" ;;
         *) return 0 ;;
         esac
     fi
@@ -62,11 +87,10 @@ __set_certs() {
     CORE_PEER_MSPCONFIGPATH=${FABKIT_PEER_REMOTE_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/users/Admin@org${1}.example.com/msp
     ORDERER_CA=${FABKIT_PEER_REMOTE_BASEPATH}/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
 
-    loginfo "===========================================\n"
-    loginfo "Peer address: ${CORE_PEER_ADDRESS}\n"
-    loginfo "Peer cert: ${CORE_PEER_TLS_CERT_FILE}\n"
-    loginfo "===========================================\n"
-    echo
+    logdebu "===========================================\n"
+    logdebu "Peer address: ${CORE_PEER_ADDRESS}\n"
+    logdebu "Peer cert: ${CORE_PEER_TLS_CERT_FILE}\n"
+    logdebu "===========================================\n"
 }
 
 __set_peer_exec() {
@@ -85,10 +109,10 @@ __set_peer_exec() {
 
 __exec_command() {
     echo
-    logdebu "Excecuting command: "
+    logdebu "Excecuting command: \n"
     echo
     local message=$1
-    logdebu "$message"
+    logdebu "${message}\n"
     echo
 
     # TODO: Return error and let the caller to handle it
@@ -99,11 +123,9 @@ __timer() {
     local start_time="${1}"
     local end_time="${2}"
 
-    local elapsed_time="$(($end_time - $start_time))"
+    local elapsed_time="$((end_time - start_time))"
 
-    echo "
-    ⏰ We made in: $(logsucc $(($elapsed_time / 60))m$(($elapsed_time % 60))s)
-    "
+    echo -e "\n⏰ We made it in: $(logsucc $((elapsed_time / 60))m$((elapsed_time % 60))s)"
 }
 
 __validate_params() {
@@ -125,8 +147,8 @@ __validate_params() {
 }
 
 __set_lastrun() {
-    if [ ! -f ${FABKIT_ROOT} ]; then
-        mkdir -p ${FABKIT_ROOT}
+    if [ ! -f "$FABKIT_ROOT" ]; then
+        mkdir -p "$FABKIT_ROOT"
     fi
 
     unset FABKIT_RESET
@@ -134,13 +156,13 @@ __set_lastrun() {
     (
         set -o posix
         set | grep "FABKIT_"
-    ) >${FABKIT_ROOT}/.lastrun
+    ) >"${FABKIT_ROOT}/.lastrun"
 
     __load_lastrun
 }
 
 __load_lastrun() {
-    source ${FABKIT_ROOT}/.lastrun 2>/dev/null
+    source "${FABKIT_ROOT}/.lastrun" 2>/dev/null
 }
 
 __clean_user_path() {
@@ -148,34 +170,41 @@ __clean_user_path() {
 }
 
 tostring() {
-    echo "$@" | __jq tostring 2>/dev/null || echo "${@//\"/\\\"}"
+    echo "$@" | __jq tostring 2>/dev/null ||
+        # TODO: fix this
+        echo
+        echo "${@//\"/\\\"}"
 }
 
 tojson() {
     echo "$@" | __jq .
 }
 
-loghead() {
-    echo -en "\033[1;35m${1}\033[0m"
+cursor_back() {
+    echo -en "\033[$1D"
 }
 
-logerr() {
-    echo -en "\033[1;31m${1}\033[0m"
-}
+keep_me_busy() {
+    local LC_CTYPE=C
+    local pid=$!
+    local spin='⣾⣽⣻⢿⡿⣟⣯⣷'
+    local charwidth=3
 
-logsucc() {
-    echo -en "\033[1;32m${1}\033[0m"
-}
+    echo -en "\033[3C"
+    echo -en "→ "
+    local i=0
+    while kill -0 "$pid" 2>/dev/null; do
+        tput civis
+        local i=$(((i + charwidth) % ${#spin}))
+        printf "%s" "${spin:$i:$charwidth}"
+        cursor_back 1
+        sleep .1
+    done
 
-logwarn() {
-    echo -en "\033[1;33m${1}\033[0m"
-}
+    tput cnorm
+    wait "$pid"
 
-loginfo() {
-    echo -en "\033[1;34m${1}\033[0m"
-}
+    echo " ✅"
 
-logdebu() {
-    if [ -z "${FABKIT_DEBUG}" ] || [ "${FABKIT_DEBUG}" == "false" ]; then return; fi
-    echo -en "\033[1;36m${1}\033[0m"
+    return $?
 }

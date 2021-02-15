@@ -6,16 +6,11 @@ create_channel() {
         exit 1
     fi
 
-    loginfo "===============\n"
-    loginfo "Channel: create\n"
-    loginfo "===============\n"
-    echo
-
     local channel_name="$1"
     local org="$2"
     local peer="$3"
 
-    __set_certs $org $peer
+    __set_certs "$org" "$peer"
     __set_peer_exec cmd
 
     loginfo "Creating channel ${channel_name} using configuration file ${FABKIT_CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}_tx.pb\n"
@@ -35,11 +30,6 @@ join_channel() {
         exit 1
     fi
 
-    loginfo "=============\n"
-    loginfo "Channel: join\n"
-    loginfo "=============\n"
-    echo
-
     local channel_name="$1"
     local org="$2"
     local peer="$3"
@@ -47,7 +37,7 @@ join_channel() {
     __set_certs $org $peer
     __set_peer_exec cmd
 
-    loginfo "Joining channel ${channel_name}\n"
+    loginfo "Joining channel ${channel_name} for org${org} peer${peer}\n"
 
     if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" == "false" ]; then
         cmd+="peer channel join -b ${FABKIT_CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}.block"
@@ -64,20 +54,15 @@ update_channel() {
         exit 1
     fi
 
-    loginfo "===============\n"
-    loginfo "Channel: update\n"
-    loginfo "===============\n"
-    echo
-
     local channel_name="$1"
     local org_msp="$2"
     local org="$3"
     local peer="$4"
 
-    __set_certs $org $peer
+    __set_certs "$org" "$peer"
     __set_peer_exec cmd
 
-    loginfo "Updating anchors peers on ${channel_name} using configuration file ${FABKIT_CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors.tx\n"
+    loginfo "Updating anchors on ${channel_name} for org${org} peer${peer} by using configuration file ${FABKIT_CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors.tx\n"
 
     if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" == "false" ]; then
         cmd+="peer channel update -o $FABKIT_ORDERER_ADDRESS -c ${channel_name} -f ${FABKIT_CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors_tx.pb"

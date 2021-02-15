@@ -45,27 +45,27 @@ __add_aliases() {
 }
 
 loghead() {
-    printf "\033[1;35m%s${1}\033[0m\n"
+    echo -en "\033[1;35m${1}\033[0m"
 }
 
 logerr() {
-    printf "\033[1;31m%s${1}\033[0m\n"
+    echo -en "\033[1;31m${1}\033[0m"
 }
 
 logsucc() {
-    printf "\033[1;32m%s${1}\033[0m\n"
+    echo -en "\033[1;32m${1}\033[0m"
 }
 
 logwarn() {
-    printf "\033[1;33m%s${1}\033[0m\n"
+    echo -en "\033[1;33m${1}\033[0m"
 }
 
 loginfo() {
-    printf "\033[1;34m%s${1}\033[0m\n"
+    echo -en "\033[1;34m${1}\033[0m"
 }
 
 logdebu() {
-    printf "\033[1;36m%s${1}\033[0m\n"
+    echo -en "\033[1;36m${1}\033[0m"
 }
 
 loghead "
