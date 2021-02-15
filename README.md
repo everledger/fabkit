@@ -3,6 +3,7 @@
 Have you always wanted to learn how to use Hyperledger Fabric but never knew where to start from?
 
 Meet Fabkit (Hyperledger Fabric Toolkit): your best mate to dive you in 😎
+
 ## Prerequisites
 
 - [Docker](https://www.docker.com/get-started) [>= 18.05]
@@ -209,7 +210,7 @@ Looking for benchmarking your network? Have a look [here](./docs/benchmarks.md).
 
 If you are experiencing any issue, before opening a ticket, please search among the existing ones or refer to the [troubleshooting](./docs/troubleshooting.md) page.
 
-## Contributing (last but least!)
+## Contributing (last but not least!)
 
 We, the Fabric's team, are doing our best to put new features on the shelf as soon as they come out and provide the community with a great user experience, however, we are not fulltime dedicated to the job and that is why we need your help!
 
