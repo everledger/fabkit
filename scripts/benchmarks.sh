@@ -2,7 +2,7 @@
 
 __exec_jobs() {
     if [[ $# == 1 ]]; then
-        __loader $1
+        __loader "$1"
         return
     fi
 
@@ -30,19 +30,19 @@ __exec_jobs() {
 
     local start_time="$(date -u +%s)"
 
-    for i in $(seq 1 $jobs); do
-        __loader $entries &
+    for i in $(seq 1 "$jobs"); do
+        __loader "$entries" &
     done
 
     for job in $(jobs -p); do
-        wait $job
+        wait "$job"
     done
 
     local end_time="$(date -u +%s)"
-    local elapsed="$(($end_time - $start_time))"
+    local elapsed="$((end_time - start_time))"
 
     logwarn "Total of $elapsed seconds elapsed for process\n"
-    logsucc "$(($jobs * $entries)) entries added\n"
+    logsucc "$((jobs * entries)) entries added\n"
 }
 
 __loader() {
@@ -53,12 +53,12 @@ __loader() {
 
     set -e
 
-    for i in $(seq 1 $1); do
+    for i in $(seq 1 "$1"); do
         local key=$(LC_CTYPE=C tr -cd '[:alnum:]' </dev/urandom | fold -w12 | head -n1)
         local value="$i"
 
         logdebu "Writing <${key},${value}> pair in the ledger\n"
 
-        invoke $FABKIT_CHANNEL_NAME $FABKIT_CHAINCODE_NAME 1 0 "{\"Args\":[\"put\",\"${key}\",\"${value}\"]}" &>/dev/null
+        invoke "$FABKIT_CHANNEL_NAME" "$FABKIT_CHAINCODE_NAME" 1 0 "{\"Args\":[\"put\",\"${key}\",\"${value}\"]}" &>/dev/null
     done
 }

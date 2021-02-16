@@ -18,7 +18,6 @@ logwarn() {
 
 loginfo() {
     echo -en "\033[1;34m${1}\033[0m"
-    echo
 }
 
 logdebu() {
@@ -109,16 +108,11 @@ __set_peer_exec() {
 }
 
 __exec_command() {
-    if [ -z "${FABKIT_DEBUG}" ] || [ "${FABKIT_DEBUG}" == "false" ]; then return; fi
-    echo
-    logdebu "Excecuting command: \n"
-    echo
-    local message=$1
-    logdebu "${message}\n"
-    echo
-
+    logdebu "\nExcecuting command: \n\n"
+    local message="$1"
+    logdebu "${message}\n\n"
     # TODO: Return error and let the caller to handle it
-    eval "$message || exit 1"
+    eval "$message &>/dev/null"
 }
 
 __timer() {
@@ -127,8 +121,7 @@ __timer() {
 
     local elapsed_time="$((end_time - start_time))"
 
-    echo
-    echo -e "\n⏰ : $(logsucc $((elapsed_time / 60))m$((elapsed_time % 60))s)"
+    echo -e "\n\n⏰ : $(logsucc $((elapsed_time / 60))m$((elapsed_time % 60))s)"
 }
 
 __validate_params() {
@@ -193,8 +186,7 @@ keep_me_busy() {
     local spin='⣾⣽⣻⢿⡿⣟⣯⣷'
     local charwidth=3
 
-    echo -en "\033[3C"
-    echo -en "→ "
+    echo -en "\033[3C→ "
     local i=0
     while kill -0 "$pid" 2>/dev/null; do
         tput civis
@@ -204,9 +196,13 @@ keep_me_busy() {
         sleep .1
     done
 
-    tput el
     tput cnorm
-    wait "$pid"
+    if wait "$pid"; then
+        echo " ✅"
+    else
+        echo " ❌"
+        exit 1
+    fi
 
     return $?
 }

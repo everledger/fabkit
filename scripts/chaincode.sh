@@ -30,19 +30,19 @@ __init_go_mod() {
     }
 
     if [ ! -f "./go.mod" ]; then
-        go mod init
+        go mod init &>/dev/null
     fi
 
-    __delete_path vendor 2>/dev/null
+    __delete_path vendor &>/dev/null
 
     if [ "${operation}" == "install" ]; then
-        go get ./...
+        go get ./... &>/dev/null
     elif [ "${operation}" == "update" ]; then
-        go get -u=patch ./...
+        go get -u=patch ./... &>/dev/null
     fi
 
-    go mod tidy
-    go mod vendor
+    go mod tidy &>/dev/null
+    go mod vendor &>/dev/null
 
     cd "$FABKIT_ROOT" || return
 }
@@ -98,9 +98,9 @@ chaincode_build() {
         __init_go_mod install "$chaincode_path"
 
         if [[ $(__check_deps test) ]]; then
-            (docker run --rm -v "${chaincode_path}:/usr/src/myapp" -w "/usr/src/myapp/${chaincode_name}" -e CGO_ENABLED=0 "$FABKIT_GOLANG_DOCKER_IMAGE" sh -c "go build -a -installsuffix nocgo ./... && rm -rf ./${chaincode_name} &>/dev/null") || exit 1
+            (docker run --rm -v "${chaincode_path}:/usr/src/myapp" -w "/usr/src/myapp/${chaincode_name}" -e CGO_ENABLED=0 "$FABKIT_GOLANG_DOCKER_IMAGE" sh -c "go build -a -installsuffix nocgo ./... &>/dev/null && rm -rf ./${chaincode_name} &>/dev/null") || exit 1
         else
-            (cd "${chaincode_path}" && CGO_ENABLED=0 go build -a -installsuffix nocgo ./... && rm -rf ./"${chaincode_name}" &>/dev/null) || exit 1
+            (cd "${chaincode_path}" && CGO_ENABLED=0 go build -a -installsuffix nocgo ./... &>/dev/null && rm -rf ./"${chaincode_name}" &>/dev/null) || exit 1
         fi
     fi
 
@@ -291,8 +291,6 @@ chaincode_install() {
     local peer="$5"
     shift 5
 
-    loginfo "Installing chaincode $chaincode_name version $chaincode_version from path $chaincode_path"
-
     __set_chaincode_options install options "$@"
     __set_certs "$org" "$peer"
     __set_peer_exec cmd
@@ -302,6 +300,8 @@ chaincode_install() {
 
     __rename_chaincode_path_to_name "$chaincode_path" "$chaincode_name" result
     chaincode_path=$result
+
+    loginfo "Installing chaincode ${chaincode_name}@${chaincode_version} from path $chaincode_path"
 
     if [ "$chaincode_language" == "golang" ]; then
         __init_go_mod install "$chaincode_path"
@@ -329,7 +329,7 @@ chaincode_instantiate() {
     local peer="$5"
     shift 5
 
-    loginfo "Instantiating chaincode $chaincode_name version $chaincode_version on channel $channel_name"
+    loginfo "Instantiating chaincode ${chaincode_name}@${chaincode_version} on channel $channel_name"
 
     __set_chaincode_options instantiate options "$@"
     __get_chaincode_language "${FABKIT_CHAINCODE_PATH}/${chaincode_name}" chaincode_language
@@ -502,7 +502,7 @@ chaincode_pack() {
         mkdir -p "$FABKIT_DIST_PATH"
     fi
 
-    loginfo "Packing chaincode $chaincode_name version $chaincode_version from path ${chaincode_path}"
+    loginfo "Packing chaincode ${chaincode_name}@${chaincode_version} from path ${chaincode_path}"
 
     if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" == "false" ]; then
         cmd+="peer chaincode package dist/${filename} -o $FABKIT_ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -p $chaincode_remote_path -l $chaincode_language --cc-package --sign"
@@ -613,8 +613,6 @@ lc_chaincode_package() {
     local peer="$5"
     shift 5
 
-    loginfo "Packaging chaincode $chaincode_name version $chaincode_version from path $chaincode_path"
-
     __set_chaincode_options package options "$@"
     __set_certs "$org" "$peer"
     __set_peer_exec cmd
@@ -624,6 +622,8 @@ lc_chaincode_package() {
 
     __rename_chaincode_path_to_name "$chaincode_path" "$chaincode_name" result
     chaincode_path=$result
+
+    loginfo "Packaging chaincode ${chaincode_name}@${chaincode_version} from path $chaincode_path"
 
     if [ "$chaincode_language" == "golang" ]; then
         __init_go_mod install "$chaincode_path"
@@ -650,7 +650,7 @@ lc_chaincode_install() {
     local peer="$4"
     shift 4
 
-    loginfo "Installing chaincode $chaincode_name version $chaincode_version"
+    loginfo "Installing chaincode ${chaincode_name}@${chaincode_version}"
 
     __set_chaincode_options install options "$@"
     __set_certs "$org" "$peer"
@@ -678,7 +678,7 @@ lc_chaincode_approve() {
     local org="$5"
     local peer="$6"
     shift 6
-    loginfo "Approve chaincode $chaincode_name version $chaincode_version on channel $channel_name for org${org}"
+    loginfo "Approve chaincode ${chaincode_name}@${chaincode_version} on channel $channel_name for org${org}"
 
     __set_chaincode_options approve options "$@"
     # TODO: Accept as input or build dynamically
@@ -754,7 +754,7 @@ lc_chaincode_commit() {
         for o in $(seq 1 "$FABKIT_ORGS"); do
             #TODO: Create from endorsement policy and make endorsement policy dynamic
             lc_query_package_id "$chaincode_name" "$chaincode_version" "$o" "$peer"
-            if [ ! -z "$PACKAGE_ID" ]; then
+            if [ -n "$PACKAGE_ID" ]; then
                 __set_certs "$o" "$peer"
                 forall+=" --peerAddresses $CORE_PEER_ADDRESS --tlsRootCertFiles $CORE_PEER_TLS_ROOTCERT_FILE "
             fi
@@ -772,7 +772,7 @@ lc_chaincode_commit() {
     fi
     __exec_command "${cmd}"
 
-    loginfo "Init the chaincode"
+    logdebu "Init the chaincode"
     invoke "$channel_name" "$chaincode_name" "$org" "$peer" "$@" --isInit
 }
 

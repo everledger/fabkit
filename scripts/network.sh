@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 install_network() {
-    loginfo "Installing Fabric dependencies\n"
+    loginfo "Installing Fabric dependencies"
 
     __docker_fabric_pull &
     keep_me_busy
@@ -29,18 +29,18 @@ __docker_fabric_pull() {
 __docker_third_party_images_pull() {
     loginfo "Pulling utilities images"
     logdebu "\nPulling ${FABKIT_GOLANG_DOCKER_IMAGE}"
-    docker pull ${FABKIT_GOLANG_DOCKER_IMAGE} &>/dev/null || exit 1
+    docker pull "$FABKIT_GOLANG_DOCKER_IMAGE" &>/dev/null || exit 1
     logdebu "\nPulling ${FABKIT_JQ_DOCKER_IMAGE}"
-    docker pull ${FABKIT_JQ_DOCKER_IMAGE} &>/dev/null || exit 1
+    docker pull "$FABKIT_JQ_DOCKER_IMAGE" &>/dev/null || exit 1
     logdebu "\nPulling ${FABKIT_YQ_DOCKER_IMAGE}"
-    docker pull ${FABKIT_YQ_DOCKER_IMAGE} &>/dev/null || exit 1
+    docker pull "$FABKIT_YQ_DOCKER_IMAGE" &>/dev/null || exit 1
 }
 
 start_network() {
-    loginfo "Starting Fabric network"
+    loginfo "Starting Fabric network\n"
 
     if [[ $(docker volume ls | grep ${FABKIT_DOCKER_NETWORK}) && ! ${FABKIT_RESET} ]]; then
-        loginfo "Found volumes" warning
+        logwarn "Found volumes"
         read -rp "Do you wish to restart the network and reuse this data? [yes/no=default] " yn
         case $yn in
         [Yy]*)
@@ -87,20 +87,18 @@ start_network() {
 
     __set_lastrun
 
-    docker network create ${FABKIT_DOCKER_NETWORK} &>/dev/null || exit 1
+    docker network create "$FABKIT_DOCKER_NETWORK" &>/dev/null || exit 1
 
     (loginfo "Launching containers" && eval ${command} && sleep 5) &
     keep_me_busy
 
-    loginfo
     __log_setup
-    loginfo
-    loginfo "Initializing the network"
+    loginfo "Initializing the network\n"
     initialize_network
 }
 
 restart_network() {
-    loginfo "Restarting Fabric network\n"
+    loginfo "Restarting Fabric network"
     echo
 
     if [[ ! $(docker volume ls | grep ${FABKIT_DOCKER_NETWORK}) ]]; then
@@ -111,9 +109,9 @@ restart_network() {
     __load_lastrun
     __log_setup
 
-    docker network create ${FABKIT_DOCKER_NETWORK} &>/dev/null | exit 1
+    docker network create "$FABKIT_DOCKER_NETWORK" &>/dev/null | exit 1
 
-    for org in $(seq 1 ${FABKIT_ORGS}); do
+    for org in $(seq 1 "$FABKIT_ORGS"); do
         local command+="docker-compose --env-file ${FABKIT_ROOT}/.env -f ${FABKIT_NETWORK_PATH}/org${org}.yaml --force-recreate -d &>/dev/null || exit 1;"
     done
     eval ${command}
@@ -124,7 +122,7 @@ restart_network() {
 stop_network() {
     loginfo "Stopping network and removing components"
 
-    for org in $(seq 1 ${FABKIT_ORGS}); do
+    for org in $(seq 1 "$FABKIT_ORGS"); do
         local command+="docker-compose --env-file ${FABKIT_ROOT}/.env -f ${FABKIT_NETWORK_PATH}/org${org}.yaml down --remove-orphans &>/dev/null || exit 1;"
     done
     eval ${command}
@@ -134,7 +132,7 @@ stop_network() {
         keep_me_busy
     fi
 
-    # loginfo "Cleaning docker leftovers containers and images\n"
+    logdebu "Cleaning docker leftovers containers and images\n"
     docker rm -f $(docker ps -a | awk '($2 ~ /${FABKIT_DOCKER_NETWORK}|dev-/) {print $1}') &>/dev/null
     docker rmi -f $(docker images -qf "dangling=true") &>/dev/null
     docker rmi -f $(docker images | awk '($1 ~ /^<none>|dev-/) {print $3}') &>/dev/null
