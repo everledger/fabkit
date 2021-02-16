@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-
 source ${FABKIT_ROOT}/.env
 for f in ${FABKIT_ROOT}/scripts/*; do source $f; done
 
@@ -99,7 +98,8 @@ if [ "$func" == "network" ]; then
     elif [ "$param" == "stop" ]; then
         __load_lastrun
         __log_setup
-        stop_network
+        (stop_network) &
+        keep_me_busy
     else
         help_network
     fi

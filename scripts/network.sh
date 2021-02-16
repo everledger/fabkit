@@ -37,7 +37,7 @@ __docker_third_party_images_pull() {
 }
 
 start_network() {
-    loginfo "Starting Fabric network\n"
+    loginfo "Starting Fabric network"
 
     if [[ $(docker volume ls | grep ${FABKIT_DOCKER_NETWORK}) && ! ${FABKIT_RESET} ]]; then
         loginfo "Found volumes" warning
@@ -86,16 +86,17 @@ start_network() {
     keep_me_busy
 
     __set_lastrun
-    __log_setup
 
     docker network create ${FABKIT_DOCKER_NETWORK} &>/dev/null || exit 1
 
-    eval ${command}
-
-    sleep 5
-
-    initialize_network &
+    (loginfo "Launching containers" && eval ${command} && sleep 5) &
     keep_me_busy
+
+    loginfo
+    __log_setup
+    loginfo
+    loginfo "Initializing the network"
+    initialize_network
 }
 
 restart_network() {
@@ -158,9 +159,6 @@ stop_network() {
 }
 
 initialize_network() {
-    loginfo "Initializing the network with default setup\n"
-    echo
-
     (create_channel "$FABKIT_CHANNEL_NAME" 1 0) &
     keep_me_busy
     for org in $(seq 1 "${FABKIT_ORGS}"); do
@@ -257,11 +255,10 @@ generate_genesis() {
         __delete_path "$channel_dir"
     fi
 
-    loginfo "Generating genesis block\n"
+    loginfo "Generating genesis block"
     logdebu "Base path: $base_path"
     logdebu "Config path: $config_path"
     logdebu "Cryptos path: $cryptos_path"
-    loginfo "Network profile: $network_profile"
 
     if [ ! -d "$channel_dir" ]; then
         mkdir -p "$channel_dir"
@@ -347,7 +344,7 @@ generate_channeltx() {
         __delete_path "$channel_dir"
     fi
 
-    loginfo "Generating channel config\n"
+    loginfo "Generating channel config"
     logdebu "Channel: $channel_name"
     logdebu "Base path: $base_path"
     logdebu "Config path: $config_path"
@@ -409,7 +406,7 @@ generate_cryptos() {
     local config_path="$1"
     local cryptos_path="$2"
 
-    loginfo "Generating cryptos\n"
+    loginfo "Generating cryptos"
     logdebu "Config path: $config_path"
     logdebu "Cryptos path: $cryptos_path"
 

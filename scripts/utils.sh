@@ -18,6 +18,7 @@ logwarn() {
 
 loginfo() {
     echo -en "\033[1;34m${1}\033[0m"
+    echo
 }
 
 logdebu() {
@@ -125,7 +126,8 @@ __timer() {
 
     local elapsed_time="$((end_time - start_time))"
 
-    echo -e "\n⏰ We made it in: $(logsucc $((elapsed_time / 60))m$((elapsed_time % 60))s)"
+    echo
+    echo -e "\n⏰ : $(logsucc $((elapsed_time / 60))m$((elapsed_time % 60))s)"
 }
 
 __validate_params() {
@@ -173,7 +175,7 @@ tostring() {
     echo "$@" | __jq tostring 2>/dev/null ||
         # TODO: fix this
         echo
-        echo "${@//\"/\\\"}"
+    echo "${@//\"/\\\"}"
 }
 
 tojson() {
@@ -201,10 +203,9 @@ keep_me_busy() {
         sleep .1
     done
 
+    tput el
     tput cnorm
     wait "$pid"
-
-    echo " ✅"
 
     return $?
 }
