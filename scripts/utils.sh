@@ -109,6 +109,7 @@ __set_peer_exec() {
 }
 
 __exec_command() {
+    if [ -z "${FABKIT_DEBUG}" ] || [ "${FABKIT_DEBUG}" == "false" ]; then return; fi
     echo
     logdebu "Excecuting command: \n"
     echo

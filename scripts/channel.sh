@@ -10,10 +10,10 @@ create_channel() {
     local org="$2"
     local peer="$3"
 
+    loginfo "Creating channel ${channel_name} using configuration file ${FABKIT_CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}_tx.pb"
+
     __set_certs "$org" "$peer"
     __set_peer_exec cmd
-
-    loginfo "Creating channel ${channel_name} using configuration file ${FABKIT_CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}_tx.pb\n"
 
     if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" == "false" ]; then
         cmd+="peer channel create -o $FABKIT_ORDERER_ADDRESS -c ${channel_name} -f $FABKIT_CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}_tx.pb --outputBlock $FABKIT_CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}.block"
@@ -34,10 +34,10 @@ join_channel() {
     local org="$2"
     local peer="$3"
 
+    loginfo "Joining channel ${channel_name} for org${org} peer${peer}"
+
     __set_certs $org $peer
     __set_peer_exec cmd
-
-    loginfo "Joining channel ${channel_name} for org${org} peer${peer}\n"
 
     if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" == "false" ]; then
         cmd+="peer channel join -b ${FABKIT_CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}.block"
@@ -59,10 +59,10 @@ update_channel() {
     local org="$3"
     local peer="$4"
 
+    loginfo "Updating anchors on ${channel_name} for org${org} peer${peer} by using configuration file ${FABKIT_CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors.tx"
+
     __set_certs "$org" "$peer"
     __set_peer_exec cmd
-
-    loginfo "Updating anchors on ${channel_name} for org${org} peer${peer} by using configuration file ${FABKIT_CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors.tx\n"
 
     if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" == "false" ]; then
         cmd+="peer channel update -o $FABKIT_ORDERER_ADDRESS -c ${channel_name} -f ${FABKIT_CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors_tx.pb"

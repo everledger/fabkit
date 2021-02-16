@@ -256,9 +256,9 @@ generate_genesis() {
     fi
 
     loginfo "Generating genesis block"
-    logdebu "Base path: $base_path"
-    logdebu "Config path: $config_path"
-    logdebu "Cryptos path: $cryptos_path"
+    logdebu "Base path: $base_path\n"
+    logdebu "Config path: $config_path\n"
+    logdebu "Cryptos path: $cryptos_path\n"
 
     if [ ! -d "$channel_dir" ]; then
         mkdir -p "$channel_dir"
@@ -345,14 +345,14 @@ generate_channeltx() {
     fi
 
     loginfo "Generating channel config"
-    logdebu "Channel: $channel_name"
-    logdebu "Base path: $base_path"
-    logdebu "Config path: $config_path"
-    logdebu "Cryptos path: $cryptos_path"
-    logdebu "Channel dir: $channel_dir"
-    logdebu "Network profile: $network_profile"
-    logdebu "Channel profile: $channel_profile"
-    logdebu "Org MSP: $org_msp"
+    logdebu "Channel: $channel_name\n"
+    logdebu "Base path: $base_path\n"
+    logdebu "Config path: $config_path\n"
+    logdebu "Cryptos path: $cryptos_path\n"
+    logdebu "Channel dir: $channel_dir\n"
+    logdebu "Network profile: $network_profile\n"
+    logdebu "Channel profile: $channel_profile\n"
+    logdebu "Org MSP: $org_msp\n"
 
     if [ ! -d "$channel_dir" ]; then
         mkdir -p "$channel_dir"
@@ -407,8 +407,8 @@ generate_cryptos() {
     local cryptos_path="$2"
 
     loginfo "Generating cryptos"
-    logdebu "Config path: $config_path"
-    logdebu "Cryptos path: $cryptos_path"
+    logdebu "Config path: $config_path\n"
+    logdebu "Cryptos path: $cryptos_path\n"
 
     if [ "${FABKIT_RESET}" == "true" ]; then
         __delete_path "$cryptos_path"
