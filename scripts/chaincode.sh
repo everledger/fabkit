@@ -2,7 +2,7 @@
 
 dep_install() {
     __check_param_chaincode "$1"
-    loginfo "Installing chaincode dependencies\n"
+    loginfo "Installing chaincode dependencies"
 
     local chaincode_relative_path="${1}"
     __set_chaincode_absolute_path "$chaincode_relative_path" chaincode_path
@@ -12,7 +12,7 @@ dep_install() {
 
 dep_update() {
     __check_param_chaincode "$1"
-    loginfo "Updating chaincode dependencies\n"
+    loginfo "Updating chaincode dependencies"
 
     local chaincode_relative_path="${1}"
     __set_chaincode_absolute_path "$chaincode_relative_path" chaincode_path
@@ -55,7 +55,7 @@ chaincode_test() {
     local chaincode_name=$(basename "$chaincode_path")
     __get_chaincode_language "$chaincode_path" chaincode_language
 
-    loginfo "Testing chaincode $chaincode_name\n"
+    loginfo "Testing chaincode $chaincode_name"
 
     if [ "$chaincode_language" == "golang" ]; then
         # avoid "found no test suites" ginkgo error
@@ -309,7 +309,7 @@ chaincode_install() {
 
     __set_chaincode_remote_path "$chaincode_path" "$chaincode_language" chaincode_remote_path
 
-    loginfo "Installing chaincode $chaincode_name version $chaincode_version from path $chaincode_path\n"
+    loginfo "Installing chaincode $chaincode_name version $chaincode_version from path $chaincode_path"
 
     cmd+="peer chaincode install -o $FABKIT_ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -p $chaincode_remote_path -l $chaincode_language $options"
 
@@ -335,7 +335,7 @@ chaincode_instantiate() {
     __set_certs "$org" "$peer"
     __set_peer_exec cmd
 
-    loginfo "Instantiating chaincode $chaincode_name version $chaincode_version on channel $channel_name\n"
+    loginfo "Instantiating chaincode $chaincode_name version $chaincode_version on channel $channel_name"
 
     if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" == "false" ]; then
         cmd+="peer chaincode instantiate -o $FABKIT_ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -C $channel_name -l $chaincode_language $options"
@@ -365,7 +365,7 @@ chaincode_upgrade() {
     __set_chaincode_options upgrade options "$@"
     __get_chaincode_language "${FABKIT_CHAINCODE_PATH}/${chaincode_name}" chaincode_language
 
-    loginfo "Upgrading chaincode $chaincode_name to version $chaincode_version on channel ${channel_name}\n"
+    loginfo "Upgrading chaincode $chaincode_name to version $chaincode_version on channel ${channel_name}"
 
     if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" == "false" ]; then
         cmd+="peer chaincode upgrade -n $chaincode_name -v $chaincode_version -C $channel_name -l $chaincode_language $options"
@@ -445,7 +445,7 @@ chaincode_zip() {
         mkdir -p "$FABKIT_DIST_PATH"
     fi
 
-    loginfo "Zipping chaincode $chaincode_name from path ${chaincode_path}\n"
+    loginfo "Zipping chaincode $chaincode_name from path ${chaincode_path}"
 
     cd "$chaincode_path" && zip -rq "${FABKIT_DIST_PATH}/${filename}" . || {
         logerr >&2 "Error creating chaincode archive.\n"
@@ -502,7 +502,7 @@ chaincode_pack() {
         mkdir -p "$FABKIT_DIST_PATH"
     fi
 
-    loginfo "Packing chaincode $chaincode_name version $chaincode_version from path ${chaincode_path}\n"
+    loginfo "Packing chaincode $chaincode_name version $chaincode_version from path ${chaincode_path}"
 
     if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" == "false" ]; then
         cmd+="peer chaincode package dist/${filename} -o $FABKIT_ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -p $chaincode_remote_path -l $chaincode_language --cc-package --sign"
@@ -536,7 +536,7 @@ invoke() {
     __set_certs "$org" "$peer"
     __set_peer_exec cmd
 
-    loginfo "Invoking chaincode $chaincode_name on channel ${channel_name} as org${org} and peer${peer} with the following params '${options}'\n"
+    loginfo "Invoking chaincode $chaincode_name on channel ${channel_name} as org${org} and peer${peer} with the following params '${options}'"
 
     if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" == "false" ]; then
         cmd+="peer chaincode invoke -o $FABKIT_ORDERER_ADDRESS -C $channel_name -n $chaincode_name --peerAddresses $CORE_PEER_ADDRESS --waitForEvent $options"
@@ -565,7 +565,7 @@ query() {
     __set_peer_exec cmd
 
     # echo "Querying chaincode $(loginfo "$chaincode_name") on channel $(loginfo "$channel_name") as $(loginfo "org${org}") and $(loginfo "peer${peer}") with the following params $(loginfo "${request} $*")"
-    loginfo "Querying chaincode $chaincode_name on channel ${channel_name} as org${org} and peer${peer} with the following params '${request} $*'\n"
+    loginfo "Querying chaincode $chaincode_name on channel ${channel_name} as org${org} and peer${peer} with the following params '${request} $*'"
 
     if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" == "false" ]; then
         cmd+="peer chaincode query -o $FABKIT_ORDERER_ADDRESS -C $channel_name -n $chaincode_name -c '$request' $options"
@@ -631,7 +631,7 @@ lc_chaincode_package() {
 
     __set_chaincode_remote_path "$chaincode_path" "$chaincode_language" chaincode_remote_path
 
-    loginfo "Packaging chaincode $chaincode_name version $chaincode_version from path $chaincode_path\n"
+    loginfo "Packaging chaincode $chaincode_name version $chaincode_version from path $chaincode_path"
 
     cmd+="peer lifecycle chaincode package ${chaincode_name}_${chaincode_version}.tar.gz --path $chaincode_remote_path --label ${chaincode_name}_${chaincode_version} --lang $chaincode_language $options"
 
@@ -654,7 +654,7 @@ lc_chaincode_install() {
     __set_certs "$org" "$peer"
     __set_peer_exec cmd
 
-    loginfo "Installing chaincode $chaincode_name version $chaincode_version\n"
+    loginfo "Installing chaincode $chaincode_name version $chaincode_version"
 
     if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" == "false" ]; then
         cmd+="peer lifecycle chaincode install ${chaincode_name}_${chaincode_version}.tar.gz $options"
@@ -667,7 +667,7 @@ lc_chaincode_install() {
 
 lc_chaincode_approve() {
     if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ] || [ -z "$6" ]; then
-        logerr "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help\n"
+        logerr "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help"
         exit 1
     fi
 
@@ -693,7 +693,7 @@ lc_chaincode_approve() {
     __set_certs "$org" "$peer"
     __set_peer_exec cmd
 
-    loginfo "Approve chaincode $chaincode_name version $chaincode_version on channel $channel_name for org${org}\n"
+    loginfo "Approve chaincode $chaincode_name version $chaincode_version on channel $channel_name for org${org}"
 
     if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" == "false" ]; then
         cmd+="peer lifecycle chaincode approveformyorg --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --package-id $PACKAGE_ID --sequence $sequence_no --waitForEvent --signature-policy '${signature_policy}' $options"
@@ -744,7 +744,7 @@ lc_chaincode_commit() {
     fi
     __exec_command "${cmd}"
 
-    loginfo "Commit the chaincode definition ${chaincode_name}:${chaincode_version} to channel $channel_name\n"
+    loginfo "Commit the chaincode definition ${chaincode_name}:${chaincode_version} to channel $channel_name"
 
     __set_peer_exec cmd
     if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" == "false" ]; then
@@ -773,7 +773,7 @@ lc_chaincode_commit() {
     fi
     __exec_command "${cmd}"
 
-    loginfo "Init the chaincode\n"
+    loginfo "Init the chaincode"
     invoke "$channel_name" "$chaincode_name" "$org" "$peer" "$@" --isInit
 }
 
