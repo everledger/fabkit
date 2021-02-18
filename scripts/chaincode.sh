@@ -25,7 +25,7 @@ __init_go_mod() {
     local chaincode_relative_path=$2
 
     cd "${chaincode_path}" >/dev/null 2>&1 || {
-        logwarn >&2 "${chaincode_path} path does not exist\n"
+        logwarn >&2 "${chaincode_path} path does not exist"
         exit 1
     }
 
@@ -35,9 +35,9 @@ __init_go_mod() {
 
     __delete_path vendor &>/dev/null
 
-    if [ "${operation}" == "install" ]; then
+    if [ "${operation}" = "install" ]; then
         go get ./... &>/dev/null
-    elif [ "${operation}" == "update" ]; then
+    elif [ "${operation}" = "update" ]; then
         go get -u=patch ./... &>/dev/null
     fi
 
@@ -57,10 +57,10 @@ chaincode_test() {
 
     loginfo "Testing chaincode $chaincode_name"
 
-    if [ "$chaincode_language" == "golang" ]; then
+    if [ "$chaincode_language" = "golang" ]; then
         # avoid "found no test suites" ginkgo error
         if [[ ! $(find "$chaincode_path" -type f -name "*_test*" ! -path "**/node_modules/*" ! -path "**/vendor/*") ]]; then
-            logwarn "No test suites found. Skipping tests...\n"
+            logwarn "No test suites found. Skipping tests..."
             return
         fi
 
@@ -79,7 +79,7 @@ chaincode_test() {
 
 __check_test_deps() {
     type ginkgo >/dev/null 2>&1 || {
-        logwarn >&2 "Ginkgo module missing. Going to install...\n"
+        logwarn >&2 "Ginkgo module missing. Going to install..."
         go get -u github.com/onsi/ginkgo/ginkgo
     }
 }
@@ -94,7 +94,7 @@ chaincode_build() {
 
     loginfo "Building chaincode $chaincode_name"
 
-    if [ "$chaincode_language" == "golang" ]; then
+    if [ "$chaincode_language" = "golang" ]; then
         __init_go_mod install "$chaincode_path"
 
         if [[ $(__check_deps test) ]]; then
@@ -109,14 +109,14 @@ chaincode_build() {
 
 __check_param_chaincode() {
     if [ -z "$1" ]; then
-        logerr "Chaincode name missing\n"
+        logerr "Chaincode name missing"
         exit 1
     fi
 }
 
 __get_chaincode_language() {
     if [ -z "$1" ]; then
-        logerr "Missing chaincode relative path in argument\n"
+        logerr "Missing chaincode relative path in argument"
         exit 1
     fi
 
@@ -134,11 +134,11 @@ __get_chaincode_language() {
     elif [[ $(find "${chaincode_relative_path}" ! -path "**/node_modules/*" -type f \( -iname \*.js -o -iname \*.ts \) -exec grep -l "${node_cc_identifier}" {} \;) ]]; then
         __chaincode_language="node"
     else
-        logerr "Error cannot determine chaincode language\n"
+        logerr "Error cannot determine chaincode language"
         exit 1
     fi
 
-    logdebu "Chaincode language: $__chaincode_language\n"
+    logdebu "Chaincode language: $__chaincode_language"
 
     eval $__result="'$__chaincode_language'"
 }
@@ -148,7 +148,7 @@ __copy_user_chaincode() {
     local chaincode_internal_path="$(find "${FABKIT_CHAINCODE_PATH}" -type d -maxdepth 1 -iname $(basename "$chaincode_absolute_path"))"
 
     if ! [[ -d $chaincode_absolute_path || -d $chaincode_internal_path ]]; then
-        logerr "Path does not exist: ${chaincode_absolute_path}\n"
+        logerr "Path does not exist: ${chaincode_absolute_path}"
         exit 1
     fi
 
@@ -171,7 +171,7 @@ __set_chaincode_absolute_path() {
 
     local __chaincode_path="${FABKIT_CHAINCODE_PATH}/$(basename "${__chaincode_relative_path}")"
 
-    logdebu "Chaincode absolute path: ${__chaincode_path}\n"
+    logdebu "Chaincode absolute path: ${__chaincode_path}"
 
     eval $__result="'$__chaincode_path'"
 }
@@ -183,13 +183,13 @@ __set_chaincode_remote_path() {
 
     local __chaincode_name=$(basename "$__chaincode_relative_path")
 
-    if [ "$__chaincode_language" == "golang" ]; then
+    if [ "$__chaincode_language" = "golang" ]; then
         case $FABKIT_CHAINCODE_REMOTE_PATH/ in
         /opt/gopath/src/*)
             local __chaincode_remote_path="${FABKIT_CHAINCODE_REMOTE_PATH#/opt/gopath/src/}/${__chaincode_name}"
             ;;
         *)
-            logerr "Chaincode not mounted in gopath\n"
+            logerr "Chaincode not mounted in gopath"
             exit 1
             ;;
         esac
@@ -202,7 +202,7 @@ __set_chaincode_remote_path() {
         local __chaincode_remote_path="${FABKIT_CHAINCODE_REMOTE_PATH}/${__chaincode_name}"
     fi
 
-    logdebu "Chaincode remote path: ${__chaincode_remote_path}\n"
+    logdebu "Chaincode remote path: ${__chaincode_remote_path}"
 
     eval $__result="'$__chaincode_remote_path'"
 }
@@ -229,7 +229,7 @@ __set_chaincode_options() {
     shift 2
 
     in="$*"
-    logdebu "All params: $in\n"
+    logdebu "Chaincode params: $in"
 
     # TODO: Offer support for multiple options
     while [[ $# -gt 0 ]]; do
@@ -269,18 +269,18 @@ __set_chaincode_options() {
         esac
     done
 
-    if [[ "$operation" =~ ^(invoke|instantiate|upgrade)$ ]] && [ "${is_args_set}" == "false" ]; then
+    if [[ "$operation" =~ ^(invoke|instantiate|upgrade)$ ]] && [ "${is_args_set}" = "false" ]; then
         __options+=' -c "{\"Args\":[]}"'
     fi
 
-    logdebu "Options: $__options\n"
+    logdebu "Chaincode options: $__options"
 
     eval $__result="'$__options'"
 }
 
 chaincode_install() {
     if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ]; then
-        logerr "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help\n"
+        logerr "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help"
         exit 1
     fi
 
@@ -303,7 +303,7 @@ chaincode_install() {
 
     loginfo "Installing chaincode ${chaincode_name}@${chaincode_version} from path $chaincode_path"
 
-    if [ "$chaincode_language" == "golang" ]; then
+    if [ "$chaincode_language" = "golang" ]; then
         __init_go_mod install "$chaincode_path"
     fi
 
@@ -318,7 +318,7 @@ chaincode_install() {
 
 chaincode_instantiate() {
     if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ]; then
-        logerr "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help\n"
+        logerr "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help"
         exit 1
     fi
 
@@ -337,7 +337,7 @@ chaincode_instantiate() {
     __set_certs "$org" "$peer"
     __set_peer_exec cmd
 
-    if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" == "false" ]; then
+    if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" = "false" ]; then
         cmd+="peer chaincode instantiate -o $FABKIT_ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -C $channel_name -l $chaincode_language $options"
     else
         cmd+="peer chaincode instantiate -o $FABKIT_ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -C $channel_name -l $chaincode_language $options --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA"
@@ -348,7 +348,7 @@ chaincode_instantiate() {
 
 chaincode_upgrade() {
     if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ]; then
-        logerr "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help\n"
+        logerr "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help"
         exit 1
     fi
 
@@ -367,7 +367,7 @@ chaincode_upgrade() {
 
     loginfo "Upgrading chaincode $chaincode_name to version $chaincode_version on channel ${channel_name}"
 
-    if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" == "false" ]; then
+    if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" = "false" ]; then
         cmd+="peer chaincode upgrade -n $chaincode_name -v $chaincode_version -C $channel_name -l $chaincode_language $options"
     else
         cmd+="peer chaincode upgrade -n $chaincode_name -v $chaincode_version -C $channel_name -l $chaincode_language $options --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA"
@@ -381,7 +381,7 @@ __chaincode_module_pack() {
 
     if [[ ! $(find "$chaincode_path" -type f -name 'main.go' -maxdepth 1 2>/dev/null) && -d "${chaincode_path}/cmd" ]]; then
         # trick to allow chaincode packed as modules to work when deployed against remote environments
-        logdebu "Copying chaincode files into vendor...\n"
+        logdebu "Copying chaincode files into vendor..."
         chaincode_name=$(basename "$chaincode_path")
         rsync -ar "${chaincode_path}/" "${FABKIT_ROOT}/.${chaincode_name}.bk"
         rsync -r --ignore-existing --exclude='vendor' --exclude='*.mod' --exclude='*.sum' "${chaincode_path}/cmd/" "$chaincode_path"
@@ -418,11 +418,11 @@ __set_chaincode_module_main() {
 
 chaincode_zip() {
     type zip >/dev/null 2>&1 || {
-        logerr >&2 "zip required but it is not installed. Aborting.\n"
+        logerr >&2 "zip required but it is not installed. Aborting."
         exit 1
     }
     type rsync >/dev/null 2>&1 || {
-        logerr >&2 "rsync required but it is not installed. Aborting.\n"
+        logerr >&2 "rsync required but it is not installed. Aborting."
         exit 1
     }
 
@@ -432,7 +432,7 @@ chaincode_zip() {
     __set_chaincode_absolute_path "$chaincode_relative_path" chaincode_path
     __get_chaincode_language "$chaincode_path" chaincode_language
 
-    if [ "$chaincode_language" == "golang" ]; then
+    if [ "$chaincode_language" = "golang" ]; then
         __init_go_mod install "$chaincode_path"
         __chaincode_module_pack "$chaincode_path"
     fi
@@ -448,14 +448,14 @@ chaincode_zip() {
     loginfo "Zipping chaincode $chaincode_name from path ${chaincode_path}"
 
     cd "$chaincode_path" && zip -rq "${FABKIT_DIST_PATH}/${filename}" . || {
-        logerr >&2 "Error creating chaincode archive.\n"
-        if [ "$chaincode_language" == "golang" ]; then
+        logerr >&2 "Error creating chaincode archive."
+        if [ "$chaincode_language" = "golang" ]; then
             __chaincode_module_restore "$chaincode_path"
         fi
         exit 1
     }
 
-    if [ "$chaincode_language" == "golang" ]; then
+    if [ "$chaincode_language" = "golang" ]; then
         __chaincode_module_restore "$chaincode_path"
     fi
 
@@ -464,12 +464,12 @@ chaincode_zip() {
 
 chaincode_pack() {
     if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ]; then
-        logerr "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help\n"
+        logerr "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help"
         exit 1
     fi
 
     type rsync >/dev/null 2>&1 || {
-        logerr >&2 "rsync required but it is not installed. Aborting.\n"
+        logerr >&2 "rsync required but it is not installed. Aborting."
         exit 1
     }
 
@@ -489,7 +489,7 @@ chaincode_pack() {
     __get_chaincode_language "$chaincode_path" chaincode_language
     __set_chaincode_remote_path "$chaincode_path" "$chaincode_language" chaincode_remote_path
 
-    if [ "$chaincode_language" == "golang" ]; then
+    if [ "$chaincode_language" = "golang" ]; then
         __init_go_mod install "$chaincode_path"
         __chaincode_module_pack "$chaincode_path"
     fi
@@ -504,7 +504,7 @@ chaincode_pack() {
 
     loginfo "Packing chaincode ${chaincode_name}@${chaincode_version} from path ${chaincode_path}"
 
-    if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" == "false" ]; then
+    if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" = "false" ]; then
         cmd+="peer chaincode package dist/${filename} -o $FABKIT_ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -p $chaincode_remote_path -l $chaincode_language --cc-package --sign"
     else
         cmd+="peer chaincode package dist/${filename} -o $FABKIT_ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -p $chaincode_remote_path -l $chaincode_language --cc-package --sign --tls --cafile $ORDERER_CA"
@@ -512,7 +512,7 @@ chaincode_pack() {
 
     __exec_command "${cmd}"
 
-    if [[ "$chaincode_language" == "golang" && -d ${FABKIT_ROOT}/.${chaincode_name}.bk ]]; then
+    if [[ "$chaincode_language" = "golang" && -d ${FABKIT_ROOT}/.${chaincode_name}.bk ]]; then
         rm -r "$chaincode_path"
         mv "${FABKIT_ROOT}/.${chaincode_name}.bk" "$chaincode_path"
     fi
@@ -522,7 +522,7 @@ chaincode_pack() {
 
 invoke() {
     if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ]; then
-        logerr "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help\n"
+        logerr "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help"
         exit 1
     fi
 
@@ -538,7 +538,7 @@ invoke() {
 
     loginfo "Invoking chaincode $chaincode_name on channel ${channel_name} as org${org} and peer${peer} with the following params '${options}'"
 
-    if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" == "false" ]; then
+    if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" = "false" ]; then
         cmd+="peer chaincode invoke -o $FABKIT_ORDERER_ADDRESS -C $channel_name -n $chaincode_name --peerAddresses $CORE_PEER_ADDRESS --waitForEvent $options"
     else
         cmd+="peer chaincode invoke -o $FABKIT_ORDERER_ADDRESS -C $channel_name -n $chaincode_name --waitForEvent $options --peerAddresses $CORE_PEER_ADDRESS --tlsRootCertFiles $CORE_PEER_TLS_ROOTCERT_FILE --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA"
@@ -549,7 +549,7 @@ invoke() {
 
 query() {
     if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ]; then
-        logerr "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help\n"
+        logerr "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help"
         exit 1
     fi
 
@@ -567,7 +567,7 @@ query() {
     # echo "Querying chaincode $(loginfo "$chaincode_name") on channel $(loginfo "$channel_name") as $(loginfo "org${org}") and $(loginfo "peer${peer}") with the following params $(loginfo "${request} $*")"
     loginfo "Querying chaincode $chaincode_name on channel ${channel_name} as org${org} and peer${peer} with the following params '${request} $*'"
 
-    if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" == "false" ]; then
+    if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" = "false" ]; then
         cmd+="peer chaincode query -o $FABKIT_ORDERER_ADDRESS -C $channel_name -n $chaincode_name -c '$request' $options"
     else
         cmd+="peer chaincode query -o $FABKIT_ORDERER_ADDRESS -C $channel_name -n $chaincode_name -c '$request' $options --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA"
@@ -588,8 +588,8 @@ lc_query_package_id() {
 
     local chaincode_label="\"${chaincode_name}_${chaincode_version}\""
 
-    logdebu "Chaincode label: $chaincode_label\n"
-    if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" == "false" ]; then
+    logdebu "Chaincode label: $chaincode_label"
+    if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" = "false" ]; then
         cmd+="peer lifecycle chaincode queryinstalled --output json | jq -r '.installed_chaincodes[] | select(.label == ${chaincode_label})' | jq -r '.package_id'"
     else
         cmd+="peer lifecycle chaincode queryinstalled --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA --output json | jq -r '.installed_chaincodes[] | select(.label == ${chaincode_label})' | jq -r '.package_id'"
@@ -597,12 +597,12 @@ lc_query_package_id() {
 
     export PACKAGE_ID=$(eval ${cmd})
 
-    logdebu "Package ID: $PACKAGE_ID\n"
+    logdebu "Package ID: $PACKAGE_ID"
 }
 
 lc_chaincode_package() {
     if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ]; then
-        logerr "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help\n"
+        logerr "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help"
         exit 1
     fi
 
@@ -625,7 +625,7 @@ lc_chaincode_package() {
 
     loginfo "Packaging chaincode ${chaincode_name}@${chaincode_version} from path $chaincode_path"
 
-    if [ "$chaincode_language" == "golang" ]; then
+    if [ "$chaincode_language" = "golang" ]; then
         __init_go_mod install "$chaincode_path"
     fi
 
@@ -640,7 +640,7 @@ lc_chaincode_package() {
 
 lc_chaincode_install() {
     if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ]; then
-        logerr "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help\n"
+        logerr "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help"
         exit 1
     fi
 
@@ -656,7 +656,7 @@ lc_chaincode_install() {
     __set_certs "$org" "$peer"
     __set_peer_exec cmd
 
-    if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" == "false" ]; then
+    if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" = "false" ]; then
         cmd+="peer lifecycle chaincode install ${chaincode_name}_${chaincode_version}.tar.gz $options"
     else
         cmd+="peer lifecycle chaincode install ${chaincode_name}_${chaincode_version}.tar.gz $options --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA"
@@ -684,17 +684,17 @@ lc_chaincode_approve() {
     # TODO: Accept as input or build dynamically
     local signature_policy='OR("Org1MSP.member","Org2MSP.member","Org3MSP.member")'
 
-    logdebu "Querying chaincode package ID\n"
+    logdebu "Querying chaincode package ID"
     lc_query_package_id "$chaincode_name" "$chaincode_version" "$org" "$peer"
     if [ -z "$PACKAGE_ID" ]; then
-        logwarn "Package ID is not defined\n"
+        logwarn "Package ID is not defined"
         return
     fi
 
     __set_certs "$org" "$peer"
     __set_peer_exec cmd
 
-    if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" == "false" ]; then
+    if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" = "false" ]; then
         cmd+="peer lifecycle chaincode approveformyorg --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --package-id $PACKAGE_ID --sequence $sequence_no --waitForEvent --signature-policy '${signature_policy}' $options"
     else
         cmd+="peer lifecycle chaincode approveformyorg --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --package-id $PACKAGE_ID --sequence $sequence_no --waitForEvent --signature-policy '${signature_policy}' $options --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA"
@@ -705,7 +705,7 @@ lc_chaincode_approve() {
 
 lc_chaincode_commit() {
     if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ] || [ -z "$6" ]; then
-        logerr "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help\n"
+        logerr "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help"
         exit 1
     fi
 
@@ -725,20 +725,20 @@ lc_chaincode_commit() {
     local signature_policy='OR("Org1MSP.member","Org2MSP.member","Org3MSP.member")'
 
     if [ -z "$PACKAGE_ID" ]; then
-        logwarn "Package ID is not defined\n"
-        logdebu "Querying chaincode package ID\n"
+        logwarn "Package ID is not defined"
+        logdebu "Querying chaincode package ID"
         lc_query_package_id "$chaincode_name" "$chaincode_version" "$org" "$peer"
 
         if [ -z "$PACKAGE_ID" ]; then
-            logwarn "Chaincode not installed on peer\n"
+            logwarn "Chaincode not installed on peer"
         fi
     fi
 
     __set_certs "$org" "$peer"
     __set_peer_exec cmd
 
-    logdebu "Check whether the chaincode definition is ready to be committed\n"
-    if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" == "false" ]; then
+    logdebu "Check whether the chaincode definition is ready to be committed"
+    if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" = "false" ]; then
         cmd+="peer lifecycle chaincode checkcommitreadiness --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --sequence $sequence_no --output json --signature-policy '${signature_policy}' $options"
     else
         cmd+="peer lifecycle chaincode checkcommitreadiness --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --sequence $sequence_no --output json --signature-policy '${signature_policy}' $options --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA"
@@ -746,7 +746,7 @@ lc_chaincode_commit() {
     __exec_command "${cmd}"
 
     __set_peer_exec cmd
-    if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" == "false" ]; then
+    if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" = "false" ]; then
         cmd+="peer lifecycle chaincode commit --channelID $channel_name --name $chaincode_name --version $chaincode_version --sequence $sequence_no --init-required --peerAddresses $CORE_PEER_ADDRESS --signature-policy '${signature_policy}' $options"
     else
         cmd+="peer lifecycle chaincode commit --channelID $channel_name --name $chaincode_name --version $chaincode_version --sequence $sequence_no --init-required  --signature-policy '${signature_policy}' $options --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA"
@@ -762,10 +762,10 @@ lc_chaincode_commit() {
     fi
     __exec_command "${forall}"
 
-    logdebu "Query the chaincode definitions that have been committed to the channel\n"
+    logdebu "Query the chaincode definitions that have been committed to the channel"
     __set_certs "$org" "$peer"
     __set_peer_exec cmd
-    if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" == "false" ]; then
+    if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" = "false" ]; then
         cmd+="peer lifecycle chaincode querycommitted --channelID $channel_name --name $chaincode_name --peerAddresses $CORE_PEER_ADDRESS --output json"
     else
         cmd+="peer lifecycle chaincode querycommitted --channelID $channel_name --name $chaincode_name --peerAddresses $CORE_PEER_ADDRESS --output json --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA --tlsRootCertFiles $CORE_PEER_TLS_ROOTCERT_FILE"
@@ -779,7 +779,7 @@ lc_chaincode_commit() {
 # TODO: Enable fabric options for chaincode deploy
 lc_chaincode_deploy() {
     if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ] || [ -z "$6" ] || [ -z "$7" ]; then
-        logerr "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help\n"
+        logerr "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help"
         exit 1
     fi
 

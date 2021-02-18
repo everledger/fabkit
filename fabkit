@@ -1,7 +1,14 @@
 #!/usr/bin/env bash
 
+set -o errtrace
+stty -echoctl
+
 source "${FABKIT_ROOT}/.env"
 for f in "${FABKIT_ROOT}"/scripts/*; do source "$f"; done
+
+trap '__catch $?' ERR
+trap 'exit' INT TERM
+trap 'kill 0' EXIT
 
 export GO111MODULE=on
 
@@ -13,7 +20,7 @@ readonly FABKIT_FABRIC_AVAILABLE_VERSIONS=("2.3.0" "2.3" "2.2.1" "2.2" "2.2.0" "
 export FABKIT_HOST_ROOT="${FABKIT_HOST_ROOT:-$FABKIT_ROOT}"
 
 __log_setup() {
-    loghead "\nRunning setup\n"
+    loghead "Running setup"
     echo "Root directory: $(loginfo ${FABKIT_HOST_ROOT})"
     echo "Docker network: $(loginfo ${FABKIT_DOCKER_NETWORK})"
     echo "Fabric version: $(loginfo ${FABKIT_FABRIC_VERSION})"
@@ -39,12 +46,12 @@ __jq() {
 }
 
 __set_params() {
-    if [[ $# -eq 0 ]]; then
+    if [ $# -eq 0 ]; then
         __load_lastrun
         return 0
     fi
 
-    while [[ $# -gt 0 ]]; do
+    while [ $# -gt 0 ]; do
         local param="${1}"
 
         case $param in
@@ -70,8 +77,18 @@ __set_params() {
             shift 2
             ;;
         *)
-            logerr "${1} paramater not recognized. Please run the help.\n"
+            logerr "${1} paramater not recognized. Please run the help."
             exit 1
+            ;;
+        esac
+    done
+}
+
+__set_debug() {
+    for param in "$@"; do
+        case $param in
+        -d | --debug)
+            export FABKIT_DEBUG=true
             ;;
         esac
     done
@@ -82,174 +99,176 @@ shift
 
 readonly START_TIME="$(date -u +%s)"
 title
-if [ "$func" == "network" ]; then
+__set_debug "$@"
+if [ "$func" = "network" ]; then
     param="$1"
     shift
     __check_deps deploy
     __check_docker_daemon
-    if [ "$param" == "install" ]; then
+    __set_params "$@"
+    __validate_params
+    if [ "$param" = "install" ]; then
         __log_setup
         install_network
-    elif [ "$param" == "start" ]; then
-        __set_params "$@"
+    elif [ "$param" = "start" ]; then
         __validate_params
         start_network "$@"
-    elif [ "$param" == "restart" ]; then
+    elif [ "$param" = "restart" ]; then
         restart_network
-    elif [ "$param" == "stop" ]; then
+    elif [ "$param" = "stop" ]; then
         __load_lastrun
         __log_setup
         (stop_network) &
-        keep_me_busy
+        __spinner
     else
         help_network
     fi
-elif [ "$func" == "explorer" ]; then
+elif [ "$func" = "explorer" ]; then
     __check_deps deploy
     __check_docker_daemon
     param="$1"
     shift
-    if [ "$param" == "start" ]; then
+    if [ "$param" = "start" ]; then
         start_explorer
-    elif [ "$param" == "stop" ]; then
+    elif [ "$param" = "stop" ]; then
         stop_explorer
     else
         help_explorer
     fi
-elif [ "$func" == "dep" ]; then
+elif [ "$func" = "dep" ]; then
     param="$1"
     shift
-    if [ "$param" == "install" ]; then
+    if [ "$param" = "install" ]; then
         dep_install "$@"
-    elif [ "$param" == "update" ]; then
+    elif [ "$param" = "update" ]; then
         dep_update "$@"
     else
         help_dep
     fi
-elif [ "$func" == "chaincode" ]; then
+elif [ "$func" = "chaincode" ]; then
     __load_lastrun
     param="$1"
     shift
-    if [ "$param" == "lifecycle" ]; then
+    if [ "$param" = "lifecycle" ]; then
         __check_fabric_version 2
         param="$1"
         shift
-        if [ "$param" == "package" ]; then
+        if [ "$param" = "package" ]; then
             __check_deps deploy
             __check_docker_daemon
             lc_chaincode_package "$@"
-        elif [ "$param" == "install" ]; then
+        elif [ "$param" = "install" ]; then
             __check_deps deploy
             __check_docker_daemon
             lc_chaincode_install "$@"
-        elif [ "$param" == "approve" ]; then
+        elif [ "$param" = "approve" ]; then
             __check_deps deploy
             __check_docker_daemon
             lc_chaincode_approve "$@"
-        elif [ "$param" == "commit" ]; then
+        elif [ "$param" = "commit" ]; then
             __check_deps deploy
             __check_docker_daemon
             lc_chaincode_commit "$@"
-        elif [ "$param" == "deploy" ]; then
+        elif [ "$param" = "deploy" ]; then
             __check_deps deploy
             __check_docker_daemon
             lc_chaincode_deploy "$@"
         else
             help_chaincode
         fi
-    elif [ "$param" == "install" ]; then
+    elif [ "$param" = "install" ]; then
         __check_deps deploy
         __check_docker_daemon
         chaincode_install "$@"
-    elif [ "$param" == "instantiate" ]; then
+    elif [ "$param" = "instantiate" ]; then
         __check_deps deploy
         __check_docker_daemon
         chaincode_instantiate "$@"
-    elif [ "$param" == "upgrade" ]; then
+    elif [ "$param" = "upgrade" ]; then
         __check_deps deploy
         __check_docker_daemon
         chaincode_upgrade "$@"
-    elif [ "$param" == "test" ]; then
+    elif [ "$param" = "test" ]; then
         chaincode_test "$@"
-    elif [ "$param" == "build" ]; then
+    elif [ "$param" = "build" ]; then
         chaincode_build "$@"
-    elif [ "$param" == "package" ]; then
+    elif [ "$param" = "package" ]; then
         __check_deps deploy
         __check_docker_daemon
         chaincode_pack "$@"
-    elif [ "$param" == "zip" ]; then
+    elif [ "$param" = "zip" ]; then
         chaincode_zip "$@"
-    elif [ "$param" == "query" ]; then
+    elif [ "$param" = "query" ]; then
         __check_deps deploy
         __check_docker_daemon
         query "$@"
-    elif [ "$param" == "invoke" ]; then
+    elif [ "$param" = "invoke" ]; then
         __check_deps deploy
         __check_docker_daemon
         invoke "$@"
     else
         help_chaincode
     fi
-elif [ "$func" == "generate" ]; then
+elif [ "$func" = "generate" ]; then
     __check_deps deploy
     __check_docker_daemon
     param="$1"
     shift
-    if [ "$param" == "cryptos" ]; then
+    if [ "$param" = "cryptos" ]; then
         generate_cryptos "$@"
-    elif [ "$param" == "genesis" ]; then
+    elif [ "$param" = "genesis" ]; then
         generate_genesis "$@"
-    elif [ "$param" == "channeltx" ]; then
+    elif [ "$param" = "channeltx" ]; then
         generate_channeltx "$@"
     else
         help_generate
     fi
-elif [ "$func" == "ca" ]; then
+elif [ "$func" = "ca" ]; then
     __check_deps deploy
     __check_docker_daemon
     param="$1"
     shift
-    if [ "$param" == "register" ]; then
+    if [ "$param" = "register" ]; then
         register_user "$@"
-    elif [ "$param" == "enroll" ]; then
+    elif [ "$param" = "enroll" ]; then
         __check_deps deploy
         enroll_user "$@"
-    elif [ "$param" == "reenroll" ]; then
+    elif [ "$param" = "reenroll" ]; then
         reenroll_user "$@"
-    elif [ "$param" == "revoke" ]; then
+    elif [ "$param" = "revoke" ]; then
         revoke_user "$@"
     else
         help_ca
     fi
-elif [ "$func" == "channel" ]; then
+elif [ "$func" = "channel" ]; then
     __check_deps deploy
     __check_docker_daemon
     param="$1"
     shift
-    if [ "$param" == "create" ]; then
+    if [ "$param" = "create" ]; then
         create_channel "$@"
-    elif [ "$param" == "update" ]; then
+    elif [ "$param" = "update" ]; then
         update_channel "$@"
-    elif [ "$param" == "join" ]; then
+    elif [ "$param" = "join" ]; then
         join_channel "$@"
     else
         help_channel
     fi
-elif [ "$func" == "benchmark" ]; then
+elif [ "$func" = "benchmark" ]; then
     param="$1"
     shift
-    if [ "$param" == "load" ]; then
+    if [ "$param" = "load" ]; then
         __check_deps deploy
         __exec_jobs "$@"
     else
         help_benchmark
     fi
-elif [ "$func" == "utils" ]; then
+elif [ "$func" = "utils" ]; then
     param="$1"
     shift
-    if [ "$param" == "tostring" ]; then
+    if [ "$param" = "tostring" ]; then
         tostring "$@"
-    elif [ "$param" == "tojson" ]; then
+    elif [ "$param" = "tojson" ]; then
         tojson "$@"
     else
         help_utils

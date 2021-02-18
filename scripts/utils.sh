@@ -1,50 +1,50 @@
 #!/usr/bin/env bash
 
 loghead() {
-    echo -en "\033[1;35m${1}\033[0m"
+    echo -e "\033[1;35m${1}\033[0m"
 }
 
 logerr() {
-    echo -en "\033[1;31m${1}\033[0m"
+    echo -e "\t\b[ERROR]\t\b\033[1;31m${1}\033[0m"
 }
 
 logsucc() {
-    echo -en "\033[1;32m${1}\033[0m"
+    echo -e "\033[1;32m${1}\033[0m"
 }
 
 logwarn() {
-    echo -en "\033[1;33m${1}\033[0m"
+    echo -e "\t\b[WARN]\t\b\033[1;33m${1}\033[0m"
 }
 
 loginfo() {
-    echo -en "\033[1;34m${1}\033[0m"
+    echo -e "\033[1;34m${1}\033[0m"
 }
 
 logdebu() {
-    if [ -z "${FABKIT_DEBUG}" ] || [ "${FABKIT_DEBUG}" == "false" ]; then return; fi
-    echo -en "\033[1;36m${1}\033[0m"
+    if [ -z "${FABKIT_DEBUG}" ] || [ "${FABKIT_DEBUG}" = "false" ]; then return; fi
+    echo -e "\t\b[DEBUG]\t\b\033[1;36m${1}\033[0m"
 }
 
 __check_fabric_version() {
     if [[ ! "${FABKIT_FABRIC_VERSION}" =~ ${1}.* ]]; then
-        logerr "This command is not enabled on Fabric v${FABKIT_FABRIC_VERSION}. In order to run, run your network with the flag: -v|--version [version]\n"
+        logerr "This command is not enabled on Fabric v${FABKIT_FABRIC_VERSION}. In order to run, run your network with the flag: -v|--version [version]"
         exit 1
     fi
 }
 
 __check_deps() {
-    if [ "${1}" == "deploy" ]; then
+    if [ "${1}" = "deploy" ]; then
         type docker >/dev/null 2>&1 || {
-            logerr >&2 "docker required but it is not installed. Aborting.\n"
+            logerr >&2 "docker required but it is not installed. Aborting."
             exit 1
         }
         type docker-compose >/dev/null 2>&1 || {
-            logerr >&2 "docker-compose required but it is not installed. Aborting.\n"
+            logerr >&2 "docker-compose required but it is not installed. Aborting."
             exit 1
         }
-    elif [ "${1}" == "test" ]; then
+    elif [ "${1}" = "test" ]; then
         type go >/dev/null 2>&1 || {
-            logwarn >&2 "Go binary is missing in your PATH. Running the dockerised version...\n"
+            logwarn >&2 "Go binary is missing in your PATH. Running the dockerised version..."
             echo $?
         }
     fi
@@ -52,7 +52,7 @@ __check_deps() {
 
 __check_docker_daemon() {
     if [ "$(docker info --format '{{json .}}' | grep "Cannot connect" 2>/dev/null)" ]; then
-        logerr "Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?\n"
+        logerr "Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?"
         exit 1
     fi
 }
@@ -60,19 +60,19 @@ __check_docker_daemon() {
 # delete path recursively and asks for root permissions if needed
 __delete_path() {
     if [ ! -d "$1" ]; then
-        logdebu "Directory \"${1}\" does not exist. Skipping delete. All good :)\n"
+        logwarn "Directory \"${1}\" does not exist. Skipping delete. All good :)"
         return
     fi
 
     if [ -w "$1" ]; then
         rm -rf "$1"
     else
-        logerr "!!!!! ATTENTION !!!!!\n"
-        logerr "Directory \"${1}\" requires superuser permissions\n"
+        logerr "!!!!! ATTENTION !!!!!"
+        logerr "Directory \"${1}\" requires superuser permissions"
         read -rp "Do you wish to continue? [yes/no=default] " yn
         case $yn in
         [Yy]*) sudo rm -rf "$1" ;;
-        *) return 0 ;;
+        *) return ;;
         esac
     fi
 }
@@ -87,10 +87,8 @@ __set_certs() {
     CORE_PEER_MSPCONFIGPATH=${FABKIT_PEER_REMOTE_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/users/Admin@org${1}.example.com/msp
     ORDERER_CA=${FABKIT_PEER_REMOTE_BASEPATH}/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
 
-    logdebu "===========================================\n"
-    logdebu "Peer address: ${CORE_PEER_ADDRESS}\n"
-    logdebu "Peer cert: ${CORE_PEER_TLS_CERT_FILE}\n"
-    logdebu "===========================================\n"
+    logdebu "Peer address: ${CORE_PEER_ADDRESS}"
+    logdebu "Peer cert: ${CORE_PEER_TLS_CERT_FILE}"
 }
 
 __set_peer_exec() {
@@ -108,9 +106,8 @@ __set_peer_exec() {
 }
 
 __exec_command() {
-    logdebu "\nExcecuting command: \n\n"
     local message="$1"
-    logdebu "${message}\n\n"
+    logdebu "Excecuting command: ${message}"
     # TODO: Return error and let the caller to handle it
     eval "$message &>/dev/null"
 }
@@ -121,23 +118,23 @@ __timer() {
 
     local elapsed_time="$((end_time - start_time))"
 
-    echo -e "\n\n⏰ : $(logsucc $((elapsed_time / 60))m$((elapsed_time % 60))s)"
+    echo -e "\n⏰ $(logsucc $((elapsed_time / 60))m$((elapsed_time % 60))s)"
 }
 
 __validate_params() {
     local version_exists=false
     for version in "${FABKIT_FABRIC_AVAILABLE_VERSIONS[@]}"; do
-        if [ "$version" == "$FABKIT_FABRIC_VERSION" ]; then
+        if [ "$version" = "$FABKIT_FABRIC_VERSION" ]; then
             version_exists=true
         fi
     done
-    if [ "$version_exists" == "false" ]; then
-        logerr "Fabric version ${FABKIT_FABRIC_VERSION} does not exist. For the complete list of releases visit: https://github.com/hyperledger/fabric/tags\n"
+    if [ "$version_exists" = "false" ]; then
+        logerr "Fabric version ${FABKIT_FABRIC_VERSION} does not exist. For the complete list of releases visit: https://github.com/hyperledger/fabric/tags"
         exit 1
     fi
 
     if [[ $FABKIT_ORGS -lt 1 ]]; then
-        logerr "-o,--orgs cannot be lower than 1\n"
+        logerr "-o,--orgs cannot be lower than 1"
         exit 1
     fi
 }
@@ -176,11 +173,11 @@ tojson() {
     echo "$@" | __jq .
 }
 
-cursor_back() {
+__cursor_back() {
     echo -en "\033[$1D"
 }
 
-keep_me_busy() {
+__spinner() {
     local LC_CTYPE=C
     local pid=$!
     local spin='⣾⣽⣻⢿⡿⣟⣯⣷'
@@ -192,17 +189,36 @@ keep_me_busy() {
         tput civis
         local i=$(((i + charwidth) % ${#spin}))
         printf "%s" "${spin:$i:$charwidth}"
-        cursor_back 1
+        __cursor_back 1
         sleep .1
     done
 
+    tput el
     tput cnorm
     if wait "$pid"; then
-        echo " ✅"
+        echo " ✅ "
     else
-        echo " ❌"
-        exit 1
+        echo " ❌ "
+        return 1
     fi
+}
 
-    return $?
+# credits to: Sitwon - https://github.com/Sitwon/bash_patterns/blob/master/exception_handling.sh
+__catch() {
+    if [ "$1" == 0 ]; then
+        return
+    fi
+    echo "Caught error $1 in:" >&2
+    frame=0
+    line="$(caller $frame 2>&1 | cut -d ' ' -f 1)"
+    while [ -n "$line" ]; do
+        subroutine="$(caller $frame 2>&1 | cut -d ' ' -f 2)"
+        file="$(caller $frame 2>&1 | cut -d ' ' -f 3)"
+        echo "From $file:$line in $subroutine" >&2
+        echo "    $(sed -n "${line}"p "$file")" >&2
+        ((frame++)) || true
+        line="$(caller "$frame" 2>&1 | cut -d ' ' -f 1)"
+    done
+    echo >&2
+    exit "$1"
 }

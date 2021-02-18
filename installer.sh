@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-trap __quit SIGINT
+trap '__quit' INT TERM
 
 ctrlc_count=0
 
@@ -26,7 +26,7 @@ __add_aliases() {
     local cmd="\n# Fabkit aliases to run commands with ease\n"
     local to_add=false
 
-    if [ "$shell" == "fish" ]; then
+    if [ "$shell" = "fish" ]; then
         profile="${HOME}/.config/fish/config.fish"
     fi
 
@@ -38,7 +38,7 @@ __add_aliases() {
         fi
     done
 
-    if [ "${to_add}" == "true" ]; then
+    if [ "${to_add}" = "true" ]; then
         echo -e "$cmd" >>$profile
         source "$profile" 2>/dev/null
     fi
@@ -140,7 +140,7 @@ Linux | FreeBSD | Darwin)
     ;;
 esac
 
-if [ "$FABKIT_CMD" == "$FABKIT_RUNNER_DOCKER" ]; then
+if [ "$FABKIT_CMD" = "$FABKIT_RUNNER_DOCKER" ]; then
     loginfo "Fabkit could run in a docker container everywhere! 😵‍💫🌎 We only need to download the image. Bear with me 😉"
     echo "Downloading docker image $(logdebu ${FABKIT_DOCKER_IMAGE}) ..."
     docker pull "${FABKIT_DOCKER_IMAGE}"

@@ -238,6 +238,8 @@ To start working on a feature, you just need to set the _FABKIT_ROOT_ variable t
 cd /path/of/this/repo
 FABKIT_ROOT="$(pwd)"
 alias fabkit="${FABKIT_ROOT}/fabkit"
+# if you are using the docker image then set this alias
+alias fabkit='docker run -it --rm --name fabkit -e "FABKIT_HOST_ROOT=$FABKIT_ROOT" -v /var/run/docker.sock:/var/run/docker.sock -v "$FABKIT_ROOT":/home/fabkit everledgerio/fabkit:latest ./fabkit "$@"'
 ```
 
 Now all the `fabkit` commands will execute in your repository path.
