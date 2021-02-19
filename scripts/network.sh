@@ -11,7 +11,7 @@ install_network() {
 
 __docker_fabric_pull() {
     loginfo "Pulling Fabric images"
-    for image in peer orderer ccenv tools; do
+    for image in peerd orderer ccenv tools; do
         logdebu "Pulling hyperledger/fabric-$image:${FABKIT_FABRIC_VERSION}"
         docker pull hyperledger/fabric-$image:"${FABKIT_FABRIC_VERSION}" &>/dev/null || exit 1
         docker tag hyperledger/fabric-$image:"${FABKIT_FABRIC_VERSION}" hyperledger/fabric-$image:latest &>/dev/null || exit 1

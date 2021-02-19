@@ -45,11 +45,19 @@ __log_setup() {
 }
 
 __yq() {
-    (type -p yq &>/dev/null && yq "$@") || docker run --rm -i -v "${PWD}":/workdir "$FABKIT_YQ_DOCKER_IMAGE" "$@"
+    if type -p yq &>/dev/null; then
+        yq "$@"
+    else
+        docker run --rm -i -v "${PWD}":/workdir "$FABKIT_YQ_DOCKER_IMAGE" "$@"
+    fi
 }
 
 __jq() {
-    (type -p jq &>/dev/null && jq "$@") || docker run --rm -i -v "${PWD}":/workdir "$FABKIT_JQ_DOCKER_IMAGE" "$@"
+    if type -p jq &>/dev/null; then
+        jq "$@"
+    else
+        docker run --rm -i -v "${PWD}":/workdir "$FABKIT_JQ_DOCKER_IMAGE" "$@"
+    fi
 }
 
 __set_params() {

@@ -60,7 +60,6 @@ __check_docker_daemon() {
 # delete path recursively and asks for root permissions if needed
 __delete_path() {
     if [ ! -d "$1" ]; then
-        logwarn "Directory \"${1}\" does not exist. Skipping delete. All good :)"
         return
     fi
 
@@ -159,18 +158,15 @@ __load_lastrun() {
 }
 
 __clean_user_path() {
-    __delete_path ${FABKIT_ROOT}/.lastrun
+    __delete_path "${FABKIT_ROOT}/.lastrun"
 }
 
 tostring() {
-    echo "$@" | __jq tostring 2>/dev/null ||
-        # TODO: fix this
-        echo
-    echo "${@//\"/\\\"}"
+    echo "$*" | __jq tostring 2>/dev/null || echo "${*//\"/\\\"}"
 }
 
 tojson() {
-    echo "$@" | __jq .
+    echo "$*" | __jq . 2>/dev/null || echo "${*//\\\"/\"}"
 }
 
 __spinner() {

@@ -238,32 +238,32 @@ __set_chaincode_options() {
         case $param in
         *"{\"Args\":"*)
             if [[ "$operation" =~ ^(invoke|instantiate|upgrade)$ ]]; then
-                __options=" -c $(tostring $param)"
+                __options=" -c $(tostring "$param")"
                 is_args_set=true
             fi
             shift
             ;;
         -c | --ctor)
             if [[ "$operation" =~ ^(invoke|instantiate|upgrade)$ ]]; then
-                __options+=" $param $(tostring $2)"
+                __options+=" $param $(tostring "$2")"
                 is_args_set=true
             fi
             shift 2
             ;;
         -C | --collections-config | --channelID | --connectionProfile)
             if [[ "$operation" =~ ^(instantiate|upgrade|commit|approve)$ ]]; then
-                __options+=" $param $(tostring $2)"
+                __options+=" $param $(tostring "$2")"
             fi
             shift 2
             ;;
         -P | --policy)
             if [[ "$operation" =~ ^(instantiate|upgrade)$ ]]; then
-                __options+=" $param \"$(tostring $2)\""
+                __options+=" $param \"$(tostring "$2")\""
             fi
             shift 2
             ;;
         *)
-            __options+=" $(tostring $param)"
+            __options+=" $(tostring "$param")"
             shift
             ;;
         esac
