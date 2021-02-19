@@ -173,10 +173,6 @@ tojson() {
     echo "$@" | __jq .
 }
 
-__cursor_back() {
-    echo -en "\033[$1D"
-}
-
 __spinner() {
     local LC_CTYPE=C
     local pid=$!
@@ -189,16 +185,16 @@ __spinner() {
         tput civis
         local i=$(((i + charwidth) % ${#spin}))
         printf "%s" "${spin:$i:$charwidth}"
-        __cursor_back 1
+        tput cub 1
         sleep .1
     done
 
     tput el
     tput cnorm
     if wait "$pid"; then
-        echo " ✅ "
+        echo "✅ "
     else
-        echo " ❌ "
+        echo "❌ "
         return 1
     fi
 }
@@ -208,17 +204,20 @@ __catch() {
     if [ "$1" == 0 ]; then
         return
     fi
-    echo "Caught error $1 in:" >&2
+
+    local timestamp=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+    echo "$timestamp" "Caught error $1 in:" >>"${FABKIT_LOGFILE}"
     frame=0
     line="$(caller $frame 2>&1 | cut -d ' ' -f 1)"
     while [ -n "$line" ]; do
         subroutine="$(caller $frame 2>&1 | cut -d ' ' -f 2)"
         file="$(caller $frame 2>&1 | cut -d ' ' -f 3)"
-        echo "From $file:$line in $subroutine" >&2
-        echo "    $(sed -n "${line}"p "$file")" >&2
+        echo "$timestamp" "From $file:$line in $subroutine" >>"${FABKIT_LOGFILE}"
+        echo "$timestamp" "    $(sed -n "${line}"p "$file")" >>"${FABKIT_LOGFILE}"
         ((frame++)) || true
         line="$(caller "$frame" 2>&1 | cut -d ' ' -f 1)"
     done
-    echo >&2
+    echo "$timestamp" >>"${FABKIT_LOGFILE}"
     exit "$1"
 }

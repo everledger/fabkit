@@ -2,7 +2,7 @@
 
 create_channel() {
     if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
-        logerr "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help"
+        logerr "Incorrect usage of ${FUNCNAME[0]}. Please consult the help: fabkit help"
         exit 1
     fi
 
@@ -15,7 +15,7 @@ create_channel() {
     __set_certs "$org" "$peer"
     __set_peer_exec cmd
 
-    if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" = "false" ]; then
+    if [ "${FABKIT_TLS_ENABLED:-}" = "false" ]; then
         cmd+="peer channel create -o $FABKIT_ORDERER_ADDRESS -c ${channel_name} -f $FABKIT_CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}_tx.pb --outputBlock $FABKIT_CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}.block"
     else
         cmd+="peer channel create -o $FABKIT_ORDERER_ADDRESS -c ${channel_name} -f $FABKIT_CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}_tx.pb --outputBlock $FABKIT_CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}.block --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA"
@@ -26,7 +26,7 @@ create_channel() {
 
 join_channel() {
     if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
-        logerr "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help"
+        logerr "Incorrect usage of ${FUNCNAME[0]}. Please consult the help: fabkit help"
         exit 1
     fi
 
@@ -39,7 +39,7 @@ join_channel() {
     __set_certs $org $peer
     __set_peer_exec cmd
 
-    if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" = "false" ]; then
+    if [ "${FABKIT_TLS_ENABLED:-}" = "false" ]; then
         cmd+="peer channel join -b ${FABKIT_CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}.block"
     else
         cmd+="peer channel join -b ${FABKIT_CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}.block --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA"
@@ -50,7 +50,7 @@ join_channel() {
 
 update_channel() {
     if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ]; then
-        logerr "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help"
+        logerr "Incorrect usage of ${FUNCNAME[0]}. Please consult the help: fabkit help"
         exit 1
     fi
 
@@ -64,7 +64,7 @@ update_channel() {
     __set_certs "$org" "$peer"
     __set_peer_exec cmd
 
-    if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" = "false" ]; then
+    if [ "${FABKIT_TLS_ENABLED:-}" = "false" ]; then
         cmd+="peer channel update -o $FABKIT_ORDERER_ADDRESS -c ${channel_name} -f ${FABKIT_CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors_tx.pb"
     else
         cmd+="peer channel update -o $FABKIT_ORDERER_ADDRESS -c ${channel_name} -f ${FABKIT_CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors_tx.pb --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA"

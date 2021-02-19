@@ -80,7 +80,7 @@ It will execute the following functions:
 
 Afterwards, the network will be ready to accept `invoke` and `query` functions.
 
-Run `fabkit help` for the complete list of functionalities.
+Run `fabkit` for the complete list of functionalities.
 
 ### Run the network with different configurations
 

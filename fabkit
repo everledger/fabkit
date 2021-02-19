@@ -1,21 +1,28 @@
 #!/usr/bin/env bash
 
 set -o errtrace
+# echo control characters in hat notation ('^c')
 stty -echoctl
 
+# shellcheck disable=SC1090
 source "${FABKIT_ROOT}/.env"
+# shellcheck disable=SC1090
 for f in "${FABKIT_ROOT}"/scripts/*; do source "$f"; done
 
 trap '__catch $?' ERR
 trap 'exit' INT TERM
-trap 'kill 0' EXIT
+trap 'kill 0' EXIT QUIT
 
 export GO111MODULE=on
-
+# shellcheck disable=SC2034
 readonly ONE_ORG="OneOrgOrdererGenesis"
+# shellcheck disable=SC2034
 readonly TWO_ORGS="TwoOrgsOrdererGenesis"
+# shellcheck disable=SC2034
 readonly THREE_ORGS="ThreeOrgsOrdererGenesis"
+# shellcheck disable=SC2034
 readonly RAFT_ONE_ORG="OneOrgOrdererEtcdRaft"
+# shellcheck disable=SC2034
 readonly FABKIT_FABRIC_AVAILABLE_VERSIONS=("2.3.0" "2.3" "2.2.1" "2.2" "2.2.0" "2.1.0" "2.1" "2.0.1" "2.0.0" "2.0.0-alpha" "1.4" "1.4.9" "1.4.8" "1.4.7" "1.4.6" "1.4.5" "1.4.4" "1.4.3" "1.4.2" "1.4.1" "1.4.0" "1.3.0" "1.2.1" "1.2.0" "1.1.0")
 export FABKIT_HOST_ROOT="${FABKIT_HOST_ROOT:-$FABKIT_ROOT}"
 
@@ -273,6 +280,36 @@ elif [ "$func" = "utils" ]; then
     else
         help_utils
     fi
+elif [ "$func" = "install" ]; then
+    __check_deps deploy
+    __check_docker_daemon
+    __set_params "$@"
+    __validate_params
+    __log_setup
+    install_network
+elif [ "$func" = "start" ]; then
+    __check_deps deploy
+    __check_docker_daemon
+    __set_params "$@"
+    __validate_params
+    __validate_params
+    start_network "$@"
+elif [ "$func" = "restart" ]; then
+    __check_deps deploy
+    __check_docker_daemon
+    __set_params "$@"
+    __validate_params
+    (restart_network) &
+    __spinner
+elif [ "$func" = "stop" ]; then
+    __check_deps deploy
+    __check_docker_daemon
+    __set_params "$@"
+    __validate_params
+    __load_lastrun
+    __log_setup
+    (stop_network) &
+    __spinner
 else
     help
 fi

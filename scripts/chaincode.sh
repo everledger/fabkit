@@ -280,7 +280,7 @@ __set_chaincode_options() {
 
 chaincode_install() {
     if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ]; then
-        logerr "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help"
+        logerr "Incorrect usage of ${FUNCNAME[0]}. Please consult the help: fabkit help"
         exit 1
     fi
 
@@ -318,7 +318,7 @@ chaincode_install() {
 
 chaincode_instantiate() {
     if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ]; then
-        logerr "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help"
+        logerr "Incorrect usage of ${FUNCNAME[0]}. Please consult the help: fabkit help"
         exit 1
     fi
 
@@ -337,7 +337,7 @@ chaincode_instantiate() {
     __set_certs "$org" "$peer"
     __set_peer_exec cmd
 
-    if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" = "false" ]; then
+    if [ "${FABKIT_TLS_ENABLED:-}" = "false" ]; then
         cmd+="peer chaincode instantiate -o $FABKIT_ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -C $channel_name -l $chaincode_language $options"
     else
         cmd+="peer chaincode instantiate -o $FABKIT_ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -C $channel_name -l $chaincode_language $options --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA"
@@ -348,7 +348,7 @@ chaincode_instantiate() {
 
 chaincode_upgrade() {
     if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ]; then
-        logerr "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help"
+        logerr "Incorrect usage of ${FUNCNAME[0]}. Please consult the help: fabkit help"
         exit 1
     fi
 
@@ -367,7 +367,7 @@ chaincode_upgrade() {
 
     loginfo "Upgrading chaincode $chaincode_name to version $chaincode_version on channel ${channel_name}"
 
-    if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" = "false" ]; then
+    if [ "${FABKIT_TLS_ENABLED:-}" = "false" ]; then
         cmd+="peer chaincode upgrade -n $chaincode_name -v $chaincode_version -C $channel_name -l $chaincode_language $options"
     else
         cmd+="peer chaincode upgrade -n $chaincode_name -v $chaincode_version -C $channel_name -l $chaincode_language $options --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA"
@@ -385,16 +385,16 @@ __chaincode_module_pack() {
         chaincode_name=$(basename "$chaincode_path")
         rsync -ar "${chaincode_path}/" "${FABKIT_ROOT}/.${chaincode_name}.bk"
         rsync -r --ignore-existing --exclude='vendor' --exclude='*.mod' --exclude='*.sum' "${chaincode_path}/cmd/" "$chaincode_path"
-        rm -rf ${chaincode_path}/cmd
-        module=$(awk <"${chaincode_path}/go.mod" '($1 ~ /module/) {print $2}')
-        mkdir -p "${chaincode_path}/vendor/${module}"
-        rsync -ar --exclude='vendor' --exclude='META-INF' "${chaincode_path}/" "${chaincode_path}/vendor/${module}"
+        rm -rf "${chaincode_path}/cmd"
+        __module=$(awk <"${chaincode_path}/go.mod" '($1 ~ /module/) {print $2}')
+        mkdir -p "${chaincode_path}/vendor/${__module}"
+        rsync -ar --exclude='vendor' --exclude='META-INF' "${chaincode_path}/" "${chaincode_path}/vendor/${__module}"
     fi
 }
 
 __chaincode_module_restore() {
     local chaincode_path=$1
-    local chaincode_name=$(basename "$chaincode_path")
+    local chaincode_name$(basename "$chaincode_path")
 
     if [ -d "${FABKIT_ROOT}/.${chaincode_name}.bk" ]; then
         rm -r "$chaincode_path"
@@ -413,6 +413,7 @@ __set_chaincode_module_main() {
         __chaincode_path+="/cmd"
     fi
 
+    # shellcheck disable=SC2086
     eval $__result="'$__chaincode_path'"
 }
 
@@ -464,7 +465,7 @@ chaincode_zip() {
 
 chaincode_pack() {
     if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ]; then
-        logerr "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help"
+        logerr "Incorrect usage of ${FUNCNAME[0]}. Please consult the help: fabkit help"
         exit 1
     fi
 
@@ -504,7 +505,7 @@ chaincode_pack() {
 
     loginfo "Packing chaincode ${chaincode_name}@${chaincode_version} from path ${chaincode_path}"
 
-    if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" = "false" ]; then
+    if [ "${FABKIT_TLS_ENABLED:-}" = "false" ]; then
         cmd+="peer chaincode package dist/${filename} -o $FABKIT_ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -p $chaincode_remote_path -l $chaincode_language --cc-package --sign"
     else
         cmd+="peer chaincode package dist/${filename} -o $FABKIT_ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -p $chaincode_remote_path -l $chaincode_language --cc-package --sign --tls --cafile $ORDERER_CA"
@@ -522,7 +523,7 @@ chaincode_pack() {
 
 invoke() {
     if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ]; then
-        logerr "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help"
+        logerr "Incorrect usage of ${FUNCNAME[0]}. Please consult the help: fabkit help"
         exit 1
     fi
 
@@ -538,7 +539,7 @@ invoke() {
 
     loginfo "Invoking chaincode $chaincode_name on channel ${channel_name} as org${org} and peer${peer} with the following params '${options}'"
 
-    if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" = "false" ]; then
+    if [ "${FABKIT_TLS_ENABLED:-}" = "false" ]; then
         cmd+="peer chaincode invoke -o $FABKIT_ORDERER_ADDRESS -C $channel_name -n $chaincode_name --peerAddresses $CORE_PEER_ADDRESS --waitForEvent $options"
     else
         cmd+="peer chaincode invoke -o $FABKIT_ORDERER_ADDRESS -C $channel_name -n $chaincode_name --waitForEvent $options --peerAddresses $CORE_PEER_ADDRESS --tlsRootCertFiles $CORE_PEER_TLS_ROOTCERT_FILE --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA"
@@ -549,7 +550,7 @@ invoke() {
 
 query() {
     if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ]; then
-        logerr "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help"
+        logerr "Incorrect usage of ${FUNCNAME[0]}. Please consult the help: fabkit help"
         exit 1
     fi
 
@@ -567,7 +568,7 @@ query() {
     # echo "Querying chaincode $(loginfo "$chaincode_name") on channel $(loginfo "$channel_name") as $(loginfo "org${org}") and $(loginfo "peer${peer}") with the following params $(loginfo "${request} $*")"
     loginfo "Querying chaincode $chaincode_name on channel ${channel_name} as org${org} and peer${peer} with the following params '${request} $*'"
 
-    if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" = "false" ]; then
+    if [ "${FABKIT_TLS_ENABLED:-}" = "false" ]; then
         cmd+="peer chaincode query -o $FABKIT_ORDERER_ADDRESS -C $channel_name -n $chaincode_name -c '$request' $options"
     else
         cmd+="peer chaincode query -o $FABKIT_ORDERER_ADDRESS -C $channel_name -n $chaincode_name -c '$request' $options --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA"
@@ -589,7 +590,7 @@ lc_query_package_id() {
     local chaincode_label="\"${chaincode_name}_${chaincode_version}\""
 
     logdebu "Chaincode label: $chaincode_label"
-    if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" = "false" ]; then
+    if [ "${FABKIT_TLS_ENABLED:-}" = "false" ]; then
         cmd+="peer lifecycle chaincode queryinstalled --output json | jq -r '.installed_chaincodes[] | select(.label == ${chaincode_label})' | jq -r '.package_id'"
     else
         cmd+="peer lifecycle chaincode queryinstalled --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA --output json | jq -r '.installed_chaincodes[] | select(.label == ${chaincode_label})' | jq -r '.package_id'"
@@ -602,7 +603,7 @@ lc_query_package_id() {
 
 lc_chaincode_package() {
     if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ]; then
-        logerr "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help"
+        logerr "Incorrect usage of ${FUNCNAME[0]}. Please consult the help: fabkit help"
         exit 1
     fi
 
@@ -640,7 +641,7 @@ lc_chaincode_package() {
 
 lc_chaincode_install() {
     if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ]; then
-        logerr "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help"
+        logerr "Incorrect usage of ${FUNCNAME[0]}. Please consult the help: fabkit help"
         exit 1
     fi
 
@@ -656,7 +657,7 @@ lc_chaincode_install() {
     __set_certs "$org" "$peer"
     __set_peer_exec cmd
 
-    if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" = "false" ]; then
+    if [ "${FABKIT_TLS_ENABLED:-}" = "false" ]; then
         cmd+="peer lifecycle chaincode install ${chaincode_name}_${chaincode_version}.tar.gz $options"
     else
         cmd+="peer lifecycle chaincode install ${chaincode_name}_${chaincode_version}.tar.gz $options --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA"
@@ -667,7 +668,7 @@ lc_chaincode_install() {
 
 lc_chaincode_approve() {
     if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ] || [ -z "$6" ]; then
-        logerr "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help"
+        logerr "Incorrect usage of ${FUNCNAME[0]}. Please consult the help: fabkit help"
         exit 1
     fi
 
@@ -694,7 +695,7 @@ lc_chaincode_approve() {
     __set_certs "$org" "$peer"
     __set_peer_exec cmd
 
-    if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" = "false" ]; then
+    if [ "${FABKIT_TLS_ENABLED:-}" = "false" ]; then
         cmd+="peer lifecycle chaincode approveformyorg --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --package-id $PACKAGE_ID --sequence $sequence_no --waitForEvent --signature-policy '${signature_policy}' $options"
     else
         cmd+="peer lifecycle chaincode approveformyorg --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --package-id $PACKAGE_ID --sequence $sequence_no --waitForEvent --signature-policy '${signature_policy}' $options --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA"
@@ -705,7 +706,7 @@ lc_chaincode_approve() {
 
 lc_chaincode_commit() {
     if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ] || [ -z "$6" ]; then
-        logerr "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help"
+        logerr "Incorrect usage of ${FUNCNAME[0]}. Please consult the help: fabkit help"
         exit 1
     fi
 
@@ -738,7 +739,7 @@ lc_chaincode_commit() {
     __set_peer_exec cmd
 
     logdebu "Check whether the chaincode definition is ready to be committed"
-    if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" = "false" ]; then
+    if [ "${FABKIT_TLS_ENABLED:-}" = "false" ]; then
         cmd+="peer lifecycle chaincode checkcommitreadiness --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --sequence $sequence_no --output json --signature-policy '${signature_policy}' $options"
     else
         cmd+="peer lifecycle chaincode checkcommitreadiness --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --sequence $sequence_no --output json --signature-policy '${signature_policy}' $options --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA"
@@ -746,7 +747,7 @@ lc_chaincode_commit() {
     __exec_command "${cmd}"
 
     __set_peer_exec cmd
-    if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" = "false" ]; then
+    if [ "${FABKIT_TLS_ENABLED:-}" = "false" ]; then
         cmd+="peer lifecycle chaincode commit --channelID $channel_name --name $chaincode_name --version $chaincode_version --sequence $sequence_no --init-required --peerAddresses $CORE_PEER_ADDRESS --signature-policy '${signature_policy}' $options"
     else
         cmd+="peer lifecycle chaincode commit --channelID $channel_name --name $chaincode_name --version $chaincode_version --sequence $sequence_no --init-required  --signature-policy '${signature_policy}' $options --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA"
@@ -765,7 +766,7 @@ lc_chaincode_commit() {
     logdebu "Query the chaincode definitions that have been committed to the channel"
     __set_certs "$org" "$peer"
     __set_peer_exec cmd
-    if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" = "false" ]; then
+    if [ "${FABKIT_TLS_ENABLED:-}" = "false" ]; then
         cmd+="peer lifecycle chaincode querycommitted --channelID $channel_name --name $chaincode_name --peerAddresses $CORE_PEER_ADDRESS --output json"
     else
         cmd+="peer lifecycle chaincode querycommitted --channelID $channel_name --name $chaincode_name --peerAddresses $CORE_PEER_ADDRESS --output json --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA --tlsRootCertFiles $CORE_PEER_TLS_ROOTCERT_FILE"
@@ -779,7 +780,7 @@ lc_chaincode_commit() {
 # TODO: Enable fabric options for chaincode deploy
 lc_chaincode_deploy() {
     if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ] || [ -z "$6" ] || [ -z "$7" ]; then
-        logerr "Incorrect usage of $FUNCNAME. Please consult the help: fabkit help"
+        logerr "Incorrect usage of ${FUNCNAME[0]}. Please consult the help: fabkit help"
         exit 1
     fi
 
@@ -792,10 +793,10 @@ lc_chaincode_deploy() {
     local peer="$7"
     shift 7
 
-    lc_chaincode_package "$chaincode_name" "$chaincode_version" "$chaincode_relative_path" "$org" "$peer" "$@"
+    (lc_chaincode_package "$chaincode_name" "$chaincode_version" "$chaincode_relative_path" "$org" "$peer" "$@") & __spinner
     for o in $(seq 1 "$FABKIT_ORGS"); do
-        lc_chaincode_install "$chaincode_name" "$chaincode_version" "$o" "$peer" "$@"
-        lc_chaincode_approve "$chaincode_name" "$chaincode_version" "$channel_name" "$sequence_no" "$o" "$peer" "$@"
+        (lc_chaincode_install "$chaincode_name" "$chaincode_version" "$o" "$peer" "$@") & __spinner
+        (lc_chaincode_approve "$chaincode_name" "$chaincode_version" "$channel_name" "$sequence_no" "$o" "$peer" "$@") & __spinner
     done
-    lc_chaincode_commit "$chaincode_name" "$chaincode_version" "$channel_name" "$sequence_no" "$org" "$peer" "$@"
+    (lc_chaincode_commit "$chaincode_name" "$chaincode_version" "$channel_name" "$sequence_no" "$org" "$peer" "$@") & __spinner
 }

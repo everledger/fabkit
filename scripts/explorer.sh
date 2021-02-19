@@ -3,7 +3,8 @@
 start_explorer() {
     loginfo "Starting explorer"
 
-    (stop_explorer) & __spinner
+    (stop_explorer) &
+    __spinner
 
     if [[ ! $(docker ps | grep fabric) ]]; then
         logerr "No Fabric networks running. First launch fabkit start"
@@ -23,11 +24,12 @@ start_explorer() {
         __jq -r --argjson FABKIT_TLS_ENABLED "$FABKIT_TLS_ENABLED" '.client.tlsEnable = $FABKIT_TLS_ENABLED' >${config}.json &>/dev/null || exit 1
 
     # considering tls enabled as default in base
-    if [ -z "$FABKIT_TLS_ENABLED" ] || [ "$FABKIT_TLS_ENABLED" = "false" ]; then
+    if [ "${FABKIT_TLS_ENABLED:-}" = "false" ]; then
         sed -i'.bak' -e 's/grpcs/grpc/g' -e 's/https/http/g' ${config}.json && rm ${config}.json.bak &>/dev/null || exit 1
     fi
 
-    (loginfo "Launching containers" && docker-compose --env-file ${FABKIT_ROOT}/.env -f ${FABKIT_EXPLORER_PATH}/docker-compose.yaml up --force-recreate -d &>/dev/null || exit 1) & __spinner
+    (loginfo "Launching containers" && docker-compose --env-file ${FABKIT_ROOT}/.env -f ${FABKIT_EXPLORER_PATH}/docker-compose.yaml up --force-recreate -d &>/dev/null || exit 1) &
+    __spinner
 
     echo "Blockchain Explorer default user is exploreradmin/exploreradminpw - $(logsucc http://localhost:8090)"
     echo "Grafana default user is admin/admin - $(logsucc http://localhost:3000)"

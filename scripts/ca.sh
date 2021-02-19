@@ -8,7 +8,7 @@ register_user() {
     docker run --rm -v /var/run/docker.sock:/host/var/run/docker.sock \
         -v "${FABKIT_CRYPTOS_PATH}:/crypto-config" \
         --network="${FABKIT_DOCKER_NETWORK}" \
-        hyperledger/fabric-ca:${FABKIT_FABRIC_CA_VERSION} \
+        hyperledger/fabric-ca:"$FABKIT_FABRIC_CA_VERSION" \
         sh -c " \
         fabric-ca-client register -d \
             --home /crypto-config \
@@ -33,7 +33,7 @@ enroll_user() {
     docker run --rm -v /var/run/docker.sock:/host/var/run/docker.sock \
         -v "${FABKIT_CRYPTOS_PATH}:/crypto-config" \
         --network="${FABKIT_DOCKER_NETWORK}" \
-        hyperledger/fabric-ca:${FABKIT_FABRIC_CA_VERSION} \
+        hyperledger/fabric-ca:"$FABKIT_FABRIC_CA_VERSION" \
         sh -c " \
         fabric-ca-client enroll -d \
             --home /crypto-config \
@@ -55,7 +55,7 @@ reenroll_user() {
     docker run --rm -v /var/run/docker.sock:/host/var/run/docker.sock \
         -v "${FABKIT_CRYPTOS_PATH}:/crypto-config" \
         --network="${FABKIT_DOCKER_NETWORK}" \
-        hyperledger/fabric-ca:${FABKIT_FABRIC_CA_VERSION} \
+        hyperledger/fabric-ca:"$FABKIT_FABRIC_CA_VERSION" \
         sh -c " \
         fabric-ca-client reenroll -d \
             --home /crypto-config \
@@ -111,7 +111,7 @@ revoke_user() {
     docker run --rm -v /var/run/docker.sock:/host/var/run/docker.sock \
         -v "${FABKIT_CRYPTOS_PATH}:/crypto-config" \
         --network="${FABKIT_DOCKER_NETWORK}" \
-        hyperledger/fabric-ca:${FABKIT_FABRIC_CA_VERSION} \
+        hyperledger/fabric-ca:"$FABKIT_FABRIC_CA_VERSION" \
         sh -c " \
         fabric-ca-client revoke -d \
             --home /crypto-config \
@@ -124,8 +124,8 @@ revoke_user() {
 }
 
 __ca_setup() {
-    loginfo "Creating docker network..."
-    docker network create "${FABKIT_DOCKER_NETWORK}" &>/dev/null
+    logdebu "Creating docker network ${FABKIT_DOCKER_NETWORK}"
+    docker network create "${FABKIT_DOCKER_NETWORK}" &>/dev/null || true
 
     loginfo "Insert the organization name of the user to register/enroll"
     while [ -z "$org" ]; do
@@ -150,7 +150,7 @@ __ca_setup() {
             logsucc "admin path: $admin_path"
             export admin=$(basename "${admin_path}")
             logsucc "admin: $admin"
-            admin_msp=$(dirname $(find ${admin_path} -type d -name signcert* 2>/dev/null) 2>/dev/null)
+            admin_msp=$(dirname "$(find "${admin_path}" -type d -name 'signcert*' 2>/dev/null)" 2>/dev/null)
             logsucc "admin msp: $admin_msp"
 
             if [ ! -d "${admin_msp}" ]; then

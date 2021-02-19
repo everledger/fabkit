@@ -13,17 +13,17 @@ __docker_fabric_pull() {
     loginfo "Pulling Fabric images"
     for image in peer orderer ccenv tools; do
         logdebu "Pulling hyperledger/fabric-$image:${FABKIT_FABRIC_VERSION}"
-        docker pull hyperledger/fabric-$image:${FABKIT_FABRIC_VERSION} &>/dev/null || exit 1
-        docker tag hyperledger/fabric-$image:${FABKIT_FABRIC_VERSION} hyperledger/fabric-$image:latest &>/dev/null || exit 1
+        docker pull hyperledger/fabric-$image:"${FABKIT_FABRIC_VERSION}" &>/dev/null || exit 1
+        docker tag hyperledger/fabric-$image:"${FABKIT_FABRIC_VERSION}" hyperledger/fabric-$image:latest &>/dev/null || exit 1
     done
 
     logdebu "Pulling hyperledger/fabric-ca:${FABKIT_FABRIC_CA_VERSION}"
-    docker pull hyperledger/fabric-ca:${FABKIT_FABRIC_CA_VERSION} &>/dev/null || exit 1
-    docker tag hyperledger/fabric-ca:${FABKIT_FABRIC_CA_VERSION} hyperledger/fabric-ca:latest &>/dev/null || exit 1
+    docker pull hyperledger/fabric-ca:"${FABKIT_FABRIC_CA_VERSION}" &>/dev/null || exit 1
+    docker tag hyperledger/fabric-ca:"${FABKIT_FABRIC_CA_VERSION}" hyperledger/fabric-ca:latest &>/dev/null || exit 1
 
     logdebu "Pulling hyperledger/fabric-couchdb:${FABKIT_FABRIC_THIRDPARTY_IMAGE_VERSION}"
-    docker pull hyperledger/fabric-couchdb:${FABKIT_FABRIC_THIRDPARTY_IMAGE_VERSION} &>/dev/null || exit 1
-    docker tag hyperledger/fabric-couchdb:${FABKIT_FABRIC_THIRDPARTY_IMAGE_VERSION} hyperledger/fabric-couchdb:latest &>/dev/null || exit 1
+    docker pull hyperledger/fabric-couchdb:"${FABKIT_FABRIC_THIRDPARTY_IMAGE_VERSION}" &>/dev/null || exit 1
+    docker tag hyperledger/fabric-couchdb:"${FABKIT_FABRIC_THIRDPARTY_IMAGE_VERSION}" hyperledger/fabric-couchdb:latest &>/dev/null || exit 1
 }
 
 __docker_third_party_images_pull() {
@@ -39,7 +39,7 @@ __docker_third_party_images_pull() {
 start_network() {
     loginfo "Starting Fabric network"
 
-    if [[ $(docker volume ls | grep ${FABKIT_DOCKER_NETWORK}) && ! ${FABKIT_RESET} ]]; then
+    if docker volume ls | grep -q "$FABKIT_DOCKER_NETWORK" && ! "$FABKIT_RESET"; then
         logwarn "Found volumes"
         read -rp "Do you wish to restart the network and reuse this data? [yes/no=default] " yn
         case $yn in
@@ -67,7 +67,7 @@ start_network() {
     done
 
     # TODO: create raft profiles for different network topologies (multi-org support)
-    if [ "${FABKIT_CONFIGTX_PROFILE_NETWORK}" = "${RAFT_ONE_ORG}" ]; then
+    if [ "$FABKIT_CONFIGTX_PROFILE_NETWORK" = "$RAFT_ONE_ORG" ]; then
         FABKIT_CONFIGTX_PROFILE_NETWORK=${RAFT_ONE_ORG}
         command+="docker-compose --env-file ${FABKIT_ROOT}/.env -f ${FABKIT_NETWORK_PATH}/raft.yaml up -d &>/dev/null || exit 1;"
     elif [ "${FABKIT_ORGS}" = "2" ]; then
@@ -100,7 +100,7 @@ start_network() {
 restart_network() {
     loginfo "Restarting Fabric network"
 
-    if [[ ! $(docker volume ls | grep ${FABKIT_DOCKER_NETWORK}) ]]; then
+    if ! docker volume ls | grep -q "$FABKIT_DOCKER_NETWORK"; then
         logerr "No volumes from a previous run found. Run a normal start."
         exit 1
     fi
@@ -108,7 +108,7 @@ restart_network() {
     __load_lastrun
     __log_setup
 
-    docker network create "$FABKIT_DOCKER_NETWORK" &>/dev/null | exit 1
+    docker network create "$FABKIT_DOCKER_NETWORK" &>/dev/null || true
 
     for org in $(seq 1 "$FABKIT_ORGS"); do
         local command+="docker-compose --env-file ${FABKIT_ROOT}/.env -f ${FABKIT_NETWORK_PATH}/org${org}.yaml --force-recreate -d &>/dev/null || exit 1;"
@@ -126,13 +126,13 @@ stop_network() {
     done
     eval ${command}
 
-    if [[ $(docker ps | grep "hyperledger/explorer") ]]; then
+    if docker ps | grep -q "hyperledger/explorer"; then
         stop_explorer &
         __spinner
     fi
 
     logdebu "Cleaning docker leftovers containers and images"
-    docker rm -f $(docker ps -a | awk '($2 ~ /${FABKIT_DOCKER_NETWORK}|dev-/) {print $1}') &>/dev/null || true
+    docker rm -f $(docker ps -a | awk '($2 ~ /${FABKIT_DOCKER_NETWORK}|dev-/) {print $1}' &>/dev/null) &>/dev/null || true
     docker rmi -f $(docker images -qf "dangling=true" &>/dev/null) &>/dev/null || true
     docker rmi -f $(docker images | awk '($1 ~ /^<none>|dev-/) {print $3}' &>/dev/null) &>/dev/null || true
     docker system prune -f &>/dev/null || true
@@ -142,13 +142,13 @@ stop_network() {
         return 0
     fi
 
-    if [[ $(docker volume ls | grep ${FABKIT_DOCKER_NETWORK}) ]]; then
+    if docker volume ls | grep -q "$FABKIT_DOCKER_NETWORK"; then
         logerr "!!!!! ATTENTION !!!!!"
         logerr "Found volumes"
         read -rp "Do you wish to remove this data? [yes/no=default] " yn
         case $yn in
         [Yy]*)
-            docker volume prune -f $(docker volume ls | awk '($2 ~ /${FABKIT_DOCKER_NETWORK}/) {print $2}') &>/dev/null
+            docker volume prune -f $(docker volume ls | awk '($2 ~ /${FABKIT_DOCKER_NETWORK}/) {print $2}' &>/dev/null) &>/dev/null
             ;;
         *) return 0 ;;
         esac
@@ -429,7 +429,7 @@ generate_cryptos() {
             -v "${config_path/$FABKIT_ROOT/$FABKIT_HOST_ROOT}/crypto-config.yaml:/crypto-config.yaml" \
             -v "${cryptos_path/$FABKIT_ROOT/$FABKIT_HOST_ROOT}:/crypto-config" \
             -u "$(id -u):$(id -g)" \
-            hyperledger/fabric-tools:${FABKIT_FABRIC_VERSION} \
+            hyperledger/fabric-tools:"${FABKIT_FABRIC_VERSION}" \
             cryptogen generate --config=/crypto-config.yaml --output=/crypto-config &>/dev/null; then
             logerr "Failed to generate crypto material..."
             exit 1
