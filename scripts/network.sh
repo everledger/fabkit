@@ -37,7 +37,7 @@ __docker_third_party_images_pull() {
 }
 
 start_network() {
-    loginfo "Starting Fabric network"
+    loginfoln "Starting Fabric network"
 
     if docker volume ls | grep -q "$FABKIT_DOCKER_NETWORK" && ! "$FABKIT_RESET"; then
         logwarn "Found volumes"
@@ -93,7 +93,7 @@ start_network() {
     __spinner
 
     __log_setup
-    loginfo "Initializing the network"
+    loginfoln "Initializing the network"
     initialize_network
 }
 
@@ -127,10 +127,10 @@ stop_network() {
     eval ${command}
 
     if docker ps | grep -q "hyperledger/explorer"; then
-        stop_explorer &
-        __spinner
+        stop_explorer
     fi
 
+    logdebuprettier
     logdebu "Cleaning docker leftovers containers and images"
     docker rm -f $(docker ps -a | awk '($2 ~ /${FABKIT_DOCKER_NETWORK}|dev-/) {print $1}' &>/dev/null) &>/dev/null || true
     docker rmi -f $(docker images -qf "dangling=true" &>/dev/null) &>/dev/null || true
@@ -215,6 +215,8 @@ __replace_config_capabilities() {
 # $3: cryptos directory
 # $4: network profile name
 generate_genesis() {
+    loginfo "Generating genesis block"
+
     if [ -z "$1" ]; then
         logerr "Base path missing"
         exit 1
@@ -252,7 +254,7 @@ generate_genesis() {
         __delete_path "$channel_dir"
     fi
 
-    loginfo "Generating genesis block"
+    logdebuprettier
     logdebu "Base path: $base_path"
     logdebu "Config path: $config_path"
     logdebu "Cryptos path: $cryptos_path"
@@ -290,6 +292,8 @@ generate_genesis() {
 # $6: channel profile name
 # $7: org msp
 generate_channeltx() {
+    loginfo "Generating channel config"
+
     if [ -z "$1" ]; then
         logerr "Channel name missing"
         exit 1
@@ -342,7 +346,7 @@ generate_channeltx() {
         __delete_path "$channel_dir"
     fi
 
-    loginfo "Generating channel config"
+    logdebuprettier
     logdebu "Channel: $channel_name"
     logdebu "Base path: $base_path"
     logdebu "Config path: $config_path"
@@ -405,6 +409,7 @@ generate_cryptos() {
     local cryptos_path="$2"
 
     loginfo "Generating cryptos"
+    logdebuprettier
     logdebu "Config path: $config_path"
     logdebu "Cryptos path: $cryptos_path"
 

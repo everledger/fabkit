@@ -12,6 +12,7 @@ create_channel() {
 
     loginfo "Creating channel ${channel_name} using configuration file ${FABKIT_CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}_tx.pb"
 
+    logdebuprettier
     __set_certs "$org" "$peer"
     __set_peer_exec cmd
 
@@ -36,6 +37,7 @@ join_channel() {
 
     loginfo "Joining channel ${channel_name} for org${org} peer${peer}"
 
+    logdebuprettier
     __set_certs $org $peer
     __set_peer_exec cmd
 
@@ -45,6 +47,7 @@ join_channel() {
         cmd+="peer channel join -b ${FABKIT_CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}.block --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA"
     fi
 
+    logdebuprettier
     __exec_command "${cmd}"
 }
 
@@ -61,6 +64,7 @@ update_channel() {
 
     loginfo "Updating anchors on ${channel_name} for org${org} peer${peer} by using configuration file ${FABKIT_CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors.tx"
 
+    logdebuprettier
     __set_certs "$org" "$peer"
     __set_peer_exec cmd
 

@@ -17,12 +17,21 @@ logwarn() {
 }
 
 loginfo() {
+    echo -ne "\033[1;34m${1}\033[0m"
+}
+
+loginfoln() {
     echo -e "\033[1;34m${1}\033[0m"
 }
 
 logdebu() {
     if [ -z "${FABKIT_DEBUG}" ] || [ "${FABKIT_DEBUG}" = "false" ]; then return; fi
-    echo -e "\t\b[DEBUG]\t\b\033[1;36m${1}\033[0m"
+    tput cub1 && tput el && echo -e "\t\b[DEBUG]\t\b\033[1;36m${1}\033[0m"
+}
+
+logdebuprettier() {
+    if [ -z "${FABKIT_DEBUG}" ] || [ "${FABKIT_DEBUG}" = "false" ]; then return; fi
+    tput cub1 && tput el && echo ""
 }
 
 __check_fabric_version() {
@@ -177,20 +186,21 @@ __spinner() {
 
     echo -en "\033[3C→ "
     local i=0
+    tput cuf1
     while kill -0 "$pid" 2>/dev/null; do
         tput civis
         local i=$(((i + charwidth) % ${#spin}))
         printf "%s" "${spin:$i:$charwidth}"
-        tput cub 1
-        sleep .1
+        tput cub1
+        sleep 0.1
     done
 
     tput el
     tput cnorm
     if wait "$pid"; then
-        echo "✅ "
+        echo -en "✅ \n"
     else
-        echo "❌ "
+        echo -en "❌ "
         return 1
     fi
 }

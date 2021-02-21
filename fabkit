@@ -27,7 +27,7 @@ readonly FABKIT_FABRIC_AVAILABLE_VERSIONS=("2.3.0" "2.3" "2.2.1" "2.2" "2.2.0" "
 export FABKIT_HOST_ROOT="${FABKIT_HOST_ROOT:-$FABKIT_ROOT}"
 
 __log_setup() {
-    loghead "Running setup"
+    loghead "\nRunning setup"
     echo "Root directory: $(loginfo ${FABKIT_HOST_ROOT})"
     echo "Docker network: $(loginfo ${FABKIT_DOCKER_NETWORK})"
     echo "Fabric version: $(loginfo ${FABKIT_FABRIC_VERSION})"

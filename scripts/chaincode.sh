@@ -291,6 +291,9 @@ chaincode_install() {
     local peer="$5"
     shift 5
 
+    loginfo "Installing chaincode ${chaincode_name}@${chaincode_version}"
+
+    logdebuprettier
     __set_chaincode_options install options "$@"
     __set_certs "$org" "$peer"
     __set_peer_exec cmd
@@ -300,8 +303,6 @@ chaincode_install() {
 
     __rename_chaincode_path_to_name "$chaincode_path" "$chaincode_name" result
     chaincode_path=$result
-
-    loginfo "Installing chaincode ${chaincode_name}@${chaincode_version} from path $chaincode_path"
 
     if [ "$chaincode_language" = "golang" ]; then
         __init_go_mod install "$chaincode_path"
@@ -331,6 +332,7 @@ chaincode_instantiate() {
 
     loginfo "Instantiating chaincode ${chaincode_name}@${chaincode_version} on channel $channel_name"
 
+    logdebuprettier
     __set_chaincode_options instantiate options "$@"
     __get_chaincode_language "${FABKIT_CHAINCODE_PATH}/${chaincode_name}" chaincode_language
 
@@ -533,11 +535,12 @@ invoke() {
     local peer="$4"
     shift 4
 
+    loginfo "Invoking chaincode $chaincode_name on channel ${channel_name} as org${org} and peer${peer} with the following params '${options}'"
+
+    logdebuprettier
     __set_chaincode_options invoke options "$@"
     __set_certs "$org" "$peer"
     __set_peer_exec cmd
-
-    loginfo "Invoking chaincode $chaincode_name on channel ${channel_name} as org${org} and peer${peer} with the following params '${options}'"
 
     if [ "${FABKIT_TLS_ENABLED:-}" = "false" ]; then
         cmd+="peer chaincode invoke -o $FABKIT_ORDERER_ADDRESS -C $channel_name -n $chaincode_name --peerAddresses $CORE_PEER_ADDRESS --waitForEvent $options"
@@ -561,6 +564,7 @@ query() {
     local request="$5"
     shift 5
 
+    logdebuprettier
     __set_chaincode_options query options "$@"
     __set_certs "$org" "$peer"
     __set_peer_exec cmd
@@ -614,6 +618,9 @@ lc_chaincode_package() {
     local peer="$5"
     shift 5
 
+    loginfo "Packaging chaincode ${chaincode_name}@${chaincode_version} from path $chaincode_path"
+
+    logdebuprettier
     __set_chaincode_options package options "$@"
     __set_certs "$org" "$peer"
     __set_peer_exec cmd
@@ -623,8 +630,6 @@ lc_chaincode_package() {
 
     __rename_chaincode_path_to_name "$chaincode_path" "$chaincode_name" result
     chaincode_path=$result
-
-    loginfo "Packaging chaincode ${chaincode_name}@${chaincode_version} from path $chaincode_path"
 
     if [ "$chaincode_language" = "golang" ]; then
         __init_go_mod install "$chaincode_path"
@@ -653,6 +658,7 @@ lc_chaincode_install() {
 
     loginfo "Installing chaincode ${chaincode_name}@${chaincode_version}"
 
+    logdebuprettier
     __set_chaincode_options install options "$@"
     __set_certs "$org" "$peer"
     __set_peer_exec cmd
@@ -681,6 +687,7 @@ lc_chaincode_approve() {
     shift 6
     loginfo "Approve chaincode ${chaincode_name}@${chaincode_version} on channel $channel_name for org${org}"
 
+    logdebuprettier
     __set_chaincode_options approve options "$@"
     # TODO: Accept as input or build dynamically
     local signature_policy='OR("Org1MSP.member","Org2MSP.member","Org3MSP.member")'
@@ -720,6 +727,7 @@ lc_chaincode_commit() {
 
     loginfo "Commit the chaincode definition ${chaincode_name}:${chaincode_version} to channel $channel_name"
 
+    logdebuprettier
     __set_chaincode_options commit options "$@"
 
     # TODO: Accept as input or build dynamically
@@ -773,7 +781,7 @@ lc_chaincode_commit() {
     fi
     __exec_command "${cmd}"
 
-    logdebu "Init the chaincode"
+    logdebu "Init the chaincode\n"
     invoke "$channel_name" "$chaincode_name" "$org" "$peer" "$@" --isInit
 }
 
@@ -793,10 +801,14 @@ lc_chaincode_deploy() {
     local peer="$7"
     shift 7
 
-    (lc_chaincode_package "$chaincode_name" "$chaincode_version" "$chaincode_relative_path" "$org" "$peer" "$@") & __spinner
+    (lc_chaincode_package "$chaincode_name" "$chaincode_version" "$chaincode_relative_path" "$org" "$peer" "$@") &
+    __spinner
     for o in $(seq 1 "$FABKIT_ORGS"); do
-        (lc_chaincode_install "$chaincode_name" "$chaincode_version" "$o" "$peer" "$@") & __spinner
-        (lc_chaincode_approve "$chaincode_name" "$chaincode_version" "$channel_name" "$sequence_no" "$o" "$peer" "$@") & __spinner
+        (lc_chaincode_install "$chaincode_name" "$chaincode_version" "$o" "$peer" "$@") &
+        __spinner
+        (lc_chaincode_approve "$chaincode_name" "$chaincode_version" "$channel_name" "$sequence_no" "$o" "$peer" "$@") &
+        __spinner
     done
-    (lc_chaincode_commit "$chaincode_name" "$chaincode_version" "$channel_name" "$sequence_no" "$org" "$peer" "$@") & __spinner
+    (lc_chaincode_commit "$chaincode_name" "$chaincode_version" "$channel_name" "$sequence_no" "$org" "$peer" "$@") &
+    __spinner
 }
