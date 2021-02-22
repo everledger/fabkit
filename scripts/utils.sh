@@ -29,7 +29,7 @@ logdebu() {
     tput cub1 && tput el && echo -e "\t\b[DEBUG]\t\b\033[1;36m${1}\033[0m"
 }
 
-# remove spinner when running in debug mode
+# remove dangling spinner when running in debug mode
 logdebuprettier() {
     if [ -z "${FABKIT_DEBUG}" ] || [ "${FABKIT_DEBUG}" = "false" ]; then return; fi
     tput cub1 && tput el && echo ""
