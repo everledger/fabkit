@@ -48,14 +48,15 @@ __init_go_mod() {
 }
 
 chaincode_test() {
+    loginfo "Testing chaincode $1"
+
     __check_param_chaincode "$1"
 
+    logdebuprettier
     local chaincode_relative_path="${1}"
     __set_chaincode_absolute_path "$chaincode_relative_path" chaincode_path
     local chaincode_name=$(basename "$chaincode_path")
     __get_chaincode_language "$chaincode_path" chaincode_language
-
-    loginfo "Testing chaincode $chaincode_name"
 
     if [ "$chaincode_language" = "golang" ]; then
         # avoid "found no test suites" ginkgo error
@@ -85,14 +86,15 @@ __check_test_deps() {
 }
 
 chaincode_build() {
+    loginfo "Building chaincode $1"
+
     __check_param_chaincode "$1"
 
+    logdebuprettier
     local chaincode_relative_path="${1}"
     __set_chaincode_absolute_path "$chaincode_relative_path" chaincode_path
     local chaincode_name=$(basename "$chaincode_path")
     __get_chaincode_language "$chaincode_path" chaincode_language
-
-    loginfo "Building chaincode $chaincode_name"
 
     if [ "$chaincode_language" = "golang" ]; then
         __init_go_mod install "$chaincode_path"
@@ -535,7 +537,7 @@ invoke() {
     local peer="$4"
     shift 4
 
-    loginfo "Invoking chaincode $chaincode_name on channel ${channel_name} as org${org} and peer${peer} with the following params '${options}'"
+    loginfo "Invoking chaincode $chaincode_name on channel ${channel_name} as org${org} and peer${peer} with the following params: ${options}"
 
     logdebuprettier
     __set_chaincode_options invoke options "$@"
@@ -695,7 +697,7 @@ lc_chaincode_approve() {
     logdebu "Querying chaincode package ID"
     lc_query_package_id "$chaincode_name" "$chaincode_version" "$org" "$peer"
     if [ -z "$PACKAGE_ID" ]; then
-        logwarn "Package ID is not defined"
+        logdebu "Package ID is not defined"
         return
     fi
 
@@ -734,7 +736,7 @@ lc_chaincode_commit() {
     local signature_policy='OR("Org1MSP.member","Org2MSP.member","Org3MSP.member")'
 
     if [ -z "$PACKAGE_ID" ]; then
-        logwarn "Package ID is not defined"
+        logdebu "Package ID is not defined"
         logdebu "Querying chaincode package ID"
         lc_query_package_id "$chaincode_name" "$chaincode_version" "$org" "$peer"
 
