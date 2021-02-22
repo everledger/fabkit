@@ -10,9 +10,9 @@ create_channel() {
     local org="$2"
     local peer="$3"
 
-    loginfo "Creating channel ${channel_name} using configuration file ${FABKIT_CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}_tx.pb"
+    loginfo "Creating channel ${channel_name} with org${org} peer${peer}"
 
-    logdebuprettier
+    __clear_logdebu
     __set_certs "$org" "$peer"
     __set_peer_exec cmd
 
@@ -35,9 +35,9 @@ join_channel() {
     local org="$2"
     local peer="$3"
 
-    loginfo "Joining channel ${channel_name} for org${org} peer${peer}"
+    loginfo "Joining channel ${channel_name} with org${org} peer${peer}"
 
-    logdebuprettier
+    __clear_logdebu
     __set_certs $org $peer
     __set_peer_exec cmd
 
@@ -47,7 +47,7 @@ join_channel() {
         cmd+="peer channel join -b ${FABKIT_CHANNELS_CONFIG_PATH}/${channel_name}/${channel_name}.block --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA"
     fi
 
-    logdebuprettier
+    __clear_logdebu
     __exec_command "${cmd}"
 }
 
@@ -62,9 +62,9 @@ update_channel() {
     local org="$3"
     local peer="$4"
 
-    loginfo "Updating anchors on ${channel_name} for org${org} peer${peer} by using configuration file ${FABKIT_CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors.tx"
+    loginfo "Updating anchors on ${channel_name} with org${org} peer${peer}"
 
-    logdebuprettier
+    __clear_logdebu
     __set_certs "$org" "$peer"
     __set_peer_exec cmd
 

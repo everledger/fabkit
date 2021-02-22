@@ -21,7 +21,7 @@ __quit() {
 ALIASES=("fabkit" "fk")
 
 __add_aliases() {
-    local shell="${1}"
+    local shell="$1"
     local profile="${HOME}/.${shell}rc"
     local cmd="\n# Fabkit aliases to run commands with ease\n"
     local to_add=false

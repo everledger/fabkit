@@ -42,6 +42,6 @@ __loader() {
 
         logdebu "Writing <${key},${value}> pair in the ledger"
 
-        invoke "$FABKIT_CHANNEL_NAME" "$FABKIT_CHAINCODE_NAME" 1 0 "{\"Args\":[\"put\",\"${key}\",\"${value}\"]}" &>/dev/null
+        chaincode_invoke "$FABKIT_CHANNEL_NAME" "$FABKIT_CHAINCODE_NAME" 1 0 "{\"Args\":[\"put\",\"${key}\",\"${value}\"]}" &>/dev/null
     done
 }

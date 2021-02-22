@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 install_network() {
-    loginfo "Installing Fabric dependencies"
+    loginfoln "Installing Fabric dependencies"
 
     __docker_fabric_pull &
     __spinner
@@ -11,35 +11,37 @@ install_network() {
 
 __docker_fabric_pull() {
     loginfo "Pulling Fabric images"
-    for image in peerd orderer ccenv tools; do
+    __clear_logdebu
+    for image in peer orderer ccenv tools; do
         logdebu "Pulling hyperledger/fabric-$image:${FABKIT_FABRIC_VERSION}"
-        docker pull hyperledger/fabric-$image:"${FABKIT_FABRIC_VERSION}" &>/dev/null || exit 1
-        docker tag hyperledger/fabric-$image:"${FABKIT_FABRIC_VERSION}" hyperledger/fabric-$image:latest &>/dev/null || exit 1
+        docker pull hyperledger/fabric-$image:"${FABKIT_FABRIC_VERSION}" 1>/dev/null 2> >(__throw >&2)
+        docker tag hyperledger/fabric-$image:"${FABKIT_FABRIC_VERSION}" hyperledger/fabric-$image:latest 1>/dev/null 2> >(__throw >&2)
     done
 
     logdebu "Pulling hyperledger/fabric-ca:${FABKIT_FABRIC_CA_VERSION}"
-    docker pull hyperledger/fabric-ca:"${FABKIT_FABRIC_CA_VERSION}" &>/dev/null || exit 1
-    docker tag hyperledger/fabric-ca:"${FABKIT_FABRIC_CA_VERSION}" hyperledger/fabric-ca:latest &>/dev/null || exit 1
+    docker pull hyperledger/fabric-ca:"${FABKIT_FABRIC_CA_VERSION}" 1>/dev/null 2> >(__throw >&2)
+    docker tag hyperledger/fabric-ca:"${FABKIT_FABRIC_CA_VERSION}" hyperledger/fabric-ca:latest 1>/dev/null 2> >(__throw >&2)
 
     logdebu "Pulling hyperledger/fabric-couchdb:${FABKIT_FABRIC_THIRDPARTY_IMAGE_VERSION}"
-    docker pull hyperledger/fabric-couchdb:"${FABKIT_FABRIC_THIRDPARTY_IMAGE_VERSION}" &>/dev/null || exit 1
-    docker tag hyperledger/fabric-couchdb:"${FABKIT_FABRIC_THIRDPARTY_IMAGE_VERSION}" hyperledger/fabric-couchdb:latest &>/dev/null || exit 1
+    docker pull hyperledger/fabric-couchdb:"${FABKIT_FABRIC_THIRDPARTY_IMAGE_VERSION}" 1>/dev/null 2> >(__throw >&2)
+    docker tag hyperledger/fabric-couchdb:"${FABKIT_FABRIC_THIRDPARTY_IMAGE_VERSION}" hyperledger/fabric-couchdb:latest 1>/dev/null 2> >(__throw >&2)
 }
 
 __docker_third_party_images_pull() {
     loginfo "Pulling utilities images"
+    __clear_logdebu
     logdebu "Pulling ${FABKIT_GOLANG_DOCKER_IMAGE}"
-    docker pull "$FABKIT_GOLANG_DOCKER_IMAGE" &>/dev/null || exit 1
+    docker pull "$FABKIT_GOLANG_DOCKER_IMAGE" 1>/dev/null 2> >(__throw >&2)
     logdebu "Pulling ${FABKIT_JQ_DOCKER_IMAGE}"
-    docker pull "$FABKIT_JQ_DOCKER_IMAGE" &>/dev/null || exit 1
+    docker pull "$FABKIT_JQ_DOCKER_IMAGE" 1>/dev/null 2> >(__throw >&2)
     logdebu "Pulling ${FABKIT_YQ_DOCKER_IMAGE}"
-    docker pull "$FABKIT_YQ_DOCKER_IMAGE" &>/dev/null || exit 1
+    docker pull "$FABKIT_YQ_DOCKER_IMAGE" 1>/dev/null 2> >(__throw >&2)
 }
 
 start_network() {
     loginfoln "Starting Fabric network"
 
-    if docker volume ls | grep -q "$FABKIT_DOCKER_NETWORK" && ! "$FABKIT_RESET"; then
+    if docker volume ls | grep -q "$FABKIT_DOCKER_NETWORK" && [ "${FABKIT_RESET:-}" = "false" ] && [ "${FABKIT_INTERACTIVE:-}" = "true" ]; then
         logwarn "Found volumes"
         read -rp "Do you wish to restart the network and reuse this data? [yes/no=default] " yn
         case $yn in
@@ -63,13 +65,13 @@ start_network() {
     fi
 
     for org in $(seq 1 "${FABKIT_ORGS}"); do
-        local command+="docker-compose --env-file ${FABKIT_ROOT}/.env -f ${FABKIT_NETWORK_PATH}/org${org}.yaml up -d &>/dev/null || exit 1;"
+        local command+="docker-compose --env-file ${FABKIT_ROOT}/.env -f ${FABKIT_NETWORK_PATH}/org${org}.yaml up -d;"
     done
 
     # TODO: create raft profiles for different network topologies (multi-org support)
     if [ "$FABKIT_CONFIGTX_PROFILE_NETWORK" = "$RAFT_ONE_ORG" ]; then
         FABKIT_CONFIGTX_PROFILE_NETWORK=${RAFT_ONE_ORG}
-        command+="docker-compose --env-file ${FABKIT_ROOT}/.env -f ${FABKIT_NETWORK_PATH}/raft.yaml up -d &>/dev/null || exit 1;"
+        command+="docker-compose --env-file ${FABKIT_ROOT}/.env -f ${FABKIT_NETWORK_PATH}/raft.yaml up -d;"
     elif [ "${FABKIT_ORGS}" = "2" ]; then
         FABKIT_CONFIGTX_PROFILE_NETWORK=${TWO_ORGS}
         FABKIT_CONFIGTX_PROFILE_CHANNEL=TwoOrgsChannel
@@ -87,9 +89,9 @@ start_network() {
 
     __set_lastrun
 
-    docker network create "$FABKIT_DOCKER_NETWORK" &>/dev/null || exit 1
+    docker network create "$FABKIT_DOCKER_NETWORK" 1>/dev/null 2> >(__throw >&2)
 
-    (loginfo "Launching containers" && eval ${command} && sleep 5) &
+    (loginfo "Launching containers" && (eval "$command") &>/dev/null && sleep 5) &
     __spinner
 
     __log_setup
@@ -111,9 +113,9 @@ restart_network() {
     docker network create "$FABKIT_DOCKER_NETWORK" &>/dev/null || true
 
     for org in $(seq 1 "$FABKIT_ORGS"); do
-        local command+="docker-compose --env-file ${FABKIT_ROOT}/.env -f ${FABKIT_NETWORK_PATH}/org${org}.yaml --force-recreate -d &>/dev/null || exit 1;"
+        local command+="docker-compose --env-file ${FABKIT_ROOT}/.env -f ${FABKIT_NETWORK_PATH}/org${org}.yaml --force-recreate -d;"
     done
-    eval ${command}
+    (eval "$command") &>/dev/null || exit 1
 
     logwarn "The chaincode container will be instantiated automatically once the peer executes the first invoke or query"
 }
@@ -122,27 +124,25 @@ stop_network() {
     loginfo "Stopping network and removing components"
 
     for org in $(seq 1 "$FABKIT_ORGS"); do
-        local command+="docker-compose --env-file ${FABKIT_ROOT}/.env -f ${FABKIT_NETWORK_PATH}/org${org}.yaml down --remove-orphans &>/dev/null || exit 1;"
+        local command+="docker-compose --env-file ${FABKIT_ROOT}/.env -f ${FABKIT_NETWORK_PATH}/org${org}.yaml down --remove-orphans;"
     done
-    eval ${command}
+    (eval "$command") &>/dev/null || exit 1
 
     if docker ps | grep -q "hyperledger/explorer"; then
         stop_explorer
     fi
 
-    logdebuprettier
+    __clear_logdebu
     logdebu "Cleaning docker leftovers containers and images"
     docker rm -f $(docker ps -a | awk '($2 ~ /${FABKIT_DOCKER_NETWORK}|dev-/) {print $1}' &>/dev/null) &>/dev/null || true
     docker rmi -f $(docker images -qf "dangling=true" &>/dev/null) &>/dev/null || true
     docker rmi -f $(docker images | awk '($1 ~ /^<none>|dev-/) {print $3}' &>/dev/null) &>/dev/null || true
     docker system prune -f &>/dev/null || true
 
-    if [ "${FABKIT_RESET}" = "true" ]; then
+    if [ "${FABKIT_RESET:-}" = "true" ] || [ -z "${FABKIT_INTERACTIVE}" ] || [ "${FABKIT_INTERACTIVE}" = "false" ]; then
         docker volume prune -f $(docker volume ls | awk '($2 ~ /${FABKIT_DOCKER_NETWORK}/) {print $2}' &>/dev/null) &>/dev/null
         return 0
-    fi
-
-    if docker volume ls | grep -q "$FABKIT_DOCKER_NETWORK"; then
+    elif docker volume ls | grep -q "$FABKIT_DOCKER_NETWORK" && [ "${FABKIT_INTERACTIVE:-}" = "true" ]; then
         logerr "!!!!! ATTENTION !!!!!"
         logerr "Found volumes"
         read -rp "Do you wish to remove this data? [yes/no=default] " yn
@@ -198,14 +198,14 @@ __replace_config_capabilities() {
             .Capabilities.Orderer.V2_0 = true |
             .Capabilities.Orderer.V1_4_2 = false |
             .Capabilities.Application.V2_0 = true |
-            .Capabilities.Application.V1_4_2 = false' - >"${configtx}.yaml" || exit 1
+            .Capabilities.Application.V1_4_2 = false' - >"${configtx}.yaml" 2> >(__throw >&2)
     else
         __yq <"${configtx}.base.yaml" e '.Capabilities.Channel.V2_0 = false |
             .Capabilities.Channel.V1_4_3 = true |
             .Capabilities.Orderer.V2_0 = false |
             .Capabilities.Orderer.V1_4_2 = true |
             .Capabilities.Application.V2_0 = false |
-            .Capabilities.Application.V1_4_2 = true' - >"${configtx}.yaml" || exit 1
+            .Capabilities.Application.V1_4_2 = true' - >"${configtx}.yaml" 2> >(__throw >&2)
     fi
 }
 
@@ -240,21 +240,21 @@ generate_genesis() {
     local cryptos_path="$3"
     local network_profile="$4"
 
-    if [ "${FABKIT_RESET}" = "true" ]; then
+    if [ "${FABKIT_RESET:-}" = "true" ] || [ -z "${FABKIT_INTERACTIVE}" ] || [ "${FABKIT_INTERACTIVE}" = "false" ]; then
         __delete_path "$channel_dir"
+    else
+        if [ -d "$channel_dir" ]; then
+            logwarn "Channel directory ${channel_dir} already exists"
+            read -rp "Do you wish to re-generate channel config? [yes/no=default] " yn
+            case $yn in
+            [Yy]*) ;;
+            *) return 0 ;;
+            esac
+            __delete_path "$channel_dir"
+        fi
     fi
 
-    if [ -d "$channel_dir" ]; then
-        logwarn "Channel directory ${channel_dir} already exists"
-        read -rp "Do you wish to re-generate channel config? [yes/no=default] " yn
-        case $yn in
-        [Yy]*) ;;
-        *) return 0 ;;
-        esac
-        __delete_path "$channel_dir"
-    fi
-
-    logdebuprettier
+    __clear_logdebu
     logdebu "Base path: $base_path"
     logdebu "Config path: $config_path"
     logdebu "Cryptos path: $cryptos_path"
@@ -273,12 +273,13 @@ generate_genesis() {
         -v "${cryptos_path/$FABKIT_ROOT/$FABKIT_HOST_ROOT}:/crypto-config" \
         -u "$(id -u):$(id -g)" \
         -e FABRIC_CFG_PATH=/ \
-        hyperledger/fabric-tools:${FABKIT_FABRIC_VERSION} \
+        hyperledger/fabric-tools:"$FABKIT_FABRIC_VERSION" \
         bash -c " \
             configtxgen -profile $network_profile -channelID orderer-system-channel -outputBlock /channels/orderer-system-channel/genesis_block.pb /configtx.yaml;
             configtxgen -inspectBlock /channels/orderer-system-channel/genesis_block.pb >/channels/orderer-system-channel/genesis_block.pb.json
         " &>/dev/null; then
-        logerr "Failed to generate orderer genesis block..."
+        # TODO: grab error log from docker logs fabric-cli
+        logerr "Failed to generate orderer genesis block"
         exit 1
     fi
 }
@@ -332,21 +333,21 @@ generate_channeltx() {
     local channel_profile="$6"
     local org_msp="$7"
 
-    if [ "${FABKIT_RESET}" = "true" ]; then
+    if [ "${FABKIT_RESET:-}" = "true" ] || [ -z "${FABKIT_INTERACTIVE}" ] || [ "${FABKIT_INTERACTIVE}" = "false" ]; then
         __delete_path "$channel_dir"
+    else
+        if [ -d "$channel_dir" ]; then
+            logwarn "Channel directory ${channel_dir} already exists"
+            read -rp "Do you wish to re-generate channel config? [yes/no=default] " yn
+            case $yn in
+            [Yy]*) ;;
+            *) return 0 ;;
+            esac
+            __delete_path "$channel_dir"
+        fi
     fi
 
-    if [ -d "$channel_dir" ]; then
-        logwarn "Channel directory ${channel_dir} already exists"
-        read -rp "Do you wish to re-generate channel config? [yes/no=default] " yn
-        case $yn in
-        [Yy]*) ;;
-        *) return 0 ;;
-        esac
-        __delete_path "$channel_dir"
-    fi
-
-    logdebuprettier
+    __clear_logdebu
     logdebu "Channel: $channel_name"
     logdebu "Base path: $base_path"
     logdebu "Config path: $config_path"
@@ -374,7 +375,7 @@ generate_channeltx() {
             configtxgen -profile $channel_profile -outputCreateChannelTx /channels/${channel_name}/${channel_name}_tx.pb -channelID ${channel_name} /configtx.yaml;
             configtxgen -inspectChannelCreateTx /channels/${channel_name}/${channel_name}_tx.pb >/channels/${channel_name}/${channel_name}_tx.pb.json
         " &>/dev/null; then
-        logerr "Failed to generate channel configuration transaction..."
+        logerr "Failed to generate channel configuration transaction"
         exit 1
     fi
 
@@ -387,7 +388,7 @@ generate_channeltx() {
         -e FABRIC_CFG_PATH=/ \
         hyperledger/fabric-tools:${FABKIT_FABRIC_VERSION} \
         configtxgen -profile "$channel_profile" -outputAnchorPeersUpdate "/channels/${channel_name}/${org_msp}_anchors_tx.pb" -channelID "$channel_name" -asOrg "$org_msp" /configtx.yaml &>/dev/null; then
-        logerr "Failed to generate anchor peer update for $org_msp..."
+        logerr "Failed to generate anchor peer update for $org_msp"
         exit 1
     fi
 }
@@ -409,21 +410,21 @@ generate_cryptos() {
     local cryptos_path="$2"
 
     loginfo "Generating cryptos"
-    logdebuprettier
+    __clear_logdebu
     logdebu "Config path: $config_path"
     logdebu "Cryptos path: $cryptos_path"
 
-    if [ "${FABKIT_RESET}" = "true" ]; then
+    if [ "${FABKIT_RESET:-}" = "true" ] || [ -z "${FABKIT_INTERACTIVE}" ] || [ "${FABKIT_INTERACTIVE}" = "false" ]; then
         __delete_path "$cryptos_path"
-    fi
-
-    if [ -d "${cryptos_path}" ]; then
-        logwarn "crypto-config already exists"
-        read -rp "Do you wish to remove crypto-config and generate new ones? [yes/no=default] " yn
-        case $yn in
-        [Yy]*) __delete_path "$cryptos_path" ;;
-        *) ;;
-        esac
+    else
+        if [ -d "${cryptos_path}" ]; then
+            logwarn "crypto-config already exists"
+            read -rp "Do you wish to remove crypto-config and generate new ones? [yes/no=default] " yn
+            case $yn in
+            [Yy]*) __delete_path "$cryptos_path" ;;
+            *) ;;
+            esac
+        fi
     fi
 
     if [ ! -d "${cryptos_path}" ]; then
@@ -436,7 +437,7 @@ generate_cryptos() {
             -u "$(id -u):$(id -g)" \
             hyperledger/fabric-tools:"${FABKIT_FABRIC_VERSION}" \
             cryptogen generate --config=/crypto-config.yaml --output=/crypto-config &>/dev/null; then
-            logerr "Failed to generate crypto material..."
+            logerr "Failed to generate crypto material"
             exit 1
         fi
     fi

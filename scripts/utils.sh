@@ -6,6 +6,7 @@ loghead() {
 
 logerr() {
     echo -e "\t\b[ERROR]\t\b\033[1;31m${1}\033[0m"
+    __print_to_file "$FABKIT_LOGFILE" "$1" "[ERROR]"
 }
 
 logsucc() {
@@ -17,7 +18,7 @@ logwarn() {
 }
 
 loginfo() {
-    echo -ne "\033[1;34m${1}\033[0m"
+    echo -en "\033[1;34m${1}\033[0m"
 }
 
 loginfoln() {
@@ -25,14 +26,24 @@ loginfoln() {
 }
 
 logdebu() {
-    if [ -z "${FABKIT_DEBUG}" ] || [ "${FABKIT_DEBUG}" = "false" ]; then return; fi
-    tput cub1 && tput el && echo -e "\t\b[DEBUG]\t\b\033[1;36m${1}\033[0m"
+    if [ "${FABKIT_DEBUG:-}" = "false" ]; then return; fi
+    __clear_spinner && echo -e "\t\b[DEBUG]\t\b\033[1;36m${1}\033[0m"
+    __print_to_file "$FABKIT_LOGFILE" "$1" "[DEBUG]"
+}
+
+__print_to_file() {
+    local file="$1"
+    local message="$2"
+    local tag="$3"
+    local timestamp=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+    echo -e "$tag $timestamp $message" >>"$file"
 }
 
 # remove dangling spinner when running in debug mode
-logdebuprettier() {
-    if [ -z "${FABKIT_DEBUG}" ] || [ "${FABKIT_DEBUG}" = "false" ]; then return; fi
-    tput cub1 && tput el && echo ""
+__clear_logdebu() {
+    if [ "${FABKIT_DEBUG:-}" = "false" ]; then return; fi
+    __clear_spinner && echo
 }
 
 __check_fabric_version() {
@@ -43,7 +54,7 @@ __check_fabric_version() {
 }
 
 __check_deps() {
-    if [ "${1}" = "deploy" ]; then
+    if [ "$1" = "deploy" ]; then
         type docker >/dev/null 2>&1 || {
             logerr >&2 "docker required but it is not installed. Aborting."
             exit 1
@@ -52,7 +63,7 @@ __check_deps() {
             logerr >&2 "docker-compose required but it is not installed. Aborting."
             exit 1
         }
-    elif [ "${1}" = "test" ]; then
+    elif [ "$1" = "test" ]; then
         type go >/dev/null 2>&1 || {
             logwarn >&2 "Go binary is missing in your PATH. Running the dockerised version..."
             echo $?
@@ -61,7 +72,7 @@ __check_deps() {
 }
 
 __check_docker_daemon() {
-    if [ "$(docker info --format '{{json .}}' | grep "Cannot connect" 2>/dev/null)" ]; then
+    if docker info --format '{{json .}}' | grep "Cannot connect" 2>/dev/null; then
         logerr "Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?"
         exit 1
     fi
@@ -69,11 +80,11 @@ __check_docker_daemon() {
 
 # delete path recursively and asks for root permissions if needed
 __delete_path() {
-    if [ ! -d "$1" ]; then
+    if [[ ! -e "$1" ]]; then
         return
     fi
 
-    if [ -w "$1" ]; then
+    if [[ -w "$1" ]]; then
         rm -rf "$1"
     else
         logerr "!!!!! ATTENTION !!!!!"
@@ -118,11 +129,11 @@ __exec_command() {
     local message="$1"
     logdebu "Excecuting command: ${message}"
     # TODO: Return error and let the caller to handle it
-    eval "$message &>/dev/null"
+    (eval "$message") &>/dev/null
 }
 
 __timer() {
-    local start_time="${1}"
+    local start_time="$1"
     local end_time="${2}"
 
     local elapsed_time="$((end_time - start_time))"
@@ -158,17 +169,19 @@ __set_lastrun() {
     (
         set -o posix
         set | grep "FABKIT_"
-    ) >"${FABKIT_ROOT}/.lastrun"
+    ) >"$FABKIT_LASTRUN"
 
     __load_lastrun
 }
 
 __load_lastrun() {
-    source "${FABKIT_ROOT}/.lastrun" 2>/dev/null
+    # shellcheck disable=SC1090
+    source "$FABKIT_LASTRUN" 2>/dev/null
 }
 
 __clean_user_path() {
-    __delete_path "${FABKIT_ROOT}/.lastrun"
+    __delete_path "$FABKIT_LASTRUN"
+    __delete_path "$FABKIT_LOGFILE"
 }
 
 tostring() {
@@ -177,6 +190,10 @@ tostring() {
 
 tojson() {
     echo "$*" | __jq . 2>/dev/null || echo "${*//\\\"/\"}"
+}
+
+__clear_spinner() {
+    tput cub1 && tput el
 }
 
 __spinner() {
@@ -199,32 +216,42 @@ __spinner() {
     tput el
     tput cnorm
     if wait "$pid"; then
-        echo -en "✅ \n"
+        echo -e "✅ "
     else
-        echo -en "❌ "
+        echo -e "❌ "
         return 1
     fi
 }
 
-# credits to: Sitwon - https://github.com/Sitwon/bash_patterns/blob/master/exception_handling.sh
 __catch() {
     if [ "$1" == 0 ]; then
         return
     fi
 
-    local timestamp=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
-
-    echo "$timestamp" "Caught error $1 in:" >>"${FABKIT_LOGFILE}"
+    __print_to_file "$FABKIT_LOGFILE" "Caught error $1 in:" "[ERROR]"
     frame=0
     line="$(caller $frame 2>&1 | cut -d ' ' -f 1)"
     while [ -n "$line" ]; do
         subroutine="$(caller $frame 2>&1 | cut -d ' ' -f 2)"
         file="$(caller $frame 2>&1 | cut -d ' ' -f 3)"
-        echo "$timestamp" "From $file:$line in $subroutine" >>"${FABKIT_LOGFILE}"
-        echo "$timestamp" "    $(sed -n "${line}"p "$file")" >>"${FABKIT_LOGFILE}"
+        __print_to_file "$FABKIT_LOGFILE" "From $file:$line in $subroutine" "[ERROR]"
+        __print_to_file "$FABKIT_LOGFILE" "\t$(sed -n "${line}"p "$file")" "[ERROR]"
         ((frame++)) || true
         line="$(caller "$frame" 2>&1 | cut -d ' ' -f 1)"
     done
-    echo "$timestamp" >>"${FABKIT_LOGFILE}"
+
     exit "$1"
+}
+
+__throw() {
+    local input
+
+    if [ -n "$1" ]; then
+        input="$1"
+        __clear_spinner && logerr "$input"
+    else
+        while read -r input; do
+            __clear_spinner && logerr "$input"
+        done
+    fi
 }

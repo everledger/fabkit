@@ -41,6 +41,7 @@ __log_setup() {
     echo "TLS enabled: $(loginfo ${FABKIT_TLS_ENABLED})"
     echo "Debug mode: $(loginfo ${FABKIT_DEBUG:-false})"
     echo "Fresh-start mode: $(loginfo ${FABKIT_RESET:-false})"
+    echo "Interactive mode: $(loginfo ${FABKIT_INTERACTIVE:-false})"
     echo
 }
 
@@ -67,7 +68,7 @@ __set_params() {
     fi
 
     while [ $# -gt 0 ]; do
-        local param="${1}"
+        local param="$1"
 
         case $param in
         -q | --quick-run)
@@ -81,6 +82,10 @@ __set_params() {
         -r | --reset)
             export FABKIT_RESET=true
             __clean_user_path
+            shift
+            ;;
+        -i | --interactive)
+            export FABKIT_INTERACTIVE=true
             shift
             ;;
         -o | --orgs)
@@ -126,7 +131,6 @@ if [ "$func" = "network" ]; then
         __log_setup
         install_network
     elif [ "$param" = "start" ]; then
-        __validate_params
         start_network "$@"
     elif [ "$param" = "restart" ]; then
         restart_network
@@ -216,11 +220,11 @@ elif [ "$func" = "chaincode" ]; then
     elif [ "$param" = "query" ]; then
         __check_deps deploy
         __check_docker_daemon
-        query "$@"
+        chaincode_query "$@"
     elif [ "$param" = "invoke" ]; then
         __check_deps deploy
         __check_docker_daemon
-        invoke "$@"
+        chaincode_invoke "$@"
     else
         help_chaincode
     fi
@@ -299,7 +303,6 @@ elif [ "$func" = "start" ]; then
     __check_deps deploy
     __check_docker_daemon
     __set_params "$@"
-    __validate_params
     __validate_params
     start_network "$@"
 elif [ "$func" = "restart" ]; then

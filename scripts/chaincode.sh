@@ -4,7 +4,7 @@ dep_install() {
     __check_param_chaincode "$1"
     loginfo "Installing chaincode dependencies"
 
-    local chaincode_relative_path="${1}"
+    local chaincode_relative_path="$1"
     __set_chaincode_absolute_path "$chaincode_relative_path" chaincode_path
 
     __init_go_mod install "$chaincode_path"
@@ -14,7 +14,7 @@ dep_update() {
     __check_param_chaincode "$1"
     loginfo "Updating chaincode dependencies"
 
-    local chaincode_relative_path="${1}"
+    local chaincode_relative_path="$1"
     __set_chaincode_absolute_path "$chaincode_relative_path" chaincode_path
 
     __init_go_mod update "$chaincode_path"
@@ -24,25 +24,22 @@ __init_go_mod() {
     local operation=$1
     local chaincode_relative_path=$2
 
-    cd "${chaincode_path}" >/dev/null 2>&1 || {
-        logwarn >&2 "${chaincode_path} path does not exist"
-        exit 1
-    }
+    cd "${chaincode_path}" 1>/dev/null 2> >(__throw >&2) || exit
 
     if [ ! -f "./go.mod" ]; then
-        go mod init &>/dev/null
+        go mod init 1>/dev/null 2> >(__throw >&2)
     fi
 
     __delete_path vendor &>/dev/null
 
     if [ "${operation}" = "install" ]; then
-        go get ./... &>/dev/null
+        go get ./... 1>/dev/null 2> >(__throw >&2)
     elif [ "${operation}" = "update" ]; then
-        go get -u=patch ./... &>/dev/null
+        go get -u=patch ./... 1>/dev/null 2> >(__throw >&2)
     fi
 
-    go mod tidy &>/dev/null
-    go mod vendor &>/dev/null
+    go mod tidy 1>/dev/null 2> >(__throw >&2)
+    go mod vendor 1>/dev/null 2> >(__throw >&2)
 
     cd "$FABKIT_ROOT" || return
 }
@@ -52,15 +49,15 @@ chaincode_test() {
 
     __check_param_chaincode "$1"
 
-    logdebuprettier
-    local chaincode_relative_path="${1}"
+    __clear_logdebu
+    local chaincode_relative_path="$1"
     __set_chaincode_absolute_path "$chaincode_relative_path" chaincode_path
     local chaincode_name=$(basename "$chaincode_path")
     __get_chaincode_language "$chaincode_path" chaincode_language
 
     if [ "$chaincode_language" = "golang" ]; then
         # avoid "found no test suites" ginkgo error
-        if [[ ! $(find "$chaincode_path" -type f -name "*_test*" ! -path "**/node_modules/*" ! -path "**/vendor/*") ]]; then
+        if ! find "$chaincode_path" -type f -name "*_test*" ! -path "**/node_modules/*" ! -path "**/vendor/*" &>/dev/null; then
             logwarn "No test suites found. Skipping tests..."
             return
         fi
@@ -69,9 +66,9 @@ chaincode_test() {
         __init_go_mod install "$chaincode_path"
 
         if [[ $(__check_deps test) ]]; then
-            (docker run --rm -v "${FABKIT_CHAINCODE_PATH}:/usr/src/myapp" -w "/usr/src/myapp/${chaincode_name}" -e CGO_ENABLED=0 -e CORE_CHAINCODE_LOGGING_LEVEL=debug "$FABKIT_GOLANG_DOCKER_IMAGE" sh -c "ginkgo -r &>/dev/null") || exit 1
+            (docker run --rm -v "${FABKIT_CHAINCODE_PATH}:/usr/src/myapp" -w "/usr/src/myapp/${chaincode_name}" -e CGO_ENABLED=0 -e CORE_CHAINCODE_LOGGING_LEVEL=debug "$FABKIT_GOLANG_DOCKER_IMAGE" sh -c "ginkgo -r 1>/dev/null 2> >(__throw >&2)") || exit 1
         else
-            (cd "$chaincode_path" && CORE_CHAINCODE_LOGGING_LEVEL=debug CGO_ENABLED=0 ginkgo -r &>/dev/null) || exit 1
+            (cd "$chaincode_path" && CORE_CHAINCODE_LOGGING_LEVEL=debug CGO_ENABLED=0 ginkgo -r 1>/dev/null 2> >(__throw >&2)) || exit 1
         fi
     fi
 
@@ -90,8 +87,8 @@ chaincode_build() {
 
     __check_param_chaincode "$1"
 
-    logdebuprettier
-    local chaincode_relative_path="${1}"
+    __clear_logdebu
+    local chaincode_relative_path="$1"
     __set_chaincode_absolute_path "$chaincode_relative_path" chaincode_path
     local chaincode_name=$(basename "$chaincode_path")
     __get_chaincode_language "$chaincode_path" chaincode_language
@@ -295,7 +292,7 @@ chaincode_install() {
 
     loginfo "Installing chaincode ${chaincode_name}@${chaincode_version}"
 
-    logdebuprettier
+    __clear_logdebu
     __set_chaincode_options install options "$@"
     __set_certs "$org" "$peer"
     __set_peer_exec cmd
@@ -334,7 +331,7 @@ chaincode_instantiate() {
 
     loginfo "Instantiating chaincode ${chaincode_name}@${chaincode_version} on channel $channel_name"
 
-    logdebuprettier
+    __clear_logdebu
     __set_chaincode_options instantiate options "$@"
     __get_chaincode_language "${FABKIT_CHAINCODE_PATH}/${chaincode_name}" chaincode_language
 
@@ -363,13 +360,14 @@ chaincode_upgrade() {
     local peer="$5"
     shift 5
 
+    loginfo "Upgrading chaincode $chaincode_name to version $chaincode_version on channel ${channel_name}"
+
+    __clear_logdebu
     __set_certs "$org" "$peer"
     __set_peer_exec cmd
 
     __set_chaincode_options upgrade options "$@"
     __get_chaincode_language "${FABKIT_CHAINCODE_PATH}/${chaincode_name}" chaincode_language
-
-    loginfo "Upgrading chaincode $chaincode_name to version $chaincode_version on channel ${channel_name}"
 
     if [ "${FABKIT_TLS_ENABLED:-}" = "false" ]; then
         cmd+="peer chaincode upgrade -n $chaincode_name -v $chaincode_version -C $channel_name -l $chaincode_language $options"
@@ -433,7 +431,7 @@ chaincode_zip() {
 
     __check_param_chaincode "$1"
 
-    local chaincode_relative_path="${1}"
+    local chaincode_relative_path="$1"
     __set_chaincode_absolute_path "$chaincode_relative_path" chaincode_path
     __get_chaincode_language "$chaincode_path" chaincode_language
 
@@ -525,7 +523,7 @@ chaincode_pack() {
     echo "Chaincode package created in: $(logsucc "${FABKIT_DIST_PATH}/${filename}")"
 }
 
-invoke() {
+chaincode_invoke() {
     if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ]; then
         logerr "Incorrect usage of ${FUNCNAME[0]}. Please consult the help: fabkit help"
         exit 1
@@ -539,7 +537,7 @@ invoke() {
 
     loginfo "Invoking chaincode $chaincode_name on channel ${channel_name} as org${org} and peer${peer} with the following params: ${options}"
 
-    logdebuprettier
+    __clear_logdebu
     __set_chaincode_options invoke options "$@"
     __set_certs "$org" "$peer"
     __set_peer_exec cmd
@@ -553,7 +551,7 @@ invoke() {
     __exec_command "${cmd}"
 }
 
-query() {
+chaincode_query() {
     if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ] || [ -z "$5" ]; then
         logerr "Incorrect usage of ${FUNCNAME[0]}. Please consult the help: fabkit help"
         exit 1
@@ -566,12 +564,11 @@ query() {
     local request="$5"
     shift 5
 
-    logdebuprettier
+    __clear_logdebu
     __set_chaincode_options query options "$@"
     __set_certs "$org" "$peer"
     __set_peer_exec cmd
 
-    # echo "Querying chaincode $(loginfo "$chaincode_name") on channel $(loginfo "$channel_name") as $(loginfo "org${org}") and $(loginfo "peer${peer}") with the following params $(loginfo "${request} $*")"
     loginfo "Querying chaincode $chaincode_name on channel ${channel_name} as org${org} and peer${peer} with the following params '${request} $*'"
 
     if [ "${FABKIT_TLS_ENABLED:-}" = "false" ]; then
@@ -620,9 +617,9 @@ lc_chaincode_package() {
     local peer="$5"
     shift 5
 
-    loginfo "Packaging chaincode ${chaincode_name}@${chaincode_version} from path $chaincode_path"
+    loginfo "Packaging chaincode ${chaincode_name}@${chaincode_version}"
 
-    logdebuprettier
+    __clear_logdebu
     __set_chaincode_options package options "$@"
     __set_certs "$org" "$peer"
     __set_peer_exec cmd
@@ -660,7 +657,7 @@ lc_chaincode_install() {
 
     loginfo "Installing chaincode ${chaincode_name}@${chaincode_version}"
 
-    logdebuprettier
+    __clear_logdebu
     __set_chaincode_options install options "$@"
     __set_certs "$org" "$peer"
     __set_peer_exec cmd
@@ -687,9 +684,10 @@ lc_chaincode_approve() {
     local org="$5"
     local peer="$6"
     shift 6
+
     loginfo "Approve chaincode ${chaincode_name}@${chaincode_version} on channel $channel_name for org${org}"
 
-    logdebuprettier
+    __clear_logdebu
     __set_chaincode_options approve options "$@"
     # TODO: Accept as input or build dynamically
     local signature_policy='OR("Org1MSP.member","Org2MSP.member","Org3MSP.member")'
@@ -729,7 +727,7 @@ lc_chaincode_commit() {
 
     loginfo "Commit the chaincode definition ${chaincode_name}:${chaincode_version} to channel $channel_name"
 
-    logdebuprettier
+    __clear_logdebu
     __set_chaincode_options commit options "$@"
 
     # TODO: Accept as input or build dynamically
@@ -783,8 +781,10 @@ lc_chaincode_commit() {
     fi
     __exec_command "${cmd}"
 
-    logdebu "Init the chaincode\n"
-    invoke "$channel_name" "$chaincode_name" "$org" "$peer" "$@" --isInit
+    logdebu "Init the chaincode"
+    __clear_spinner
+    echo -en "\n\033[6C→ "
+    chaincode_invoke "$channel_name" "$chaincode_name" "$org" "$peer" "$@" --isInit
 }
 
 # TODO: Enable fabric options for chaincode deploy
