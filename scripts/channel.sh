@@ -22,7 +22,9 @@ create_channel() {
         cmd+="peer channel create -o $FABKIT_ORDERER_ADDRESS -c ${channel_name} -f $FABKIT_CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}_tx.pb --outputBlock $FABKIT_CHANNELS_CONFIG_PATH/${channel_name}/${channel_name}.block --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA"
     fi
 
-    __exec_command "${cmd}"
+    __clear_logdebu
+    logdebu "Excecuting command: ${cmd}"
+    (eval "$cmd") &>/dev/null || exit 1
 }
 
 join_channel() {
@@ -48,7 +50,9 @@ join_channel() {
     fi
 
     __clear_logdebu
-    __exec_command "${cmd}"
+    __clear_logdebu
+    logdebu "Excecuting command: ${cmd}"
+    (eval "$cmd") &>/dev/null || exit 1
 }
 
 update_channel() {
@@ -74,5 +78,7 @@ update_channel() {
         cmd+="peer channel update -o $FABKIT_ORDERER_ADDRESS -c ${channel_name} -f ${FABKIT_CHANNELS_CONFIG_PATH}/${channel_name}/${org_msp}_anchors_tx.pb --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA"
     fi
 
-    __exec_command "${cmd}"
+    __clear_logdebu
+    logdebu "Excecuting command: ${cmd}"
+    (eval "$cmd") &>/dev/null || exit 1
 }

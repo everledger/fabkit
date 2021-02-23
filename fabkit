@@ -24,6 +24,8 @@ readonly THREE_ORGS="ThreeOrgsOrdererGenesis"
 readonly RAFT_ONE_ORG="OneOrgOrdererEtcdRaft"
 # shellcheck disable=SC2034
 readonly FABKIT_FABRIC_AVAILABLE_VERSIONS=("2.3.0" "2.3" "2.2.1" "2.2" "2.2.0" "2.1.0" "2.1" "2.0.1" "2.0.0" "2.0.0-alpha" "1.4" "1.4.9" "1.4.8" "1.4.7" "1.4.6" "1.4.5" "1.4.4" "1.4.3" "1.4.2" "1.4.1" "1.4.0" "1.3.0" "1.2.1" "1.2.0" "1.1.0")
+readonly FABKIT_DOCKER_VERSION_SUPPORTED="18.05"
+readonly FABKIT_DOCKER_COMPOSE_VERSION_SUPPORTED="1.24"
 export FABKIT_HOST_ROOT="${FABKIT_HOST_ROOT:-$FABKIT_ROOT}"
 
 __log_setup() {
@@ -85,7 +87,9 @@ __set_params() {
             shift
             ;;
         -i | --interactive)
-            export FABKIT_INTERACTIVE=true
+            # TODO: implement support for interactive mode (now set to false)
+            logwarn "Interactive mode is not supported yet, sorry 😔"
+            export FABKIT_INTERACTIVE=false
             shift
             ;;
         -o | --orgs)
@@ -123,7 +127,7 @@ __set_debug "$@"
 if [ "$func" = "network" ]; then
     param="$1"
     shift
-    __check_deps deploy
+    __check_deps
     __check_docker_daemon
     __set_params "$@"
     __validate_params
@@ -143,14 +147,16 @@ if [ "$func" = "network" ]; then
         help_network
     fi
 elif [ "$func" = "explorer" ]; then
-    __check_deps deploy
+    __check_deps
     __check_docker_daemon
     param="$1"
     shift
     if [ "$param" = "start" ]; then
-        start_explorer
+        (start_explorer) &
+        __spinner
     elif [ "$param" = "stop" ]; then
-        stop_explorer
+        (stop_explorer) &
+        __spinner
     else
         help_explorer
     fi
@@ -158,9 +164,11 @@ elif [ "$func" = "dep" ]; then
     param="$1"
     shift
     if [ "$param" = "install" ]; then
-        dep_install "$@"
+        (dep_install "$@") &
+        __spinner
     elif [ "$param" = "update" ]; then
-        dep_update "$@"
+        (dep_update "$@") &
+        __spinner
     else
         help_dep
     fi
@@ -173,63 +181,76 @@ elif [ "$func" = "chaincode" ]; then
         param="$1"
         shift
         if [ "$param" = "package" ]; then
-            __check_deps deploy
+            __check_deps
             __check_docker_daemon
-            lc_chaincode_package "$@"
+            (lifecycle_chaincode_package "$@") &
+            __spinner
         elif [ "$param" = "install" ]; then
-            __check_deps deploy
+            __check_deps
             __check_docker_daemon
-            lc_chaincode_install "$@"
+            (lifecycle_chaincode_install "$@") &
+            __spinner
         elif [ "$param" = "approve" ]; then
-            __check_deps deploy
+            __check_deps
             __check_docker_daemon
-            lc_chaincode_approve "$@"
+            (lifecycle_chaincode_approve "$@") &
+            __spinner
         elif [ "$param" = "commit" ]; then
-            __check_deps deploy
+            __check_deps
             __check_docker_daemon
-            lc_chaincode_commit "$@"
+            (lifecycle_chaincode_commit "$@") &
+            __spinner
         elif [ "$param" = "deploy" ]; then
-            __check_deps deploy
+            __check_deps
             __check_docker_daemon
-            lc_chaincode_deploy "$@"
+            lifecycle_chaincode_deploy "$@"
         else
             help_chaincode
         fi
     elif [ "$param" = "install" ]; then
-        __check_deps deploy
+        __check_deps
         __check_docker_daemon
-        chaincode_install "$@"
+        (chaincode_install "$@") &
+        __spinner
     elif [ "$param" = "instantiate" ]; then
-        __check_deps deploy
+        __check_deps
         __check_docker_daemon
-        chaincode_instantiate "$@"
+        (chaincode_instantiate "$@") &
+        __spinner
     elif [ "$param" = "upgrade" ]; then
-        __check_deps deploy
+        __check_deps
         __check_docker_daemon
-        chaincode_upgrade "$@"
+        (chaincode_upgrade "$@") &
+        __spinner
     elif [ "$param" = "test" ]; then
-        chaincode_test "$@"
+        (chaincode_test "$@") &
+        __spinner
     elif [ "$param" = "build" ]; then
-        chaincode_build "$@"
+        (chaincode_build "$@") &
+        __spinner
     elif [ "$param" = "package" ]; then
-        __check_deps deploy
+        __check_deps
         __check_docker_daemon
-        chaincode_pack "$@"
+        (chaincode_pack "$@") &
+        __spinner
     elif [ "$param" = "zip" ]; then
-        chaincode_zip "$@"
+        (chaincode_zip "$@") &
+        __spinner
     elif [ "$param" = "query" ]; then
-        __check_deps deploy
+        __check_deps
         __check_docker_daemon
-        chaincode_query "$@"
+        (chaincode_query "$@") &
+        __spinner
     elif [ "$param" = "invoke" ]; then
-        __check_deps deploy
+        __check_deps
         __check_docker_daemon
-        chaincode_invoke "$@"
+        (chaincode_invoke "$@") &
+        __spinner
     else
         help_chaincode
     fi
 elif [ "$func" = "generate" ]; then
-    __check_deps deploy
+    __check_deps
     __check_docker_daemon
     param="$1"
     shift
@@ -243,14 +264,14 @@ elif [ "$func" = "generate" ]; then
         help_generate
     fi
 elif [ "$func" = "ca" ]; then
-    __check_deps deploy
+    __check_deps
     __check_docker_daemon
     param="$1"
     shift
     if [ "$param" = "register" ]; then
         register_user "$@"
     elif [ "$param" = "enroll" ]; then
-        __check_deps deploy
+        __check_deps
         enroll_user "$@"
     elif [ "$param" = "reenroll" ]; then
         reenroll_user "$@"
@@ -260,16 +281,19 @@ elif [ "$func" = "ca" ]; then
         help_ca
     fi
 elif [ "$func" = "channel" ]; then
-    __check_deps deploy
+    __check_deps
     __check_docker_daemon
     param="$1"
     shift
     if [ "$param" = "create" ]; then
-        create_channel "$@"
+        (create_channel "$@") &
+        __spinner
     elif [ "$param" = "update" ]; then
-        update_channel "$@"
+        (update_channel "$@") &
+        __spinner
     elif [ "$param" = "join" ]; then
-        join_channel "$@"
+        (join_channel "$@") &
+        __spinner
     else
         help_channel
     fi
@@ -277,8 +301,9 @@ elif [ "$func" = "benchmark" ]; then
     param="$1"
     shift
     if [ "$param" = "load" ]; then
-        __check_deps deploy
-        __exec_jobs "$@"
+        __check_deps
+        (__exec_jobs "$@") &
+        __spinner
     else
         help_benchmark
     fi
@@ -293,27 +318,27 @@ elif [ "$func" = "utils" ]; then
         help_utils
     fi
 elif [ "$func" = "install" ]; then
-    __check_deps deploy
+    __check_deps
     __check_docker_daemon
     __set_params "$@"
     __validate_params
     __log_setup
     install_network
 elif [ "$func" = "start" ]; then
-    __check_deps deploy
+    __check_deps
     __check_docker_daemon
     __set_params "$@"
     __validate_params
     start_network "$@"
 elif [ "$func" = "restart" ]; then
-    __check_deps deploy
+    __check_deps
     __check_docker_daemon
     __set_params "$@"
     __validate_params
     (restart_network) &
     __spinner
 elif [ "$func" = "stop" ]; then
-    __check_deps deploy
+    __check_deps
     __check_docker_daemon
     __set_params "$@"
     __validate_params

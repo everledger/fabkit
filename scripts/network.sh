@@ -168,17 +168,17 @@ initialize_network() {
     __spinner
 
     if [[ "${FABKIT_FABRIC_VERSION}" =~ 2.* ]]; then
-        (lc_chaincode_package "$FABKIT_CHAINCODE_NAME" "$FABKIT_CHAINCODE_VERSION" "$FABKIT_CHAINCODE_NAME" 1 0) &
+        (lifecycle_chaincode_package "$FABKIT_CHAINCODE_NAME" "$FABKIT_CHAINCODE_VERSION" "$FABKIT_CHAINCODE_NAME" 1 0) &
         __spinner
 
         for org in $(seq 1 "${FABKIT_ORGS}"); do
-            (lc_chaincode_install "$FABKIT_CHAINCODE_NAME" "$FABKIT_CHAINCODE_VERSION" "$org" 0) &
+            (lifecycle_chaincode_install "$FABKIT_CHAINCODE_NAME" "$FABKIT_CHAINCODE_VERSION" "$org" 0) &
             __spinner
-            (lc_chaincode_approve "$FABKIT_CHAINCODE_NAME" "$FABKIT_CHAINCODE_VERSION" "$FABKIT_CHANNEL_NAME" 1 "$org" 0) &
+            (lifecycle_chaincode_approve "$FABKIT_CHAINCODE_NAME" "$FABKIT_CHAINCODE_VERSION" "$FABKIT_CHANNEL_NAME" 1 "$org" 0) &
             __spinner
         done
 
-        (lc_chaincode_commit "$FABKIT_CHAINCODE_NAME" "$FABKIT_CHAINCODE_VERSION" "$FABKIT_CHANNEL_NAME" 1 1 0) &
+        (lifecycle_chaincode_commit "$FABKIT_CHAINCODE_NAME" "$FABKIT_CHAINCODE_VERSION" "$FABKIT_CHANNEL_NAME" 1 1 0) &
         __spinner
     else
         for org in $(seq 1 "${FABKIT_ORGS}"); do

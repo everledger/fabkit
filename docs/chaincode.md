@@ -50,7 +50,7 @@ The commands below will install, approve, commit and initialize a newer version 
 fabkit chaincode lifecycle deploy [chaincode_name] [chaincode_version] [chaincode_path] [channel_name] [sequence_no] [org_no] [peer_no] [options]
 
 # e.g. considering previous chaincode_version was 1.0 and sequence_no was 1 (using default peer)
-fabkit chaincode lifecycle deploy mnynodeccv2 1.1 mynodeccv2 mychannel 2 1 0 '{"Args":["init","a","100","b","200"]}'
+fabkit chaincode lifecycle deploy mynodeccv2 1.1 mynodeccv2 mychannel 2 1 0 '{"Args":["init","a","100","b","200"]}'
 ```
 
 However, if you want more control over the single command execution, you can reproduce the exact same results as above by splitting that into the following steps:
@@ -63,10 +63,10 @@ fabkit chaincode lifecycle approve [chaincode_name] [chaincode_version] [channel
 fabkit chaincode lifecycle commit [chaincode_name] [chaincode_version] [channel_name] [sequence_no] [org_no] [peer_no] [options]
 
 # e.g. considering previous chaincode_version was 1.0 and sequence_no was 1 (using default peer)
-fabkit chaincode lifecycle package mnynodeccv2 1.1 mnynodeccv2 1 0
-fabkit chaincode lifecycle install mnynodeccv2 1.1 1 0
-fabkit chaincode lifecycle approve mnynodeccv2 1.1 mychannel 2 1 0
-fabkit chaincode lifecycle commit mnynodeccv2 1.1 mychannel 2 1 0 '{"Args":["init","a","100","b","200"]}'
+fabkit chaincode lifecycle package mynodeccv2 1.1 mynodeccv2 1 0
+fabkit chaincode lifecycle install mynodeccv2 1.1 1 0
+fabkit chaincode lifecycle approve mynodeccv2 1.1 mychannel 2 1 0
+fabkit chaincode lifecycle commit mynodeccv2 1.1 mychannel 2 1 0 '{"Args":["init","a","100","b","200"]}'
 ```
 
 > If you are upgrading the chaincode binaries, you need to update the chaincode version and the package ID in the chaincode definition. You can also update your chaincode endorsement policy without having to repackage your chaincode binaries. Channel members simply need to approve a definition with the new policy. The new definition needs to increment the sequence variable in the definition by one.
