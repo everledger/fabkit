@@ -32,40 +32,41 @@ __add_aliases() {
 
     grep '^export FABKIT_ROOT=' ~/.profile ~/.*rc &>/dev/null || echo -e "export FABKIT_ROOT=${FABKIT_ROOT}" >>"$profile"
     for alias in "${ALIASES[@]}"; do
-        if [[ ! $(cat $profile | grep "alias ${alias}") ]]; then
+        if < "$profile" grep -q "alias ${alias}"; then
             cmd+="alias ${alias}="${FABKIT_ROOT}/fabkit"\n"
             to_add=true
         fi
     done
 
-    if [ "${to_add}" = "true" ]; then
-        echo -e "$cmd" >>$profile
+    if [ "$to_add" = "true" ]; then
+        echo -e "$cmd" >>"$profile"
+        # shellcheck disable=SC1090
         source "$profile" 2>/dev/null
     fi
 }
 
 loghead() {
-    echo -en "\033[1;35m${1}\033[0m"
+    echo -e "\033[1;35m${1}\033[0m"
 }
 
 logerr() {
-    echo -en "\033[1;31m${1}\033[0m"
+    echo -e "\033[1;31m${1}\033[0m"
 }
 
 logsucc() {
-    echo -en "\033[1;32m${1}\033[0m"
+    echo -e "\033[1;32m${1}\033[0m"
 }
 
 logwarn() {
-    echo -en "\033[1;33m${1}\033[0m"
+    echo -e "\033[1;33m${1}\033[0m"
 }
 
 loginfo() {
-    echo -en "\033[1;34m${1}\033[0m"
+    echo -e "\033[1;34m${1}\033[0m"
 }
 
 logdebu() {
-    echo -en "\033[1;36m${1}\033[0m"
+    echo -e "\033[1;36m${1}\033[0m"
 }
 
 loghead "
@@ -76,13 +77,13 @@ loghead "
     "
 loginfo "Hiya! Welcome to the Hyperledger Fabric Toolkit 🧰 (aka Fabkit) interactive setup"
 echo
-read -p "Press any key to start! (or CTRL-C to exit) "
+read -rp "Press any key to start! (or CTRL-C to exit) "
 echo
 loginfo "Which version would you like to install? (press RETURN to get the latest):"
 echo
 logdebu "1) 0.1.0 (latest)"
 logdebu "2) 0.1.0-alpha"
-read n
+read -r n
 case $n in
 *)
     # retrieve latest
@@ -95,7 +96,7 @@ FABKIT_DOCKER_IMAGE+=":${FABKIT_VERSION}"
 FABKIT_TARBALL="fabkit-${FABKIT_VERSION}.tar.gz"
 echo "Downloading $(logdebu $FABKIT_TARBALL) ..."
 # curl -L https:/bitbucket.org/everledger/${FABKIT_TARBALL}
-read -p "Where would you like to install Fabkit? [$(logwarn ${FABKIT_DEFAULT_PATH})] " FABKIT_ROOT
+read -rp "Where would you like to install Fabkit? [$(logwarn "$FABKIT_DEFAULT_PATH")] " FABKIT_ROOT
 export FABKIT_ROOT=${FABKIT_ROOT:-${FABKIT_DEFAULT_PATH}}
 export FABKIT_RUNNER="${FABKIT_ROOT}/fabkit"
 export FABKIT_RUNNER_DOCKER='docker run -it --rm --name fabkit -e "FABKIT_HOST_ROOT=$FABKIT_ROOT" -v /var/run/docker.sock:/var/run/docker.sock -v "$FABKIT_ROOT":/home/fabkit everledgerio/fabkit:latest ./fabkit "$@"'
@@ -122,7 +123,7 @@ Linux | FreeBSD | Darwin)
     logdebu "1) Local installation (recommended)"
     logdebu "2) Docker installation"
 
-    read n
+    read -r n
     case $n in
     1)
         FABKIT_CMD="${FABKIT_RUNNER}"
@@ -163,7 +164,7 @@ case $SHELL in
     ;;
 esac
 
-logsucc "Fabkit aliases have been added to your default shell! Try now to use any of - $(for a in "${ALIASES[@]}"; do printf %s${a}; done) - with something like:"
+logsucc "Fabkit aliases have been added to your default shell! Try now to use any of - $(for a in "${ALIASES[@]}"; do printf %s"${a}"; done) - with something like:"
 echo
 logdebu ">>> fabkit network start"
 echo

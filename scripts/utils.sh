@@ -72,7 +72,7 @@ __check_deps() {
 }
 
 __check_docker_daemon() {
-    if docker info --format '{{json .}}' | grep "Cannot connect" 2>/dev/null; then
+    if docker info --format '{{json .}}' | grep "Cannot connect" &>/dev/null; then
         logerr "Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?"
         exit 1
     fi
