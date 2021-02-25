@@ -6,8 +6,22 @@ Meet Fabkit (Hyperledger Fabric Toolkit): your best mate to dive you in 😎
 
 ## Prerequisites
 
+The minimum requirements for running Fabkit are simply the following:
+
 - [Docker](https://www.docker.com/get-started) [>= 18.05]
 - [Docker-compose](https://www.docker.com/get-started) [>= 1.24]
+
+### For Mac and Linux users
+
+If your OS supports `bash` and you are running this code locally, then beware the following installed version is required
+
+- [Bash](https://www.gnu.org/software/bash/) [>= 3.2]
+
+If you want to be able to use **test** and **build** functionalities for your chaincode, depending on the language which it is written in, you may need to install any of the following dependencies:
+
+- [Go](https://golang.org/doc/install) [>= 1.11]
+- [Node](https://nodejs.org/en/) [>= 10.20]
+- [Java](https://adoptopenjdk.net/) [>= 8]
 
 ## Install
 

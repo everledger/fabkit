@@ -6,8 +6,15 @@ dep_install() {
 
     local chaincode_relative_path="$1"
     __set_chaincode_absolute_path "$chaincode_relative_path" chaincode_path
+    __get_chaincode_language "$chaincode_path" chaincode_language
 
-    __init_go_mod install "$chaincode_path"
+    if [ "$chaincode_language" = "golang" ]; then
+        __check_go_version
+        __init_go_mod install "$chaincode_path"
+    else
+        # TODO: [FND-115] dep_install extended to all languages
+        logwarn "We only support Golang for now, sorry 😔"
+    fi
 }
 
 dep_update() {
@@ -16,8 +23,15 @@ dep_update() {
 
     local chaincode_relative_path="$1"
     __set_chaincode_absolute_path "$chaincode_relative_path" chaincode_path
+    __get_chaincode_language "$chaincode_path" chaincode_language
 
-    __init_go_mod update "$chaincode_path"
+    if [ "$chaincode_language" = "golang" ]; then
+        __check_go_version
+        __init_go_mod update "$chaincode_path"
+    else
+        # TODO: [FND-116] dep_update extended to all languages
+        logwarn "We only support Golang for now, sorry 😔"
+    fi
 }
 
 chaincode_test() {
@@ -32,6 +46,7 @@ chaincode_test() {
     __get_chaincode_language "$chaincode_path" chaincode_language
 
     if [ "$chaincode_language" = "golang" ]; then
+        __check_go_version
         # avoid "found no test suites" ginkgo error
         if ! find "$chaincode_path" -type f -name "*_test*" ! -path "**/node_modules/*" ! -path "**/vendor/*" &>/dev/null; then
             logwarn "No test suites found. Skipping tests..."
@@ -63,12 +78,13 @@ chaincode_build() {
     __get_chaincode_language "$chaincode_path" chaincode_language
 
     if [ "$chaincode_language" = "golang" ]; then
+        __check_go_version
         __init_go_mod install "$chaincode_path"
 
         if ! type -p go &>/dev/null; then
             (docker run --rm -v "${chaincode_path}:/usr/src/myapp" -w "/usr/src/myapp/${chaincode_name}" -e CGO_ENABLED=0 "$FABKIT_GOLANG_DOCKER_IMAGE" sh -c "go build -a -installsuffix nocgo ./... 1>/dev/null 2> >(__throw >&2) && rm -rf ./${chaincode_name} &>/dev/null") || exit 1
         else
-            (cd "${chaincode_path}" && CGO_ENABLED=0 go build -a -installsuffix nocgo ./... 1>/dev/null 2> >(__throw >&2) && rm -rf ./"${chaincode_name} &>/dev/null") || exit 1
+            (cd "${chaincode_path}" && CGO_ENABLED=0 go build -a -installsuffix nocgo ./... 1>/dev/null 2> >(__throw >&2) && rm -rf ./"${chaincode_name}" &>/dev/null) || exit 1
         fi
     fi
 
@@ -300,7 +316,7 @@ chaincode_invoke() {
     local peer="$4"
     shift 4
 
-    loginfo "Invoking chaincode $chaincode_name on channel ${channel_name} as org${org} and peer${peer} with the following params: $*"
+    loginfo "Invoking chaincode $chaincode_name on channel ${channel_name} as org${org} and peer${peer} with the following params: $* "
 
     __clear_logdebu
     __set_chaincode_options invoke options "$@"

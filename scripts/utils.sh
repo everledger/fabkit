@@ -7,21 +7,65 @@ __check_fabric_version() {
     fi
 }
 
-__check_deps() {
-    local docker_version="$(docker version --format '{{.Server.Version}}')"
-    if ! (type -p docker &>/dev/null && [[ "((${docker_version//./}))" -ge "((${FABKIT_DOCKER_VERSION_SUPPORTED//./}))" ]]); then
-        logerr "docker >= ${FABKIT_DOCKER_VERSION_SUPPORTED} is required"
+__check_version() {
+    local cmd=$1
+    local supported_version=($(echo -e "${2//./\\n}"))
+    local installed_version=($(echo -e "${3//./\\n}"))
+
+    if ! type -p "$cmd" &>/dev/null; then
+        logerr "${cmd} is not installed. Version >= $2} is required"
         exit 1
     fi
 
-    local docker_compose_version=$(docker-compose version --short)
-    if ! (type -p docker-compose &>/dev/null && [[ "((${docker_compose_version//./}))" -ge "((${FABKIT_DOCKER_COMPOSE_VERSION_SUPPORTED//./}))" ]]); then
-        logerr "docker-compose >= ${FABKIT_DOCKER_COMPOSE_VERSION_SUPPORTED} is required"
-        exit 1
-    fi
+    for i in "${!supported_version[@]}"; do
+        if [[ "${installed_version[$i]}" -gt "${supported_version[$i]}" ]]; then
+            break
+        elif [[ "${installed_version[$i]}" -lt "${supported_version[$i]}" ]]; then
+            logerr "${cmd} >= $2 is required"
+            exit 1
+        fi
+    done
 }
 
-__check_docker_daemon() {
+__check_dep_version() {
+    __check_bash_version
+    __check_docker_version
+}
+
+__check_bash_version() {
+    # shellcheck disable=SC2155
+    local version="$(bash --version 2>/dev/null | cut -d ' ' -f 4 | head -n 1 | cut -d '(' -f 1)"
+    __check_version bash "$FABKIT_BASH_VERSION_SUPPORTED" "$version"
+}
+
+__check_go_version() {
+    # shellcheck disable=SC2155
+    local version=$(go version 2>/dev/null | cut -d ' ' -f 3 | cut -c 3-)
+    __check_version go "$FABKIT_GO_VERSION_SUPPORTED" "$version"
+}
+
+__check_node_version() {
+    # shellcheck disable=SC2155
+    local version=$(node -v 2>/dev/null | cut -c 2-)
+    __check_version node "$FABKIT_NODE_VERSION_SUPPORTED" "$version"
+
+}
+
+__check_java_version() {
+    # shellcheck disable=SC2155
+    local version=$(java --version 2>/dev/null | cut -d ' ' -f 2 | head -n 1)
+    __check_version java "$FABKIT_JAVA_VERSION_SUPPORTED" "$version"
+}
+
+__check_docker_version() {
+    # shellcheck disable=SC2155
+    local version=$(docker version --format '{{.Server.Version}}' 2>/dev/null)
+    __check_version docker "$FABKIT_DOCKER_VERSION_SUPPORTED" "$version"
+
+    # shellcheck disable=SC2155
+    version=$(docker-compose version --short 2>/dev/null)
+    __check_version docker-compose "$FABKIT_DOCKER_COMPOSE_VERSION_SUPPORTED" "$version"
+
     if docker info --format '{{json .}}' | grep "Cannot connect" &>/dev/null; then
         logerr "Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?"
         exit 1
