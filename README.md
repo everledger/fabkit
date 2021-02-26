@@ -1,5 +1,7 @@
 ![Fabkit](./docs/images/logo.jpg)
 
+![Showcase](./docs/images/showcase.webp)
+
 Have you always wanted to learn how to use Hyperledger Fabric but never knew where to start from?
 
 Meet Fabkit (Hyperledger Fabric Toolkit): your best mate to dive you in 😎
