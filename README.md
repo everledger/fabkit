@@ -2,9 +2,9 @@
 
 ![Showcase](./docs/images/showcase.webp)
 
-Have you always wanted to learn how to use Hyperledger Fabric but never knew where to start from?
+Have you always wanted to learn how to use Hyperledger Fabric but never knew how to start?
 
-Meet Fabkit (Hyperledger Fabric Toolkit): your best mate to dive you in 😎
+Meet Fabkit, your Hyperledger Fabric Toolkit to help you dive in 🚀
 
 ## Prerequisites
 
@@ -33,29 +33,13 @@ In order to run commands with ease, we recommend to add `fabkit` as an alias in 
 bash <(curl -sL tinyurl.com/yrenublr)
 ```
 
-or, if you prefer to perform this step manually, check below what lines you will need to add to your shell profile `.profile`, `.bashrc`, `.zshrc` or similar.
-
-For Linux and Mac users:
+or, if you have cloned the repo, you can always run the interactive installer to help you configure fabkit.
 
 ```bash
-# Fabkit stuff
-export FABKIT_ROOT="${HOME}/.fabkit"
-alias fabkit="${FABKIT_ROOT}/fabkit"
-alias fk="fabkit"
+./install.sh
 ```
 
-For Windows and other OS (or if you simply want to run Fabkit in a docker container):
-
-```bash
-# Fabkit stuff (with docker!)
-export FABKIT_ROOT="${HOME}/.fabkit"
-alias fabkit='docker run -it --rm --name fabkit -e "FABKIT_HOST_ROOT=$FABKIT_ROOT" -v /var/run/docker.sock:/var/run/docker.sock -v "$FABKIT_ROOT":/home/fabkit everledgerio/fabkit:latest ./fabkit "$@"'
-alias fk='fabkit'
-```
-
-Finally source these changes with: `source full/path/of/your/shell/profile`
-
-Note: **this command needs to be executed only once (however, there will be no harm if accidentally you run it again 😉 )**
+## Uninstall
 
 To purge `fabkit` from your system you can run anytime this simply script:
 
@@ -91,12 +75,11 @@ It will execute the following functions:
 - Add default peer to join the channel
 - Update the channel with anchor peers
 - Install the default chaincode into the default peer
-- (v1.x) Instantiate the chaincode on the default peer
-- (v2.x) Approve, commit and init the chaincode on the default peer and organization
+- Approve, commit and init the chaincode on the default peer and organization
 
 Afterwards, the network will be ready to accept `invoke` and `query` functions.
 
-Run `fabkit` for the complete list of functionalities.
+Run `fabkit` for the complete list of functionalities and run `fabkit <command> help` to list it's options.
 
 ### Run the network with different configurations
 
@@ -228,7 +211,7 @@ If you are experiencing any issue, before opening a ticket, please search among 
 
 ## Contributing (last but not least!)
 
-We, the Fabric's team, are doing our best to put new features on the shelf as soon as they come out and provide the community with a great user experience, however, we are not fulltime dedicated to the job and that is why we need your help!
+We, the Fabkit team, are doing our best to put new features on the shelf as soon as they come out and provide the community with a great user experience, however, we are not fulltime dedicated to the job and that is why we need your help!
 
 If you think there are things you will like to see in the next release and you would like to contribute, you are more than welcome!
 
