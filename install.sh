@@ -7,8 +7,6 @@ ctrlc_count=0
 FABKIT_DEFAULT_PATH="${HOME}/.fabkit"
 FABKIT_DOCKER_IMAGE="everledgerio/fabkit"
 ALIASES=("fabkit" "fk")
-export FABKIT_RUNNER="${FABKIT_ROOT}/fabkit"
-export FABKIT_RUNNER_DOCKER='docker run -it --rm --name fabkit -e "FABKIT_HOST_ROOT=$FABKIT_ROOT" -v /var/run/docker.sock:/var/run/docker.sock -v "$FABKIT_ROOT":/home/fabkit everledgerio/fabkit:latest ./fabkit "$@"'
 
 __quit() {
     ((ctrlc_count++))
@@ -34,7 +32,7 @@ __add_aliases() {
     grep '^export FABKIT_ROOT=' ~/.profile ~/.*rc &>/dev/null || echo -e "export FABKIT_ROOT=${FABKIT_ROOT}" >>"$profile"
     for alias in "${ALIASES[@]}"; do
         if grep <"$profile" -q "alias ${alias}"; then
-            cmd+="alias ${alias}="${FABKIT_ROOT}/fabkit"\n"
+            cmd+="alias ${alias}="${FABKIT_CMD}"\n"
             to_add=true
         fi
     done
@@ -80,6 +78,9 @@ __download_and_extract() {
 }
 
 __set_installation_type() {
+    FABKIT_RUNNER="${FABKIT_ROOT}/fabkit"
+    FABKIT_RUNNER_DOCKER='docker run -it --rm --name fabkit -e "FABKIT_HOST_ROOT=$FABKIT_ROOT" -v /var/run/docker.sock:/var/run/docker.sock -v "$FABKIT_ROOT":/home/fabkit everledgerio/fabkit:FABKIT_VERSION ./fabkit "$@"'
+
     OS="$(uname)"
     case $OS in
     Linux | FreeBSD | Darwin)
@@ -97,7 +98,9 @@ __set_installation_type() {
             logsucc "Roger. Initiating local install!"
             ;;
         2)
+            FABKIT_RUNNER_DOCKER=${FABKIT_RUNNER_DOCKER/FABKIT_VERSION/$FABKIT_VERSION}
             FABKIT_CMD="${FABKIT_RUNNER_DOCKER}"
+            FABKIT_CMD="'${FABKIT_CMD}'"
             logsucc "Roger. Initiating docker install!"
             __install_docker
             ;;
@@ -112,7 +115,7 @@ __set_installation_type() {
 
 __install_docker() {
     FABKIT_DOCKER_IMAGE+=":${FABKIT_VERSION}"
-    (echo -ne "Downloading the official Fabkit docker image $(logdebu ${FABKIT_DOCKER_IMAGE}) ..." && docker pull "${FABKIT_DOCKER_IMAGE}") &
+    (echo -ne "Downloading the official Fabkit docker image $(logdebu ${FABKIT_DOCKER_IMAGE}) ..." && docker pull "${FABKIT_DOCKER_IMAGE}" 1>/dev/null) &
     __spinner
 }
 
@@ -190,6 +193,7 @@ fi
 
 __set_installation_type
 
+echo
 logsucc "Fabkit is now installed 🚀"
 echo
 logdebu "And now the final few touches so you can run fabkit anywhere!"
