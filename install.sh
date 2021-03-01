@@ -99,8 +99,7 @@ __set_installation_type() {
             ;;
         2)
             FABKIT_RUNNER_DOCKER=${FABKIT_RUNNER_DOCKER/FABKIT_VERSION/$FABKIT_VERSION}
-            FABKIT_CMD="${FABKIT_RUNNER_DOCKER}"
-            FABKIT_CMD="'${FABKIT_CMD}'"
+            FABKIT_CMD="'${FABKIT_RUNNER_DOCKER}'"
             logsucc "Roger. Initiating docker install!"
             __install_docker
             ;;
