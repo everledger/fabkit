@@ -169,8 +169,7 @@ elif [ "$func" = "explorer" ]; then
     param="$1"
     shift
     if [ "$param" = "start" ]; then
-        (start_explorer) &
-        __spinner
+        start_explorer
     elif [ "$param" = "stop" ]; then
         (stop_explorer) &
         __spinner
