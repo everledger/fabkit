@@ -129,7 +129,17 @@ chaincode_install() {
 
     __clear_logdebu
     logdebu "Excecuting command: ${cmd}"
-    (eval "$cmd") &>/dev/null || exit 1
+    (eval "$cmd") &>/dev/null || {
+        if [ "$chaincode_language" = "golang" ]; then
+            __chaincode_module_restore "$chaincode_path"
+        fi
+        logerr "Error executing chaincode install"
+        exit 1
+    }
+
+    if [ "$chaincode_language" = "golang" ]; then
+        __chaincode_module_restore "$chaincode_path"
+    fi
 }
 
 chaincode_instantiate() {
@@ -210,6 +220,9 @@ chaincode_zip() {
 
     __check_param_chaincode "$1"
 
+    loginfo "Zipping chaincode $1"
+    
+    __clear_logdebu
     local chaincode_relative_path="$1"
     __set_chaincode_absolute_path "$chaincode_relative_path" chaincode_path
     __get_chaincode_language "$chaincode_path" chaincode_language
@@ -227,17 +240,15 @@ chaincode_zip() {
         mkdir -p "$FABKIT_DIST_PATH"
     fi
 
-    loginfo "Zipping chaincode $chaincode_name from path ${chaincode_path}"
-
     cd "$chaincode_path" && zip -rq "${FABKIT_DIST_PATH}/${filename}" . || {
-        logerr >&2 "Error creating chaincode archive."
-        if [ "$chaincode_language" = "golang" ]; then
+        logerr "Error creating chaincode archive"
+        if [[ "$chaincode_language" = "golang" && -d ${FABKIT_ROOT}/.${chaincode_name}.bk ]]; then
             __chaincode_module_restore "$chaincode_path"
         fi
         exit 1
     }
 
-    if [ "$chaincode_language" = "golang" ]; then
+    if [[ "$chaincode_language" = "golang" && -d ${FABKIT_ROOT}/.${chaincode_name}.bk ]]; then
         __chaincode_module_restore "$chaincode_path"
     fi
 
@@ -257,6 +268,9 @@ chaincode_pack() {
 
     __check_param_chaincode "$1"
 
+    loginfo "Packing chaincode $1"
+    
+    __clear_logdebu
     local chaincode_name="$1"
     local chaincode_version="$2"
     local chaincode_relative_path="$3"
@@ -284,8 +298,6 @@ chaincode_pack() {
         mkdir -p "$FABKIT_DIST_PATH"
     fi
 
-    loginfo "Packing chaincode ${chaincode_name}@${chaincode_version} from path ${chaincode_path}"
-
     if [ "${FABKIT_TLS_ENABLED:-}" = "false" ]; then
         cmd+="peer chaincode package dist/${filename} -o $FABKIT_ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -p $chaincode_remote_path -l $chaincode_language --cc-package --sign"
     else
@@ -294,11 +306,16 @@ chaincode_pack() {
 
     __clear_logdebu
     logdebu "Excecuting command: ${cmd}"
-    (eval "$cmd") &>/dev/null || exit 1
+    (eval "$cmd") &>/dev/null || {
+        logerr "Error executing chaincode pack"
+        if [[ "$chaincode_language" = "golang" && -d ${FABKIT_ROOT}/.${chaincode_name}.bk ]]; then
+            __chaincode_module_restore "$chaincode_path"
+        fi
+        exit 1
+    }
 
     if [[ "$chaincode_language" = "golang" && -d ${FABKIT_ROOT}/.${chaincode_name}.bk ]]; then
-        rm -r "$chaincode_path"
-        mv "${FABKIT_ROOT}/.${chaincode_name}.bk" "$chaincode_path"
+        __chaincode_module_restore "$chaincode_path"
     fi
 
     echo "Chaincode package created in: $(logsucc "${FABKIT_DIST_PATH}/${filename}")"
@@ -436,7 +453,17 @@ lifecycle_chaincode_package() {
 
     __clear_logdebu
     logdebu "Excecuting command: ${cmd}"
-    (eval "$cmd") &>/dev/null || exit 1
+    (eval "$cmd") &>/dev/null || {
+        logerr "Error executing chaincode package"
+        if [[ "$chaincode_language" = "golang" && -d ${FABKIT_ROOT}/.${chaincode_name}.bk ]]; then
+            __chaincode_module_restore "$chaincode_path"
+        fi
+        exit 1
+    }
+
+    if [[ "$chaincode_language" = "golang" && -d ${FABKIT_ROOT}/.${chaincode_name}.bk ]]; then
+        __chaincode_module_restore "$chaincode_path"
+    fi
 }
 
 lifecycle_chaincode_install() {
@@ -850,6 +877,7 @@ __set_chaincode_options() {
 
 __chaincode_module_pack() {
     local chaincode_path=$1
+    trap '__chaincode_module_restore "$chaincode_path"' SIGINT SIGTERM SIGHUP EXIT QUIT
 
     if [[ ! $(find "$chaincode_path" -type f -name 'main.go' -maxdepth 1 2>/dev/null) && -d "${chaincode_path}/cmd" ]]; then
         # trick to allow chaincode packed as modules to work when deployed against remote environments

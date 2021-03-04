@@ -18,6 +18,8 @@ The minimum requirements for running Fabkit are simply the following:
 If your OS supports `bash` and you are running this code locally, then beware the following installed version is required
 
 - [Bash](https://www.gnu.org/software/bash/) [>= 3.2]
+- zip
+- rsync
 
 If you want to be able to use **test** and **build** functionalities for your chaincode, depending on the language which it is written in, you may need to install any of the following dependencies:
 
