@@ -33,9 +33,10 @@ __setup() {
         profile="${HOME}/.config/fish/config.fish"
     fi
 
-    if ! grep "^export FABKIT_ROOT=" ~/.profile ~/.*rc &>/dev/null; then
+    if [[ ! $(grep "^export FABKIT_ROOT=" "$profile") ]]; then
         cmd+="export FABKIT_ROOT=\"${FABKIT_ROOT}\"\n"
     fi
+
     for alias in "${ALIASES[@]}"; do
         if ! grep -q "alias ${alias}" <"$profile"; then
             cmd+="alias ${alias}=\"${FABKIT_CMD}\"\n"
@@ -50,11 +51,11 @@ __setup() {
     green "Fabkit aliases have been added to your default shell!"
     echo
     yellow "!!!!! ATTENTION !!!!!"
-    echo "You have one last thing to do. Run in your terminal:"
+    echo "You have one last thing to do. Run the following in your terminal:"
     echo
     echo -e "$(yellow "\tsource $profile")"
     echo
-    
+
     echo "And then try any of: $(
         for a in "${ALIASES[@]}"; do echo -en "$(cyan "${a} | ")"; done
         tput cub 2
@@ -114,6 +115,7 @@ __download_and_extract() {
 __set_installation_type() {
     FABKIT_RUNNER="${FABKIT_ROOT}/fabkit"
     FABKIT_RUNNER_DOCKER='docker run -it --rm --name fabkit -e "FABKIT_HOST_ROOT=$FABKIT_ROOT" -v /var/run/docker.sock:/var/run/docker.sock -v "$FABKIT_ROOT":/home/fabkit everledgerio/fabkit:FABKIT_VERSION ./fabkit "$@"'
+    FABKIT_RUNNER_DOCKER=${FABKIT_RUNNER_DOCKER/FABKIT_VERSION/$FABKIT_VERSION}
 
     OS="$(uname)"
     case $OS in
@@ -132,7 +134,6 @@ __set_installation_type() {
             green "Roger. Initiating local install!"
             ;;
         2)
-            FABKIT_RUNNER_DOCKER=${FABKIT_RUNNER_DOCKER/FABKIT_VERSION/$FABKIT_VERSION}
             FABKIT_CMD="'${FABKIT_RUNNER_DOCKER}'"
             green "Roger. Initiating docker install!"
             __install_docker &
@@ -229,24 +230,30 @@ else
     __download_and_extract
 fi
 
+sleep 1
 __set_installation_type
 
+sleep 1
 echo
 green "Congrats! Fabkit is now installed! 🚀"
 echo
+sleep 1
 cyan "And now the final few touches so you can run fabkit anywhere! 😵‍💫🌎"
 
 case $SHELL in
 *bash)
-    __setup bash "$FABKIT_CMD"
+    __setup bash
     ;;
 *zsh)
-    __setup zsh "$FABKIT_CMD"
+    __setup zsh
     ;;
 *fish)
-    __setup fish "$FABKIT_CMD"
+    __setup fish
     ;;
 esac
 
+sleep 1
 echo "For more information visit:" "$(cyan "https://bitbucket.org/everledger/fabkit/src/master/docs/")"
+echo
+echo
 green "Have fun! 💃🕺"
