@@ -1,78 +1,112 @@
 #!/usr/bin/env bash
 
+stty -echoctl
 trap '__quit' INT TERM
 
-ctrlc_count=0
-
+CTRLC_COUNT=0
 FABKIT_DEFAULT_PATH="${HOME}/.fabkit"
 FABKIT_DOCKER_IMAGE="everledgerio/fabkit"
 ALIASES=("fabkit" "fk")
 
 __quit() {
-    ((ctrlc_count++))
+    ((CTRLC_COUNT++))
     echo
-    if [[ $ctrlc_count == 1 ]]; then
-        logwarn "Do you really want to quit?"
+    if [[ $CTRLC_COUNT == 1 ]]; then
+        yellow "Do you really want to quit?"
     else
         echo "Ok byyye"
         exit
     fi
 }
 
-__add_aliases() {
+__error() {
+    red "$1"
+    exit 1
+}
+
+__setup() {
     local shell="$1"
     local profile="${HOME}/.${shell}rc"
-    local cmd="\n# Fabkit aliases to run commands with ease\n"
-    local to_add=false
+    local cmd=""
 
     if [ "$shell" = "fish" ]; then
         profile="${HOME}/.config/fish/config.fish"
     fi
 
-    grep '^export FABKIT_ROOT=' ~/.profile ~/.*rc &>/dev/null || echo -e "export FABKIT_ROOT=${FABKIT_ROOT}" >>"$profile"
+    if ! grep "^export FABKIT_ROOT=" ~/.profile ~/.*rc &>/dev/null; then
+        cmd+="export FABKIT_ROOT=\"${FABKIT_ROOT}\"\n"
+    fi
     for alias in "${ALIASES[@]}"; do
-        if grep <"$profile" -q "alias ${alias}"; then
-            cmd+="alias ${alias}="${FABKIT_CMD}"\n"
-            to_add=true
+        if ! grep -q "alias ${alias}" <"$profile"; then
+            cmd+="alias ${alias}=\"${FABKIT_CMD}\"\n"
         fi
     done
 
-    if [ "$to_add" = "true" ]; then
-        echo -e "$cmd" >>"$profile"
-        # shellcheck disable=SC1090
-        source "$profile" 2>/dev/null
+    if [ -n "$cmd" ]; then
+        echo -e "\n# Fabkit vars to run commands with ease\n${cmd}" >>"$profile"
     fi
+
+    echo
+    green "Fabkit aliases have been added to your default shell!"
+    echo
+    yellow "!!!!! ATTENTION !!!!!"
+    echo "You have one last thing to do. Run in your terminal:"
+    echo
+    echo -e "$(yellow "\tsource $profile")"
+    echo
+    
+    echo "And then try any of: $(
+        for a in "${ALIASES[@]}"; do echo -en "$(cyan "${a} | ")"; done
+        tput cub 2
+    ) - with something like:"
+    echo
+    echo -e "$(cyan "\tfabkit network start")"
+    echo
 }
 
 __download_and_extract() {
     # TODO: Add spinners and beautify direct installation
-    loginfo "Which version would you like to install? (press RETURN to get the latest):"
+    blue "Which version would you like to install? (press RETURN to get the latest):"
     echo
-    logdebu "1) 0.1.0"
+    cyan "1) 0.1.0-rc1"
     read -r n
     case $n in
     *)
         # retrieve latest
-        FABKIT_VERSION="0.1.0"
+        FABKIT_VERSION="0.1.0-rc1"
         ;;
     esac
-    logsucc "$FABKIT_VERSION"
+    green "$FABKIT_VERSION"
 
     FABKIT_TARBALL="fabkit-${FABKIT_VERSION}.tar.gz"
-    echo "Downloading $(logdebu $FABKIT_TARBALL) ..."
-    # curl -L https:/bitbucket.org/everledger/${FABKIT_TARBALL}
-    read -rp "Where would you like to install Fabkit? [$(logwarn "$FABKIT_DEFAULT_PATH")] " FABKIT_ROOT
+    echo "Downloading $(cyan $FABKIT_TARBALL)"
+    # curl -L https:/bitbucket.org/everledger/${FABKIT_TARBALL} & __spinner
+    read -rp "Where would you like to install Fabkit? [$(yellow "$FABKIT_DEFAULT_PATH")] " FABKIT_ROOT
 
     export FABKIT_ROOT=${FABKIT_ROOT:-${FABKIT_DEFAULT_PATH}}
+    while [[ ! "$yn" =~ ^Yy && -d "$FABKIT_ROOT" ]]; do
+        if [ -d "$FABKIT_ROOT" ]; then
+            yellow "!!!!! ATTENTION !!!!!"
+            yellow "Directory ${FABKIT_ROOT} already exists and cannot be overwritten"
+            read -rp "Do you want to delete this directory in order to proceed with the installation? [yes/no=default] " yn
+            case $yn in
+            [Yy]*) if [ -w "$FABKIT_ROOT" ]; then rm -rf "$FABKIT_ROOT"; fi ;;
+            *) ;;
+            esac
+        fi
+    done
+    mkdir -p "$FABKIT_ROOT" &>/dev/null
 
     if [ -w "$FABKIT_ROOT" ]; then
-        lodebu "Extracting..."
         # tar -C "$FABKIT_ROOT" -xzvf "${FABKIT_TARBALL}"
         # rm ${FABKIT_TARBALL}
+        ( (echo -en "Installing into $(cyan "${FABKIT_ROOT}")" && git clone git@bitbucket.org:everledger/fabkit "$FABKIT_ROOT" &>/dev/null) || __error "Error cloning remote repository") &
+        __spinner
+        echo
     else
-        lowarn "!!!!! ATTENTION !!!!!"
-        loginfo "Directory \"${FABKIT_ROOT}\" requires superuser permissions"
-        loginfo "Be sure you are setting an installation path accessible from your current user (preferably under ${HOME})!"
+        yellow "!!!!! ATTENTION !!!!!"
+        yellow "Directory \"${FABKIT_ROOT}\" requires superuser permissions"
+        yellow "Be sure you are setting an installation path accessible from your current user (preferably under ${HOME})!"
         exit
     fi
 }
@@ -84,29 +118,30 @@ __set_installation_type() {
     OS="$(uname)"
     case $OS in
     Linux | FreeBSD | Darwin)
-        loginfo "Great! It looks like your system supports Fabric natively, but you can also run it a docker container."
+        blue "Great! It looks like your system supports Fabric natively, but you can also run it a docker container."
         echo
-        loginfo "Choose any of these options: "
+        blue "Choose any of these options: "
         echo
-        logdebu "1) Local installation (recommended)"
-        logdebu "2) Docker installation"
+        cyan "1) Local installation (recommended)"
+        cyan "2) Docker installation"
 
         read -r n
         case $n in
         1)
             FABKIT_CMD="${FABKIT_RUNNER}"
-            logsucc "Roger. Initiating local install!"
+            green "Roger. Initiating local install!"
             ;;
         2)
             FABKIT_RUNNER_DOCKER=${FABKIT_RUNNER_DOCKER/FABKIT_VERSION/$FABKIT_VERSION}
             FABKIT_CMD="'${FABKIT_RUNNER_DOCKER}'"
-            logsucc "Roger. Initiating docker install!"
-            __install_docker
+            green "Roger. Initiating docker install!"
+            __install_docker &
+            __spinner
             ;;
         esac
         ;;
     *)
-        logwarn "It looks like your system does NOT support natively Fabric, but don't worry, we've got you covered! 😉"
+        yellow "It looks like your system does NOT support natively Fabric, but don't worry, we've got you covered!"
         FABKIT_CMD="${FABKIT_RUNNER_DOCKER}"
         ;;
     esac
@@ -114,8 +149,8 @@ __set_installation_type() {
 
 __install_docker() {
     FABKIT_DOCKER_IMAGE+=":${FABKIT_VERSION}"
-    (echo -ne "Downloading the official Fabkit docker image $(logdebu ${FABKIT_DOCKER_IMAGE}) ..." && docker pull "${FABKIT_DOCKER_IMAGE}" 1>/dev/null) &
-    __spinner
+    echo -en "Downloading the official Fabkit docker image $(cyan ${FABKIT_DOCKER_IMAGE})..."
+    docker pull "${FABKIT_DOCKER_IMAGE}" &>/dev/null || __error "Error pulling ${FABKIT_DOCKER_IMAGE}"
 }
 
 __spinner() {
@@ -145,47 +180,51 @@ __spinner() {
     fi
 }
 
-loghead() {
+purple() {
     echo -e "\033[1;35m${1}\033[0m"
 }
 
-logerr() {
+red() {
     echo -e "\033[1;31m${1}\033[0m"
 }
 
-logsucc() {
+green() {
     echo -e "\033[1;32m${1}\033[0m"
 }
 
-logwarn() {
+yellow() {
     echo -e "\033[1;33m${1}\033[0m"
 }
 
-loginfo() {
+blue() {
     echo -e "\033[1;34m${1}\033[0m"
 }
 
-logdebu() {
+cyan() {
     echo -e "\033[1;36m${1}\033[0m"
 }
 
-loghead "
+purple "
         ╔═╗┌─┐┌┐ ┬┌─ ┬┌┬┐
         ╠╣ ├─┤├┴┐├┴┐ │ │ 
         ╚  ┴ ┴└─┘┴ ┴ ┴ ┴ 
              ■-■-■               
     "
-loginfo "Welcome to the Fabkit's interactive setup 🧰"
+blue "Welcome to the Fabkit's interactive setup 🧰 "
 echo
-read -rp "Press any key to start! (or CTRL-C to exit) "
+read -n 1 -s -r -p "Press any key to start! (or CTRL-C to exit) "
+echo
 echo
 
-if [[ $(basename $PWD) -eq "fabkit" ]]; then
+if git remote -v 2>/dev/null | grep "fabkit" &>/dev/null; then
+    cyan "Looks like you want to run Fabkit from inside its repository path"
+    git fetch origin --tags &>/dev/null || __error "Error fetching tags from origin"
     FABKIT_VERSION=$(git describe --abbrev=0 --tags 2>/dev/null)
-    logdebu "Looks you've cloned the repo. Installing ${FABKIT_VERSION}..."
+    FABKIT_VERSION=${FABKIT_VERSION:-latest}
+    cyan "Pulling ${FABKIT_VERSION} version"
+    cyan "Going to set - ${PWD} - as your installation path!"
     echo
-    sleep 1
-    FABKIT_ROOT=$PWD
+    FABKIT_ROOT="$PWD"
 else
     __download_and_extract
 fi
@@ -193,33 +232,21 @@ fi
 __set_installation_type
 
 echo
-logsucc "Fabkit is now installed 🚀"
+green "Congrats! Fabkit is now installed! 🚀"
 echo
-logdebu "And now the final few touches so you can run fabkit anywhere!"
-echo
-sleep 1
+cyan "And now the final few touches so you can run fabkit anywhere! 😵‍💫🌎"
 
 case $SHELL in
 *bash)
-    __add_aliases bash "$FABKIT_CMD"
+    __setup bash "$FABKIT_CMD"
     ;;
 *zsh)
-    __add_aliases zsh "$FABKIT_CMD"
+    __setup zsh "$FABKIT_CMD"
     ;;
 *fish)
-    __add_aliases fish "$FABKIT_CMD"
+    __setup fish "$FABKIT_CMD"
     ;;
 esac
 
-echo
-logsucc "Fabkit aliases have been added to your default shell! Try any of: $(
-    for a in "${ALIASES[@]}"; do printf %s"${a}, "; done
-    tput cub 2
-) - with something like:"
-logdebu ">>> fabkit network start"
-echo
-
-logdebu "For more information visit: https://bitbucket.org/everledger/fabkit/src/master/docs/"
-echo
-sleep 1
-logsucc "Have fun! 🕺"
+echo "For more information visit:" "$(cyan "https://bitbucket.org/everledger/fabkit/src/master/docs/")"
+green "Have fun! 💃🕺"

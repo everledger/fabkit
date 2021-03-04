@@ -21,7 +21,7 @@ start_explorer() {
     config="${FABKIT_EXPLORER_PATH}/connection-profile/first-network"
     admin_key_path="peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/keystore"
     private_key="/tmp/crypto/${admin_key_path}/$(ls ${FABKIT_CRYPTOS_PATH}/${admin_key_path})"
-    cat ${config}.base.json | __jq -r --arg private_key "$private_key" '.organizations.Org1MSP.adminPrivateKey.path = $private_key' |
+    __jq <"${config}.base.json" -r --arg private_key "$private_key" '.organizations.Org1MSP.adminPrivateKey.path = $private_key' |
         __jq -r --argjson FABKIT_TLS_ENABLED "$FABKIT_TLS_ENABLED" '.client.tlsEnable = $FABKIT_TLS_ENABLED' >${config}.json || exit 1
 
     # considering tls enabled as default in base

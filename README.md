@@ -27,10 +27,10 @@ If you want to be able to use **test** and **build** functionalities for your ch
 
 ## Install
 
-In order to run commands with ease, we recommend to add `fabkit` as an alias in your default shell profile.
+You can simply download the `install.sh` and run it in your terminal with one command (**disclaimer: sorry this option is not available just yet as we are not public! 😞**)
 
 ```bash
-bash <(curl -sL tinyurl.com/yrenublr)
+bash <(curl -sL ...)
 ```
 
 or, if you have cloned the repo, you can always run the interactive installer to help you configure fabkit.
@@ -44,7 +44,7 @@ or, if you have cloned the repo, you can always run the interactive installer to
 To purge `fabkit` from your system you can run anytime this simply script:
 
 ```bash
-bash <(curl -sL https://bitbucket..../fabkit/releases/../uninstaller.sh)
+./uninstaller.sh
 ```
 
 ## Getting started
