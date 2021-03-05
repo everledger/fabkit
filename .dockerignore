@@ -1,0 +1,11 @@
+.DS_Store
+.git
+.dockerignore
+.gitignore
+docs/
+dist/
+network/cryptos/
+network/channels/
+README.md
+bitbucket-pipelines.yml
+Dockerfile

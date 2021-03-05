@@ -1,262 +1,348 @@
 #!/usr/bin/env bash
 
-source ${PWD}/.env
-for f in ./scripts/*; do source $f; done
+set -o errtrace
+# echo control characters in hat notation ('^c')
+stty -echoctl
+
+# shellcheck disable=SC1090
+source "${FABKIT_ROOT}/.env"
+# shellcheck disable=SC1090
+for f in "${FABKIT_ROOT}"/scripts/*; do source "$f"; done
+
+trap '__catch $?' ERR
+trap 'exit' INT TERM
+trap 'kill 0' EXIT QUIT
 
 export GO111MODULE=on
-
+# shellcheck disable=SC2034
 readonly ONE_ORG="OneOrgOrdererGenesis"
+# shellcheck disable=SC2034
 readonly TWO_ORGS="TwoOrgsOrdererGenesis"
+# shellcheck disable=SC2034
 readonly THREE_ORGS="ThreeOrgsOrdererGenesis"
+# shellcheck disable=SC2034
 readonly RAFT_ONE_ORG="OneOrgOrdererEtcdRaft"
+# shellcheck disable=SC2034
 readonly FABKIT_FABRIC_AVAILABLE_VERSIONS=("2.3.0" "2.3" "2.2.1" "2.2" "2.2.0" "2.1.0" "2.1" "2.0.1" "2.0.0" "2.0.0-alpha" "1.4" "1.4.9" "1.4.8" "1.4.7" "1.4.6" "1.4.5" "1.4.4" "1.4.3" "1.4.2" "1.4.1" "1.4.0" "1.3.0" "1.2.1" "1.2.0" "1.1.0")
+# shellcheck disable=SC2034
+readonly FABKIT_DOCKER_VERSION_SUPPORTED="18.05"
+# shellcheck disable=SC2034
+readonly FABKIT_DOCKER_COMPOSE_VERSION_SUPPORTED="1.24"
+# shellcheck disable=SC2034
+readonly FABKIT_BASH_VERSION_SUPPORTED="3.2"
+# shellcheck disable=SC2034
+readonly FABKIT_GO_VERSION_SUPPORTED="1.11"
+# shellcheck disable=SC2034
+readonly FABKIT_NODE_VERSION_SUPPORTED="10.20"
+# shellcheck disable=SC2034
+readonly FABKIT_JAVA_VERSION_SUPPORTED="8"
+
+export FABKIT_HOST_ROOT="${FABKIT_HOST_ROOT:-$FABKIT_ROOT}"
+
+__log_setup() {
+    loghead "\nRunning setup"
+    echo "Root directory: $(loginfo ${FABKIT_HOST_ROOT})"
+    echo "Docker network: $(loginfo ${FABKIT_DOCKER_NETWORK})"
+    echo "Fabric version: $(loginfo ${FABKIT_FABRIC_VERSION})"
+    echo "Fabric CA version: $(loginfo ${FABKIT_FABRIC_CA_VERSION})"
+    echo "Fabric third-party version: $(loginfo ${FABKIT_FABRIC_THIRDPARTY_IMAGE_VERSION})"
+    echo "Network configuration profile: $(loginfo ${FABKIT_CONFIGTX_PROFILE_NETWORK})"
+    echo "Channel configuration profile: $(loginfo ${FABKIT_CONFIGTX_PROFILE_CHANNEL})"
+    echo "Chaincode name: $(loginfo ${FABKIT_CHAINCODE_NAME})"
+    echo "Chaincode version: $(loginfo ${FABKIT_CHAINCODE_VERSION})"
+    echo "Organizations: $(loginfo ${FABKIT_ORGS:-1})"
+    echo "TLS enabled: $(loginfo ${FABKIT_TLS_ENABLED})"
+    echo "Debug mode: $(loginfo ${FABKIT_DEBUG:-false})"
+    echo "Fresh-start mode: $(loginfo ${FABKIT_RESET:-false})"
+    echo "Interactive mode: $(loginfo ${FABKIT_INTERACTIVE:-false})"
+    echo
+}
 
 __yq() {
-    docker run --rm -i -v "${PWD}":/workdir ${FABKIT_YQ_DOCKER_IMAGE} "$@"
+    if type -p yq &>/dev/null; then
+        yq "$@"
+    else
+        docker run --rm -i -v "${PWD}":/workdir "$FABKIT_YQ_DOCKER_IMAGE" "$@"
+    fi
 }
 
 __jq() {
-    docker run --rm -i -v "${PWD}":/workdir ${FABKIT_JQ_DOCKER_IMAGE} "$@"
-}
-
-__log_setup() {
-    log "===========" info
-    log "Init: setup" info
-    log "===========" info
-    echo
-    log "Docker network: $(log ${FABKIT_DOCKER_NETWORK} warning)" info
-    log "Fabric version: $(log ${FABKIT_FABRIC_VERSION} warning)" info
-    log "Fabric CA version: $(log ${FABKIT_FABRIC_CA_VERSION} warning)" info
-    log "Fabric third-party version: $(log ${FABKIT_FABRIC_THIRDPARTY_IMAGE_VERSION} warning)" info
-    log "Network configuration profile: $(log ${FABKIT_CONFIGTX_PROFILE_NETWORK} warning)" info
-    log "Channel configuration profile: $(log ${FABKIT_CONFIGTX_PROFILE_CHANNEL} warning)" info
-    log "Chaincode name: $(log ${FABKIT_CHAINCODE_NAME} warning)" info
-    log "Chaincode version: $(log ${FABKIT_CHAINCODE_VERSION} warning)" info
-    log "Organizations: $(log ${FABKIT_ORGS:-1} warning)" info
-    log "TLS enabled: $(log ${FABKIT_TLS_ENABLED} warning)" info
-    log "Debug mode: $(log ${FABKIT_DEBUG:-false} warning)" info
-    log "Fresh-start mode: $(log ${FABKIT_RESET:-false} warning)" info
-    echo
+    if type -p jq &>/dev/null; then
+        jq "$@"
+    else
+        docker run --rm -i -v "${PWD}":/workdir "$FABKIT_JQ_DOCKER_IMAGE" "$@"
+    fi
 }
 
 __set_params() {
-    if [[ $# -eq 0 ]]; then
+    if [ $# -eq 0 ]; then
         __load_lastrun
         return 0
     fi
 
-    while [[ $# -gt 0 ]]; do
-        local param="${1}"
+    while [ $# -gt 0 ]; do
+        local param="$1"
 
         case $param in
         -q | --quick-run)
-            FABKIT_QUICK_RUN=true
+            export FABKIT_QUICK_RUN=true
             shift
             ;;
         -d | --debug)
-            FABKIT_DEBUG=true
+            export FABKIT_DEBUG=true
             shift
             ;;
         -r | --reset)
-            FABKIT_RESET=true
+            export FABKIT_RESET=true
             __clean_user_path
             shift
             ;;
+        -i | --interactive)
+            # TODO: [FND-117] implement support for interactive mode (now set to false)
+            logwarn "Interactive mode is not supported yet, sorry 😔"
+            export FABKIT_INTERACTIVE=false
+            shift
+            ;;
         -o | --orgs)
-            FABKIT_ORGS="${2:-1}"
+            export FABKIT_ORGS="${2:-1}"
             shift 2
             ;;
         -v | --version)
-            FABKIT_FABRIC_VERSION="${2:-$FABKIT_FABRIC_VERSION}"
+            export FABKIT_FABRIC_VERSION="${2:-$FABKIT_FABRIC_VERSION}"
             shift 2
             ;;
+        help)
+            help_network
+            exit 1
+            ;;
         *)
-            log "${1} paramater not recognized. Please run the help." error
+            logerr "${1} paramater not recognized. Please run the help."
             exit 1
             ;;
         esac
     done
 }
 
-readonly func="$1"
-shift
+__set_debug() {
+    for param in "$@"; do
+        case $param in
+        -d | --debug)
+            export FABKIT_DEBUG=true
+            ;;
+        esac
+    done
+}
+
+readonly FUNC="$1"
+if [ -z "$FUNC" ]; then
+    title
+    help
+    exit
+elif [ "$FUNC" = "version" ]; then
+    echo "$FABKIT_VERSION"
+    exit
+fi
 
 readonly START_TIME="$(date -u +%s)"
 title
-if [ "$func" == "network" ]; then
-    param="$1"
-    shift
-    __check_deps deploy
-    __check_docker_daemon
-    if [ "$param" == "install" ]; then
+__check_dep_version
+__set_debug "$@"
+
+shift || true
+if [ "$FUNC" = "network" ]; then
+    PARAM="$1"
+    shift || true
+    __set_params "$@"
+    __validate_params
+    echo "PARAM $PARAM"
+    if [ "$PARAM" = "install" ]; then
         __log_setup
         install_network
-    elif [ "$param" == "start" ]; then
-        __set_params "$@"
-        __validate_params
+    elif [ "$PARAM" = "start" ]; then
         start_network "$@"
-    elif [ "$param" == "restart" ]; then
+    elif [ "$PARAM" = "restart" ]; then
         restart_network
-    elif [ "$param" == "stop" ]; then
+    elif [ "$PARAM" = "stop" ]; then
         __load_lastrun
         __log_setup
-        stop_network
+        (stop_network) &
+        __spinner
     else
         help_network
+        exit
     fi
-elif [ "$func" == "explorer" ]; then
-    __check_deps deploy
-    __check_docker_daemon
-    param="$1"
-    shift
-    if [ "$param" == "start" ]; then
+elif [ "$FUNC" = "explorer" ]; then
+    PARAM="$1"
+    shift || true
+    if [ "$PARAM" = "start" ]; then
         start_explorer
-    elif [ "$param" == "stop" ]; then
-        stop_explorer
+    elif [ "$PARAM" = "stop" ]; then
+        (stop_explorer) &
+        __spinner
     else
         help_explorer
+        exit
     fi
-elif [ "$func" == "dep" ]; then
-    param="$1"
-    shift
-    if [ "$param" == "install" ]; then
-        dep_install "$@"
-    elif [ "$param" == "update" ]; then
-        dep_update "$@"
+elif [ "$FUNC" = "dep" ]; then
+    PARAM="$1"
+    shift || true
+    if [ "$PARAM" = "install" ]; then
+        (dep_install "$@") &
+        __spinner
+    elif [ "$PARAM" = "update" ]; then
+        (dep_update "$@") &
+        __spinner
     else
         help_dep
+        exit
     fi
-elif [ "$func" == "chaincode" ]; then
+elif [ "$FUNC" = "chaincode" ]; then
     __load_lastrun
-    param="$1"
-    shift
-    if [ "$param" == "lifecycle" ]; then
+    PARAM="$1"
+    shift || true
+    if [ "$PARAM" = "lifecycle" ]; then
         __check_fabric_version 2
-        param="$1"
-        shift
-        if [ "$param" == "package" ]; then
-            __check_deps deploy
-            __check_docker_daemon
-            lc_chaincode_package "$@"
-        elif [ "$param" == "install" ]; then
-            __check_deps deploy
-            __check_docker_daemon
-            lc_chaincode_install "$@"
-        elif [ "$param" == "approve" ]; then
-            __check_deps deploy
-            __check_docker_daemon
-            lc_chaincode_approve "$@"
-        elif [ "$param" == "commit" ]; then
-            __check_deps deploy
-            __check_docker_daemon
-            lc_chaincode_commit "$@"
-        elif [ "$param" == "deploy" ]; then
-            __check_deps deploy
-            __check_docker_daemon
-            lc_chaincode_deploy "$@"
+        PARAM="$1"
+        shift || true
+        if [ "$PARAM" = "package" ]; then
+            (lifecycle_chaincode_package "$@") &
+            __spinner
+        elif [ "$PARAM" = "install" ]; then
+            (lifecycle_chaincode_install "$@") &
+            __spinner
+        elif [ "$PARAM" = "approve" ]; then
+            (lifecycle_chaincode_approve "$@") &
+            __spinner
+        elif [ "$PARAM" = "commit" ]; then
+            (lifecycle_chaincode_commit "$@") &
+            __spinner
+        elif [ "$PARAM" = "deploy" ]; then
+            lifecycle_chaincode_deploy "$@"
         else
             help_chaincode
+            exit
         fi
-    elif [ "$param" == "install" ]; then
-        __check_deps deploy
-        __check_docker_daemon
-        chaincode_install "$@"
-    elif [ "$param" == "instantiate" ]; then
-        __check_deps deploy
-        __check_docker_daemon
-        chaincode_instantiate "$@"
-    elif [ "$param" == "upgrade" ]; then
-        __check_deps deploy
-        __check_docker_daemon
-        chaincode_upgrade "$@"
-    elif [ "$param" == "test" ]; then
-        chaincode_test "$@"
-    elif [ "$param" == "build" ]; then
-        chaincode_build "$@"
-    elif [ "$param" == "package" ]; then
-        __check_deps deploy
-        __check_docker_daemon
-        chaincode_pack "$@"
-    elif [ "$param" == "zip" ]; then
-        __chaincode_sync
-        chaincode_zip "$@"
-    elif [ "$param" == "query" ]; then
-        __check_deps deploy
-        __check_docker_daemon
-        query "$@"
-    elif [ "$param" == "invoke" ]; then
-        __check_deps deploy
-        __check_docker_daemon
-        invoke "$@"
+    elif [ "$PARAM" = "install" ]; then
+        (chaincode_install "$@") &
+        __spinner
+    elif [ "$PARAM" = "instantiate" ]; then
+        (chaincode_instantiate "$@") &
+        __spinner
+    elif [ "$PARAM" = "upgrade" ]; then
+        (chaincode_upgrade "$@") &
+        __spinner
+    elif [ "$PARAM" = "test" ]; then
+        (chaincode_test "$@") &
+        __spinner
+    elif [ "$PARAM" = "build" ]; then
+        (chaincode_build "$@") &
+        __spinner
+    elif [ "$PARAM" = "package" ]; then
+        (chaincode_pack "$@") &
+        __spinner
+    elif [ "$PARAM" = "zip" ]; then
+        (chaincode_zip "$@") &
+        __spinner
+    elif [ "$PARAM" = "query" ]; then
+        (chaincode_query "$@") &
+        __spinner
+    elif [ "$PARAM" = "invoke" ]; then
+        (chaincode_invoke "$@") &
+        __spinner
     else
         help_chaincode
+        exit
     fi
-elif [ "$func" == "generate" ]; then
-    __check_deps deploy
-    __check_docker_daemon
-    param="$1"
+elif [ "$FUNC" = "generate" ]; then
+    PARAM="$1"
     shift
-    if [ "$param" == "cryptos" ]; then
+    if [ "$PARAM" = "cryptos" ]; then
         generate_cryptos "$@"
-    elif [ "$param" == "genesis" ]; then
+    elif [ "$PARAM" = "genesis" ]; then
         generate_genesis "$@"
-    elif [ "$param" == "channeltx" ]; then
+    elif [ "$PARAM" = "channeltx" ]; then
         generate_channeltx "$@"
     else
         help_generate
+        exit
     fi
-elif [ "$func" == "ca" ]; then
-    __check_deps deploy
-    __check_docker_daemon
-    param="$1"
-    shift
-    if [ "$param" == "register" ]; then
+elif [ "$FUNC" = "ca" ]; then
+    PARAM="$1"
+    shift || true
+    if [ "$PARAM" = "register" ]; then
         register_user "$@"
-    elif [ "$param" == "enroll" ]; then
-        __check_deps deploy
+    elif [ "$PARAM" = "enroll" ]; then
         enroll_user "$@"
-    elif [ "$param" == "reenroll" ]; then
+    elif [ "$PARAM" = "reenroll" ]; then
         reenroll_user "$@"
-    elif [ "$param" == "revoke" ]; then
+    elif [ "$PARAM" = "revoke" ]; then
         revoke_user "$@"
     else
         help_ca
+        exit
     fi
-elif [ "$func" == "channel" ]; then
-    __check_deps deploy
-    __check_docker_daemon
-    param="$1"
+elif [ "$FUNC" = "channel" ]; then
+    PARAM="$1"
     shift
-    if [ "$param" == "create" ]; then
-        create_channel "$@"
-    elif [ "$param" == "update" ]; then
-        update_channel "$@"
-    elif [ "$param" == "join" ]; then
-        join_channel "$@"
+    if [ "$PARAM" = "create" ]; then
+        (create_channel "$@") &
+        __spinner
+    elif [ "$PARAM" = "update" ]; then
+        (update_channel "$@") &
+        __spinner
+    elif [ "$PARAM" = "join" ]; then
+        (join_channel "$@") &
+        __spinner
     else
         help_channel
+        exit
     fi
-elif [ "$func" == "benchmark" ]; then
-    param="$1"
-    shift
-    if [ "$param" == "load" ]; then
-        __check_deps deploy
-        __exec_jobs "$@"
+elif [ "$FUNC" = "benchmark" ]; then
+    PARAM="$1"
+    shift || true
+    if [ "$PARAM" = "load" ]; then
+        (__exec_jobs "$@") &
+        __spinner
     else
         help_benchmark
+        exit
     fi
-elif [ "$func" == "utils" ]; then
-    param="$1"
-    shift
-    if [ "$param" == "tostring" ]; then
+elif [ "$FUNC" = "utils" ]; then
+    PARAM="$1"
+    shift || true
+    if [ "$PARAM" = "tostring" ]; then
         tostring "$@"
-    elif [ "$param" == "tojson" ]; then
+    elif [ "$PARAM" = "tojson" ]; then
         tojson "$@"
     else
         help_utils
+        exit
     fi
+elif [ "$FUNC" = "install" ]; then
+    __set_params "$@"
+    __validate_params
+    __log_setup
+    install_network
+elif [ "$FUNC" = "start" ]; then
+    __set_params "$@"
+    __validate_params
+    start_network "$@"
+elif [ "$FUNC" = "restart" ]; then
+    __set_params "$@"
+    __validate_params
+    (restart_network) &
+    __spinner
+elif [ "$FUNC" = "stop" ]; then
+    __set_params "$@"
+    __validate_params
+    __load_lastrun
+    __log_setup
+    (stop_network) &
+    __spinner
 else
     help
+    exit
 fi
+
 readonly END_TIME="$(date -u +%s)"
-__timer $START_TIME $END_TIME
+__timer "$START_TIME" "$END_TIME"

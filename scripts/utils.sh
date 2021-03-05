@@ -2,52 +2,91 @@
 
 __check_fabric_version() {
     if [[ ! "${FABKIT_FABRIC_VERSION}" =~ ${1}.* ]]; then
-        log "This command is not enabled on Fabric v${FABKIT_FABRIC_VERSION}. In order to run, run your network with the flag: -v|--version [version]" error
+        logerr "This command is not enabled on Fabric v${FABKIT_FABRIC_VERSION}. In order to run, run your network with the flag: -v|--version [version]"
         exit 1
     fi
 }
 
-__check_deps() {
-    if [ "${1}" == "deploy" ]; then
-        type docker >/dev/null 2>&1 || {
-            log >&2 "docker required but it is not installed. Aborting." error
-            exit 1
-        }
-        type docker-compose >/dev/null 2>&1 || {
-            log >&2 "docker-compose required but it is not installed. Aborting." error
-            exit 1
-        }
-    elif [ "${1}" == "test" ]; then
-        type go >/dev/null 2>&1 || {
-            log >&2 "Go binary is missing in your PATH. Running the dockerised version..." warning
-            echo $?
-        }
+__check_version() {
+    local cmd=$1
+    local supported_version=($(echo -e "${2//./\\n}"))
+    local installed_version=($(echo -e "${3//./\\n}"))
+
+    if ! type -p "$cmd" &>/dev/null; then
+        logerr "${cmd} is not installed. Version >= $2} is required"
+        exit 1
     fi
+
+    for i in "${!supported_version[@]}"; do
+        if [[ "${installed_version[$i]}" -gt "${supported_version[$i]}" ]]; then
+            break
+        elif [[ "${installed_version[$i]}" -lt "${supported_version[$i]}" ]]; then
+            logerr "${cmd} >= $2 is required"
+            exit 1
+        fi
+    done
 }
 
-__check_docker_daemon() {
-    if [ "$(docker info --format '{{json .}}' | grep "Cannot connect" 2>/dev/null)" ]; then
-        log "Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?" error
+__check_dep_version() {
+    __check_bash_version
+    __check_docker_version
+}
+
+__check_bash_version() {
+    # shellcheck disable=SC2155
+    local version="$(bash --version 2>/dev/null | cut -d ' ' -f 4 | head -n 1 | cut -d '(' -f 1)"
+    __check_version bash "$FABKIT_BASH_VERSION_SUPPORTED" "$version"
+}
+
+__check_go_version() {
+    # shellcheck disable=SC2155
+    local version=$(go version 2>/dev/null | cut -d ' ' -f 3 | cut -c 3-)
+    __check_version go "$FABKIT_GO_VERSION_SUPPORTED" "$version"
+}
+
+__check_node_version() {
+    # shellcheck disable=SC2155
+    local version=$(node -v 2>/dev/null | cut -c 2-)
+    __check_version node "$FABKIT_NODE_VERSION_SUPPORTED" "$version"
+
+}
+
+__check_java_version() {
+    # shellcheck disable=SC2155
+    local version=$(java --version 2>/dev/null | cut -d ' ' -f 2 | head -n 1)
+    __check_version java "$FABKIT_JAVA_VERSION_SUPPORTED" "$version"
+}
+
+__check_docker_version() {
+    # shellcheck disable=SC2155
+    local version=$(docker version --format '{{.Server.Version}}' 2>/dev/null)
+    __check_version docker "$FABKIT_DOCKER_VERSION_SUPPORTED" "$version"
+
+    # shellcheck disable=SC2155
+    version=$(docker-compose version --short 2>/dev/null)
+    __check_version docker-compose "$FABKIT_DOCKER_COMPOSE_VERSION_SUPPORTED" "$version"
+
+    if docker info --format '{{json .}}' | grep "Cannot connect" &>/dev/null; then
+        logerr "Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?"
         exit 1
     fi
 }
 
 # delete path recursively and asks for root permissions if needed
 __delete_path() {
-    if [ ! -d "${1}" ]; then
-        log "Directory \"${1}\" does not exist. Skipping delete. All good :)" warning
+    if [[ ! -e "$1" ]]; then
         return
     fi
 
-    if [ -w "${1}" ]; then
-        rm -rf ${1}
+    if [[ -w "$1" ]]; then
+        rm -rf "$1"
     else
-        log "!!!!! ATTENTION !!!!!" error
-        log "Directory \"${1}\" requires superuser permissions" error
-        read -p "Do you wish to continue? [yes/no=default] " yn
+        logerr "!!!!! ATTENTION !!!!!"
+        logerr "Directory \"${1}\" requires superuser permissions"
+        read -rp "Do you wish to continue? [yes/no=default] " yn
         case $yn in
-        [Yy]*) sudo rm -rf ${1} ;;
-        *) return 0 ;;
+        [Yy]*) sudo rm -rf "$1" ;;
+        *) return ;;
         esac
     fi
 }
@@ -55,18 +94,15 @@ __delete_path() {
 __set_certs() {
     CORE_PEER_ADDRESS=peer${2}.org${1}.example.com:$((6 + ${1}))051
     CORE_PEER_LOCALMSPID=Org${1}MSP
-    CORE_PEER_TLS_ENABLED=false
+    CORE_PEER_TLS_ENABLED=${FABKIT_TLS_ENABLED}
     CORE_PEER_TLS_CERT_FILE=${FABKIT_PEER_REMOTE_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/peers/peer${2}.org${1}.example.com/tls/server.crt
     CORE_PEER_TLS_KEY_FILE=${FABKIT_PEER_REMOTE_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/peers/peer${2}.org${1}.example.com/tls/server.key
     CORE_PEER_TLS_ROOTCERT_FILE=${FABKIT_PEER_REMOTE_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/peers/peer${2}.org${1}.example.com/tls/ca.crt
     CORE_PEER_MSPCONFIGPATH=${FABKIT_PEER_REMOTE_BASEPATH}/crypto/peerOrganizations/org${1}.example.com/users/Admin@org${1}.example.com/msp
     ORDERER_CA=${FABKIT_PEER_REMOTE_BASEPATH}/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
 
-    log "===========================================" info
-    log "Peer address: ${CORE_PEER_ADDRESS}" info
-    log "Peer cert: ${CORE_PEER_TLS_CERT_FILE}" info
-    log "===========================================" info
-    echo
+    logdebu "Peer address: ${CORE_PEER_ADDRESS}"
+    logdebu "Peer cert: ${CORE_PEER_TLS_CERT_FILE}"
 }
 
 __set_peer_exec() {
@@ -83,48 +119,36 @@ __set_peer_exec() {
     eval $__result="'$__cmd'"
 }
 
-__exec_command() {
-    echo
-    log "Excecuting command: " debug
-    echo
-    local message=$1
-    log "$message" debug
-    echo
-
-    # TODO: Return error and let the caller to handle it
-    eval "$message || exit 1"
-}
-
 __timer() {
-    local start_time="${1}"
+    local start_time="$1"
     local end_time="${2}"
 
-    local elapsed_time="$(($end_time - $start_time))"
+    local elapsed_time="$((end_time - start_time))"
 
-    log "\nTotal elapsed time: $(($elapsed_time / 60))m$(($elapsed_time % 60))s" debug
+    echo -e "\n⏰ $(logsucc $((elapsed_time / 60))m$((elapsed_time % 60))s)"
 }
 
 __validate_params() {
     local version_exists=false
     for version in "${FABKIT_FABRIC_AVAILABLE_VERSIONS[@]}"; do
-        if [ "$version" == "$FABKIT_FABRIC_VERSION" ]; then
+        if [ "$version" = "$FABKIT_FABRIC_VERSION" ]; then
             version_exists=true
         fi
     done
-    if [ "$version_exists" == "false" ]; then
-        log "Fabric version ${FABKIT_FABRIC_VERSION} does not exist. For the complete list of releases visit: https://github.com/hyperledger/fabric/tags" error
+    if [ "$version_exists" = "false" ]; then
+        logerr "Fabric version ${FABKIT_FABRIC_VERSION} does not exist. For the complete list of releases visit: https://github.com/hyperledger/fabric/tags"
         exit 1
     fi
 
     if [[ $FABKIT_ORGS -lt 1 ]]; then
-        log "-o,--orgs cannot be lower than 1" error
+        logerr "-o,--orgs cannot be lower than 1"
         exit 1
     fi
 }
 
 __set_lastrun() {
-    if [ ! -f ${FABKIT_USER_PATH} ]; then
-        mkdir -p ${FABKIT_USER_PATH}
+    if [ ! -f "$FABKIT_ROOT" ]; then
+        mkdir -p "$FABKIT_ROOT"
     fi
 
     unset FABKIT_RESET
@@ -132,50 +156,50 @@ __set_lastrun() {
     (
         set -o posix
         set | grep "FABKIT_"
-    ) >${FABKIT_USER_PATH}/.lastrun
+    ) >"$FABKIT_LASTRUN"
 
     __load_lastrun
 }
 
 __load_lastrun() {
-    source ${FABKIT_USER_PATH}/.lastrun 2>/dev/null
+    # shellcheck disable=SC1090
+    source "$FABKIT_LASTRUN" &>/dev/null || true
 }
 
 __clean_user_path() {
-    __delete_path ${FABKIT_USER_PATH}/.lastrun
+    __delete_path "$FABKIT_LASTRUN"
+    __delete_path "$FABKIT_LOGFILE"
 }
 
-log() {
-    if [[ ${#} != 2 ]]; then
-        echo "usage: ${FUNCNAME} <string> [debug|info|warning|error|success]"
-        exit 1
+__catch() {
+    if [ "$1" == 0 ]; then
+        return
     fi
 
-    local message="${1}"
-    local level=$(echo ${2} | awk '{print tolower($0)}')
-    local default_colour="\033[0m"
+    __print_to_file "$FABKIT_LOGFILE" "Caught error $1 in:" "[ERROR]"
+    frame=0
+    line="$(caller $frame 2>&1 | cut -d ' ' -f 1)"
+    while [ -n "$line" ]; do
+        subroutine="$(caller $frame 2>&1 | cut -d ' ' -f 2)"
+        file="$(caller $frame 2>&1 | cut -d ' ' -f 3)"
+        __print_to_file "$FABKIT_LOGFILE" "From $file:$line in $subroutine" "[ERROR]"
+        __print_to_file "$FABKIT_LOGFILE" "\t$(sed -n "${line}"p "$file")" "[ERROR]"
+        ((frame++)) || true
+        line="$(caller "$frame" 2>&1 | cut -d ' ' -f 1)"
+    done
 
-    case $level in
-    header) colour_code="\033[1;35m" ;;
-    error) colour_code="\033[1;31m" ;;
-    success) colour_code="\033[1;32m" ;;
-    warning) colour_code="\033[1;33m" ;;
-    info) colour_code="\033[1;34m" ;;
-    debug)
-        if [ -z "${FABKIT_DEBUG}" ] || [ "${FABKIT_DEBUG}" == "false" ]; then return; fi
-        colour_code="\033[1;36m"
-        ;;
-    *) colour_code=${default_colour} ;;
-    esac
-
-    # Print out the message and reset
-    echo -e "${colour_code}${message}${default_colour}"
+    exit "$1"
 }
 
-tostring() {
-    echo "$@" | __jq tostring 2>/dev/null || echo ${@//\"/\\\"}
-}
+__throw() {
+    local input
 
-tojson() {
-    echo "$@" | __jq .
+    if [ -n "$1" ]; then
+        input="$1"
+        __clear_spinner && logerr "$input"
+    else
+        while read -r input; do
+            __clear_spinner && logerr "$input"
+        done
+    fi
 }

@@ -1,24 +1,25 @@
 #!/usr/bin/env bash
 
 title() {
-    log "
+    loghead "
         ╔═╗┌─┐┌┐ ┬┌─ ┬┌┬┐
         ╠╣ ├─┤├┴┐├┴┐ │ │ 
         ╚  ┴ ┴└─┘┴ ┴ ┴ ┴ 
              ■-■-■               
-    " header
+    "
 }
 
 help_header() {
-    log "
-        Usage: $@ [command]
+    loginfo "
+        Usage: $* [command]
         
-        Commands:" info
+        Commands:
+    "
 }
 
 help() {
     help_header fabkit
-    log "
+    loginfo "
         help                                                                                            : this help
     
         dep install [chaincode_name]                                                                    : install all go modules as vendor and init go.mod if does not exist yet
@@ -70,30 +71,30 @@ help() {
        
         utils tojson                                                                                    : transform a string format with escaped characters to a valid JSON format
         utils tostring                                                                                  : transform a valid JSON format to a string with escaped characters
-        " info
+    "
 }
 
 help_dep() {
     help_header "fabkit dep"
-    log "
+    loginfo "
         install [chaincode_name]                                                                    : install all go modules as vendor and init go.mod if does not exist yet
         update [chaincode_name]                                                                     : update all go modules and rerun install
-    " info
+    "
 }
 
 help_ca() {
     help_header "fabkit ca"
-    log "
+    loginfo "
         register                                                                                     : register a new user
         enroll                                                                                       : enroll a previously registered user    
         reenroll                                                                                     : reenroll a user if its certificate expired
         revoke                                                                                       : revoke a user's key/certificate providing a reason
-    " info
+    "
 }
 
 help_network() {
     help_header "fabkit network"
-    log "
+    loginfo "
         install                                                                                 : install all the dependencies and docker images
         start [options]                                                                         : start the blockchain network and initialize it
             -q, --quick-run                                                                         : skip boring chaincode build&test
@@ -103,39 +104,39 @@ help_network() {
             -v, --version [version]                                                                 : use a specific fabric version (default: latest)
         restart                                                                                 : restart a previously running the blockchain network
         stop                                                                                    : stop the blockchain network and remove all the docker containers
-    " info
+    "
 }
 
 help_explorer() {
     help_header "fabkit explorer"
-    log "
+    loginfo "
         start                                                                                  : run the blockchain explorer user-interface and analytics
         stop                                                                                   : stop the blockchain explorer user-interface and analytics
-    " info
+    "
 }
 
 help_channel() {
     help_header "fabkit channel"
-    log "
+    loginfo "
         create [channel_name] [org_no] [peer_no]                                                : generate channel configuration file
         update [channel_name] [org_msp] [org_no] [peer_no]                                      : update channel with anchor peers
         join [channel_name] [org_no] [peer_no]                                                  : run by a peer to join a channel
-    " info
+    "
 }
 
 help_generate() {
     help_header "fabkit generate"
-    log "
+    loginfo "
         cryptos [config_path] [cryptos_path]                                                   : generate all the crypto keys and certificates for the network
         genesis [base_path] [config_path]                                                      : generate the genesis block for the ordering service
         channeltx [channel_name] [base_path] [config_path] [cryptos_path]                      : generate channel configuration files
                            [network_profile] [channel_profile] [org_msp]                
-    " info
+    "
 }
 
 help_chaincode() {
     help_header "fabkit chaincode"
-    log "
+    loginfo "
         test [chaincode_path]                                                                 : run unit tests
         build [chaincode_path]                                                                : run build and test against the binary file
         zip [chaincode_path]                                                                  : create a zip archive ready for deployment containing chaincode and vendors
@@ -155,20 +156,20 @@ help_chaincode() {
                                    [channel_name] [sequence_no] [org_no] [peer_no]
         lifecycle deploy [chaincode_name] [chaincode_version] [chaincode_path]                : run in sequence package, install, approve and commit
                                    [channel_name] [sequence_no] [org_no] [peer_no]
-    " info
+    "
 }
 
 help_benchmark() {
     help_header "fabkit benchmark"
-    log "
+    loginfo "
         load [jobs] [entries]                                                                 : run benchmark bulk loading of [entries] per parallel [jobs] against a running network        
-    " info
+    "
 }
 
 help_utils() {
     help_header "fabkit utils"
-    log "
+    loginfo "
         tojson                                                                                    : transform a string format with escaped characters to a valid JSON format
         tostring                                                                                  : transform a valid JSON format to
-    " info
+    "
 }

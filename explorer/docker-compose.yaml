@@ -7,8 +7,10 @@ networks:
       name: ${FABKIT_DOCKER_NETWORK}
 
 volumes:
-  pgdata:
+  explorerdb:
   walletstore:
+  prometheus:
+  grafana:
 
 services:
   explorerdb.mynetwork.com:
@@ -25,7 +27,7 @@ services:
       timeout: 10s
       retries: 5
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - explorerdb:/var/lib/postgresql/data
 
   explorer.mynetwork.com:
     image: hyperledger/explorer:${FABKIT_EXPLORER_VERSION}
@@ -43,9 +45,9 @@ services:
       - LOG_CONSOLE_STDOUT=true
       - EXPLORER_SYNC_BLOCKSYNCTIME_SEC=60000
     volumes:
-      - ./config.json:/opt/explorer/app/platform/fabric/config.json
-      - ./connection-profile:/opt/explorer/app/platform/fabric/connection-profile
-      - ./../network/cryptos:/tmp/crypto
+      - ${FABKIT_HOST_ROOT}/explorer/config.json:/opt/explorer/app/platform/fabric/config.json
+      - ${FABKIT_HOST_ROOT}/explorer/connection-profile:/opt/explorer/app/platform/fabric/connection-profile
+      - ${FABKIT_HOST_ROOT}/network/cryptos:/tmp/crypto
       - walletstore:/opt/wallet
     ports:
       - 8090:8080
@@ -57,8 +59,8 @@ services:
     container_name: proms
     image: prom/prometheus:${FABKIT_PROMETHEUS_VERSION}
     volumes:
-      - ./artifacts/operations/balance-transfer/prometheus.yml:/etc/prometheus/prometheus.yml
-      - ../data/prometheus:/prometheus
+      - ${FABKIT_HOST_ROOT}/explorer/artifacts/operations/balance-transfer/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus:/prometheus
     ports:
       - 9090:9090
 
@@ -66,8 +68,8 @@ services:
     container_name: grafana
     image: grafana/grafana:${FABKIT_GRAFANA_VERSION}
     volumes:
-      - ./artifacts/operations/balance-transfer/balance-transfer-grafana-dashboard.json:/var/lib/grafana/dashboards/mydashboard.json
-      - ./artifacts/operations/grafana_conf/provisioning:/etc/grafana/provisioning
-      - ../data/grafana:/var/lib/grafana
+      - ${FABKIT_HOST_ROOT}/explorer/artifacts/operations/balance-transfer/balance-transfer-grafana-dashboard.json:/var/lib/grafana/dashboards/mydashboard.json
+      - ${FABKIT_HOST_ROOT}/explorer/artifacts/operations/grafana_conf/provisioning:/etc/grafana/provisioning
+      - grafana:/var/lib/grafana
     ports:
       - 3000:3000
