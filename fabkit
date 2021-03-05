@@ -134,7 +134,7 @@ __set_debug() {
 }
 
 readonly func="$1"
-if [ "$fsunc" = "version" ]; then
+if [ "$func" = "version" ]; then
     echo "$FABKIT_VERSION"
     exit
 elif [ -n "$func"]; then

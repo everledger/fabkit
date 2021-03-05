@@ -29,15 +29,13 @@ __escape_slashes() {
 }
 
 __overwrite_line() {
-    local OLD_LINE_PATTERN=$1
-    shift
-    local NEW_LINE=$1
-    shift
-    local FILE=$1
+    local pattern=$1
+    local text_to_replace=$2
+    local file=$3
+    local new_text=$(echo "${text_to_replace}" | __escape_slashes)
 
-    local NEW=$(echo "${NEW_LINE}" | __escape_slashes)
-    sed -i .bak '/'"${OLD_LINE_PATTERN}"'/s/.*/'"${NEW}"'/' "${FILE}"
-    mv "${FILE}.bak" /tmp/
+    sed -i .bak '/'"${pattern}"'/s/.*/'"${new_text}"'/' "${file}"
+    mv "${file}.bak" /tmp/
 }
 
 __setup() {
@@ -169,7 +167,7 @@ __set_installation_type() {
 }
 
 __install_docker() {
-    FABKIT_DOCKER_IMAGE+=":${FABKIT_VERSION}"
+    FABKIT_DOCKER_IMAGE+=":latest"
     echo -en "Downloading the official Fabkit docker image $(cyan ${FABKIT_DOCKER_IMAGE})..."
     docker pull "${FABKIT_DOCKER_IMAGE}" &>/dev/null || __error "Error pulling ${FABKIT_DOCKER_IMAGE}"
 }
@@ -242,6 +240,7 @@ if git remote -v 2>/dev/null | grep "fabkit" &>/dev/null; then
     git fetch origin --tags &>/dev/null || __error "Error fetching tags from origin"
     FABKIT_VERSION=$(git describe --abbrev=0 --tags 2>/dev/null)
     FABKIT_VERSION=${FABKIT_VERSION:-latest}
+    echo
     cyan "Pulling ${FABKIT_VERSION} version"
     cyan "Going to set - ${PWD} - as your installation path!"
     echo
