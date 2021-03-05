@@ -133,13 +133,13 @@ __set_debug() {
     done
 }
 
-readonly func="$1"
-if [ "$func" = "version" ]; then
-    echo "$FABKIT_VERSION"
-    exit
-elif [ -n "$func"]; then
+readonly FUNC="$1"
+if [ -z "$FUNC" ]; then
     title
     help
+    exit
+elif [ "$FUNC" = "version" ]; then
+    echo "$FABKIT_VERSION"
     exit
 fi
 
@@ -148,186 +148,200 @@ title
 __check_dep_version
 __set_debug "$@"
 
-shift
-if [ "$func" = "network" ]; then
-    param="$1"
-    shift
+shift || true
+if [ "$FUNC" = "network" ]; then
+    PARAM="$1"
+    shift || true
     __set_params "$@"
     __validate_params
-    if [ "$param" = "install" ]; then
+    echo "PARAM $PARAM"
+    if [ "$PARAM" = "install" ]; then
         __log_setup
         install_network
-    elif [ "$param" = "start" ]; then
+    elif [ "$PARAM" = "start" ]; then
         start_network "$@"
-    elif [ "$param" = "restart" ]; then
+    elif [ "$PARAM" = "restart" ]; then
         restart_network
-    elif [ "$param" = "stop" ]; then
+    elif [ "$PARAM" = "stop" ]; then
         __load_lastrun
         __log_setup
         (stop_network) &
         __spinner
     else
         help_network
+        exit
     fi
-elif [ "$func" = "explorer" ]; then
-    param="$1"
-    shift
-    if [ "$param" = "start" ]; then
+elif [ "$FUNC" = "explorer" ]; then
+    PARAM="$1"
+    shift || true
+    if [ "$PARAM" = "start" ]; then
         start_explorer
-    elif [ "$param" = "stop" ]; then
+    elif [ "$PARAM" = "stop" ]; then
         (stop_explorer) &
         __spinner
     else
         help_explorer
+        exit
     fi
-elif [ "$func" = "dep" ]; then
-    param="$1"
-    shift
-    if [ "$param" = "install" ]; then
+elif [ "$FUNC" = "dep" ]; then
+    PARAM="$1"
+    shift || true
+    if [ "$PARAM" = "install" ]; then
         (dep_install "$@") &
         __spinner
-    elif [ "$param" = "update" ]; then
+    elif [ "$PARAM" = "update" ]; then
         (dep_update "$@") &
         __spinner
     else
         help_dep
+        exit
     fi
-elif [ "$func" = "chaincode" ]; then
+elif [ "$FUNC" = "chaincode" ]; then
     __load_lastrun
-    param="$1"
-    shift
-    if [ "$param" = "lifecycle" ]; then
+    PARAM="$1"
+    shift || true
+    if [ "$PARAM" = "lifecycle" ]; then
         __check_fabric_version 2
-        param="$1"
-        shift
-        if [ "$param" = "package" ]; then
+        PARAM="$1"
+        shift || true
+        if [ "$PARAM" = "package" ]; then
             (lifecycle_chaincode_package "$@") &
             __spinner
-        elif [ "$param" = "install" ]; then
+        elif [ "$PARAM" = "install" ]; then
             (lifecycle_chaincode_install "$@") &
             __spinner
-        elif [ "$param" = "approve" ]; then
+        elif [ "$PARAM" = "approve" ]; then
             (lifecycle_chaincode_approve "$@") &
             __spinner
-        elif [ "$param" = "commit" ]; then
+        elif [ "$PARAM" = "commit" ]; then
             (lifecycle_chaincode_commit "$@") &
             __spinner
-        elif [ "$param" = "deploy" ]; then
+        elif [ "$PARAM" = "deploy" ]; then
             lifecycle_chaincode_deploy "$@"
         else
             help_chaincode
+            exit
         fi
-    elif [ "$param" = "install" ]; then
+    elif [ "$PARAM" = "install" ]; then
         (chaincode_install "$@") &
         __spinner
-    elif [ "$param" = "instantiate" ]; then
+    elif [ "$PARAM" = "instantiate" ]; then
         (chaincode_instantiate "$@") &
         __spinner
-    elif [ "$param" = "upgrade" ]; then
+    elif [ "$PARAM" = "upgrade" ]; then
         (chaincode_upgrade "$@") &
         __spinner
-    elif [ "$param" = "test" ]; then
+    elif [ "$PARAM" = "test" ]; then
         (chaincode_test "$@") &
         __spinner
-    elif [ "$param" = "build" ]; then
+    elif [ "$PARAM" = "build" ]; then
         (chaincode_build "$@") &
         __spinner
-    elif [ "$param" = "package" ]; then
+    elif [ "$PARAM" = "package" ]; then
         (chaincode_pack "$@") &
         __spinner
-    elif [ "$param" = "zip" ]; then
+    elif [ "$PARAM" = "zip" ]; then
         (chaincode_zip "$@") &
         __spinner
-    elif [ "$param" = "query" ]; then
+    elif [ "$PARAM" = "query" ]; then
         (chaincode_query "$@") &
         __spinner
-    elif [ "$param" = "invoke" ]; then
+    elif [ "$PARAM" = "invoke" ]; then
         (chaincode_invoke "$@") &
         __spinner
     else
         help_chaincode
+        exit
     fi
-elif [ "$func" = "generate" ]; then
-    param="$1"
+elif [ "$FUNC" = "generate" ]; then
+    PARAM="$1"
     shift
-    if [ "$param" = "cryptos" ]; then
+    if [ "$PARAM" = "cryptos" ]; then
         generate_cryptos "$@"
-    elif [ "$param" = "genesis" ]; then
+    elif [ "$PARAM" = "genesis" ]; then
         generate_genesis "$@"
-    elif [ "$param" = "channeltx" ]; then
+    elif [ "$PARAM" = "channeltx" ]; then
         generate_channeltx "$@"
     else
         help_generate
+        exit
     fi
-elif [ "$func" = "ca" ]; then
-    param="$1"
-    shift
-    if [ "$param" = "register" ]; then
+elif [ "$FUNC" = "ca" ]; then
+    PARAM="$1"
+    shift || true
+    if [ "$PARAM" = "register" ]; then
         register_user "$@"
-    elif [ "$param" = "enroll" ]; then
+    elif [ "$PARAM" = "enroll" ]; then
         enroll_user "$@"
-    elif [ "$param" = "reenroll" ]; then
+    elif [ "$PARAM" = "reenroll" ]; then
         reenroll_user "$@"
-    elif [ "$param" = "revoke" ]; then
+    elif [ "$PARAM" = "revoke" ]; then
         revoke_user "$@"
     else
         help_ca
+        exit
     fi
-elif [ "$func" = "channel" ]; then
-    param="$1"
+elif [ "$FUNC" = "channel" ]; then
+    PARAM="$1"
     shift
-    if [ "$param" = "create" ]; then
+    if [ "$PARAM" = "create" ]; then
         (create_channel "$@") &
         __spinner
-    elif [ "$param" = "update" ]; then
+    elif [ "$PARAM" = "update" ]; then
         (update_channel "$@") &
         __spinner
-    elif [ "$param" = "join" ]; then
+    elif [ "$PARAM" = "join" ]; then
         (join_channel "$@") &
         __spinner
     else
         help_channel
+        exit
     fi
-elif [ "$func" = "benchmark" ]; then
-    param="$1"
-    shift
-    if [ "$param" = "load" ]; then
+elif [ "$FUNC" = "benchmark" ]; then
+    PARAM="$1"
+    shift || true
+    if [ "$PARAM" = "load" ]; then
         (__exec_jobs "$@") &
         __spinner
     else
         help_benchmark
+        exit
     fi
-elif [ "$func" = "utils" ]; then
-    param="$1"
-    shift
-    if [ "$param" = "tostring" ]; then
+elif [ "$FUNC" = "utils" ]; then
+    PARAM="$1"
+    shift || true
+    if [ "$PARAM" = "tostring" ]; then
         tostring "$@"
-    elif [ "$param" = "tojson" ]; then
+    elif [ "$PARAM" = "tojson" ]; then
         tojson "$@"
     else
         help_utils
+        exit
     fi
-elif [ "$func" = "install" ]; then
+elif [ "$FUNC" = "install" ]; then
     __set_params "$@"
     __validate_params
     __log_setup
     install_network
-elif [ "$func" = "start" ]; then
+elif [ "$FUNC" = "start" ]; then
     __set_params "$@"
     __validate_params
     start_network "$@"
-elif [ "$func" = "restart" ]; then
+elif [ "$FUNC" = "restart" ]; then
     __set_params "$@"
     __validate_params
     (restart_network) &
     __spinner
-elif [ "$func" = "stop" ]; then
+elif [ "$FUNC" = "stop" ]; then
     __set_params "$@"
     __validate_params
     __load_lastrun
     __log_setup
     (stop_network) &
     __spinner
+else
+    help
+    exit
 fi
 
 readonly END_TIME="$(date -u +%s)"

@@ -20,7 +20,7 @@ __quit() {
 }
 
 __error() {
-    red "$1"
+    red "$*" >&2
     exit 1
 }
 
