@@ -134,8 +134,12 @@ __set_debug() {
 }
 
 readonly func="$1"
-if [ "$func" = "version" ]; then
+if [ "$fsunc" = "version" ]; then
     echo "$FABKIT_VERSION"
+    exit
+elif [ -n "$func"]; then
+    title
+    help
     exit
 fi
 
@@ -324,8 +328,7 @@ elif [ "$func" = "stop" ]; then
     __log_setup
     (stop_network) &
     __spinner
-else
-    help
 fi
+
 readonly END_TIME="$(date -u +%s)"
 __timer "$START_TIME" "$END_TIME"

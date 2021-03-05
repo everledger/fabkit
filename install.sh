@@ -24,6 +24,22 @@ __error() {
     exit 1
 }
 
+__escape_slashes() {
+    sed 's/\//\\\//g'
+}
+
+__overwrite_line() {
+    local OLD_LINE_PATTERN=$1
+    shift
+    local NEW_LINE=$1
+    shift
+    local FILE=$1
+
+    local NEW=$(echo "${NEW_LINE}" | __escape_slashes)
+    sed -i .bak '/'"${OLD_LINE_PATTERN}"'/s/.*/'"${NEW}"'/' "${FILE}"
+    mv "${FILE}.bak" /tmp/
+}
+
 __setup() {
     local shell="$1"
     local profile="${HOME}/.${shell}rc"
@@ -35,11 +51,15 @@ __setup() {
 
     if [[ ! $(grep "^export FABKIT_ROOT=" "$profile") ]]; then
         cmd+="export FABKIT_ROOT=\"${FABKIT_ROOT}\"\n"
+    else
+        __overwrite_line "export FABKIT_ROOT" "export FABKIT_ROOT=\"${FABKIT_ROOT}\"" ${profile}
     fi
 
     for alias in "${ALIASES[@]}"; do
         if ! grep -q "alias ${alias}" <"$profile"; then
-            cmd+="alias ${alias}=\"${FABKIT_CMD}\"\n"
+            cmd+="alias ${alias}=${FABKIT_CMD}\n"
+        else
+            __overwrite_line "alias ${alias}" "alias ${alias}=${FABKIT_CMD}" ${profile}
         fi
     done
 
