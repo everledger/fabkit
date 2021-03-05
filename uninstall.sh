@@ -2,7 +2,7 @@
 
 ALIASES=("fabkit" "fk")
 
-__remove_alias() {
+__clear_setup() {
     local shell="$1"
     local profile="${HOME}/.${shell}rc"
 
@@ -102,17 +102,19 @@ echo
     echo -ne "Uninstalling..."
     case $SHELL in
     *bash)
-        __remove_alias bash
+        __clear_setup bash
         ;;
     *zsh)
-        __remove_alias zsh
+        __clear_setup zsh
         ;;
     *fish)
-        __remove_alias fish
+        __clear_setup fish
         ;;
     esac
     __remove_docker_images
 ) &
 __spinner
 echo
-green "Thank you for using fabkit! 🚀"
+yellow "For security reasons we haven't deleted the Fabkit folder :)"
+echo
+green "Thank you for using Fabkit! 🚀"

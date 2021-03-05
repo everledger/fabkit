@@ -221,7 +221,7 @@ chaincode_zip() {
     __check_param_chaincode "$1"
 
     loginfo "Zipping chaincode $1"
-    
+
     __clear_logdebu
     local chaincode_relative_path="$1"
     __set_chaincode_absolute_path "$chaincode_relative_path" chaincode_path
@@ -242,13 +242,13 @@ chaincode_zip() {
 
     cd "$chaincode_path" && zip -rq "${FABKIT_DIST_PATH}/${filename}" . || {
         logerr "Error creating chaincode archive"
-        if [[ "$chaincode_language" = "golang" && -d ${FABKIT_ROOT}/.${chaincode_name}.bk ]]; then
+        if [[ "$chaincode_language" = "golang" && -d ${FABKIT_ROOT}/.${chaincode_name}.bak ]]; then
             __chaincode_module_restore "$chaincode_path"
         fi
         exit 1
     }
 
-    if [[ "$chaincode_language" = "golang" && -d ${FABKIT_ROOT}/.${chaincode_name}.bk ]]; then
+    if [[ "$chaincode_language" = "golang" && -d ${FABKIT_ROOT}/.${chaincode_name}.bak ]]; then
         __chaincode_module_restore "$chaincode_path"
     fi
 
@@ -269,7 +269,7 @@ chaincode_pack() {
     __check_param_chaincode "$1"
 
     loginfo "Packing chaincode $1"
-    
+
     __clear_logdebu
     local chaincode_name="$1"
     local chaincode_version="$2"
@@ -308,13 +308,13 @@ chaincode_pack() {
     logdebu "Excecuting command: ${cmd}"
     (eval "$cmd") &>/dev/null || {
         logerr "Error executing chaincode pack"
-        if [[ "$chaincode_language" = "golang" && -d ${FABKIT_ROOT}/.${chaincode_name}.bk ]]; then
+        if [[ "$chaincode_language" = "golang" && -d ${FABKIT_ROOT}/.${chaincode_name}.bak ]]; then
             __chaincode_module_restore "$chaincode_path"
         fi
         exit 1
     }
 
-    if [[ "$chaincode_language" = "golang" && -d ${FABKIT_ROOT}/.${chaincode_name}.bk ]]; then
+    if [[ "$chaincode_language" = "golang" && -d ${FABKIT_ROOT}/.${chaincode_name}.bak ]]; then
         __chaincode_module_restore "$chaincode_path"
     fi
 
@@ -455,13 +455,13 @@ lifecycle_chaincode_package() {
     logdebu "Excecuting command: ${cmd}"
     (eval "$cmd") &>/dev/null || {
         logerr "Error executing chaincode package"
-        if [[ "$chaincode_language" = "golang" && -d ${FABKIT_ROOT}/.${chaincode_name}.bk ]]; then
+        if [[ "$chaincode_language" = "golang" && -d ${FABKIT_ROOT}/.${chaincode_name}.bak ]]; then
             __chaincode_module_restore "$chaincode_path"
         fi
         exit 1
     }
 
-    if [[ "$chaincode_language" = "golang" && -d ${FABKIT_ROOT}/.${chaincode_name}.bk ]]; then
+    if [[ "$chaincode_language" = "golang" && -d ${FABKIT_ROOT}/.${chaincode_name}.bak ]]; then
         __chaincode_module_restore "$chaincode_path"
     fi
 }
@@ -659,9 +659,9 @@ __chaincode_module_restore() {
     local chaincode_path=$1
     local chaincode_name="$(basename "$chaincode_path")"
 
-    if [ -d "${FABKIT_ROOT}/.${chaincode_name}.bk" ]; then
+    if [ -d "${FABKIT_ROOT}/.${chaincode_name}.bak" ]; then
         rm -r "$chaincode_path"
-        mv "${FABKIT_ROOT}/.${chaincode_name}.bk" "$chaincode_path"
+        mv "${FABKIT_ROOT}/.${chaincode_name}.bak" "$chaincode_path"
     fi
 }
 
@@ -883,7 +883,7 @@ __chaincode_module_pack() {
         # trick to allow chaincode packed as modules to work when deployed against remote environments
         logdebu "Copying chaincode files into vendor..."
         chaincode_name=$(basename "$chaincode_path")
-        rsync -ar "${chaincode_path}/" "${FABKIT_ROOT}/.${chaincode_name}.bk"
+        rsync -ar "${chaincode_path}/" "${FABKIT_ROOT}/.${chaincode_name}.bak"
         rsync -r --ignore-existing --exclude='vendor' --exclude='*.mod' --exclude='*.sum' "${chaincode_path}/cmd/" "$chaincode_path"
         rm -rf "${chaincode_path}/cmd"
         __module=$(awk <"${chaincode_path}/go.mod" '($1 ~ /module/) {print $2}')

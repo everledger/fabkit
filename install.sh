@@ -32,10 +32,11 @@ __overwrite_line() {
     local pattern=$1
     local text_to_replace=$2
     local file=$3
-    local new_text=$(echo "${text_to_replace}" | __escape_slashes)
+    local new_text=$(echo ${text_to_replace//\//\\\/})
 
-    sed -i .bak '/'"${pattern}"'/s/.*/'"${new_text}"'/' "${file}"
-    mv "${file}.bak" /tmp/
+    sed -i'.bak' '/'"${pattern}"'/s/.*/'"${new_text}"'/' "${file}"
+
+    mv "${file}.bak" ~/.
 }
 
 __setup() {
