@@ -32,7 +32,7 @@ __overwrite_line() {
     local pattern=$1
     local text_to_replace=$2
     local file=$3
-    local new_text=$(echo ${text_to_replace//\//\\\/})
+    local new_text=${text_to_replace//\//\\\/}
 
     sed -i'.bak' '/'"${pattern}"'/s/.*/'"${new_text}"'/' "${file}"
 
@@ -48,7 +48,7 @@ __setup() {
         profile="${HOME}/.config/fish/config.fish"
     fi
 
-    if [[ ! $(grep "^export FABKIT_ROOT=" "$profile") ]]; then
+    if ! grep -q "^export FABKIT_ROOT=" <"$profile"; then
         cmd+="export FABKIT_ROOT=\"${FABKIT_ROOT}\"\n"
     else
         __overwrite_line "export FABKIT_ROOT" "export FABKIT_ROOT=\"${FABKIT_ROOT}\"" ${profile}

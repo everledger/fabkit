@@ -11,28 +11,28 @@ __clear_setup() {
     fi
 
     # Remove fabkit root
-    if [[ $(grep "^export FABKIT_ROOT=" "$profile") ]]; then
-        grep -v "export FABKIT_ROOT=" ${profile} >.${shell}.bk
-        mv .${shell}.bk ${profile}
+    if grep -q "^export FABKIT_ROOT=" <"$profile"; then
+        grep -v "export FABKIT_ROOT=" "$profile" >".${shell}.bk"
+        mv ".${shell}.bk" "$profile"
     fi
 
     # Remove comments
-    if [[ $(grep "^# Fabkit" "$profile") ]]; then
-        grep -v "# Fabkit" ${profile} >.${shell}.bk
-        mv .${shell}.bk ${profile}
+    if grep -q "^# Fabkit" <"$profile"; then
+        grep -v "# Fabkit" "$profile" >".${shell}.bk"
+        mv ".${shell}.bk" "$profile"
     fi
 
     # Remove aliases
     for alias in "${ALIASES[@]}"; do
         if grep -q "alias ${alias}" <"$profile"; then
-            grep -v "alias ${alias}" ${profile} >.${shell}.bk
-            mv .${shell}.bk ${profile}
+            grep -v "alias ${alias}" "$profile" >".${shell}.bk"
+            mv ".${shell}.bk" "$profile"
         fi
     done
 }
 
 __remove_docker_images() {
-    docker rmi $(docker images --filter=reference='everledgerio/fabkit' -q) -f &>/dev/null || return 0
+    docker rmi "$(docker images --filter=reference='everledgerio/fabkit' -q)" -f &>/dev/null || true
 }
 
 __spinner() {
@@ -93,13 +93,13 @@ purple "
              ■-■-■               
     "
 blue "Welcome to the Fabkit's uninstaller 🧰 "
-blue "We are sad to see you go! :("
+blue "We are sad to see you go! 😞"
 echo
 read -n 1 -s -r -p "Press any key to start! (or CTRL-C to exit) "
 echo
 echo
 (
-    echo -ne "Uninstalling..."
+    echo -en "$(blue "Uninstalling...")"
     case $SHELL in
     *bash)
         __clear_setup bash
@@ -115,6 +115,6 @@ echo
 ) &
 __spinner
 echo
-yellow "For security reasons we haven't deleted the Fabkit folder :)"
+yellow "For security reasons we haven't deleted the Fabkit folder 😼"
 echo
 green "Thank you for using Fabkit! 🚀"

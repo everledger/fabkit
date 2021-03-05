@@ -28,6 +28,7 @@ RUN mkdir -p "$GOPATH/src" "$GOPATH/bin" && chmod -R 777 "$GOPATH"
 
 RUN go get -u github.com/onsi/ginkgo/ginkgo
 
+COPY . /home/fabkit
 ENV FABKIT_ROOT /home/fabkit
 
 WORKDIR $FABKIT_ROOT
