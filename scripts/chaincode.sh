@@ -82,9 +82,9 @@ chaincode_build() {
         __init_go_mod install "$chaincode_path"
 
         if ! type -p go &>/dev/null; then
-            (docker run --rm -v "${chaincode_path}:/usr/src/myapp" -w "/usr/src/myapp/${chaincode_name}" -e CGO_ENABLED=0 "$FABKIT_GOLANG_DOCKER_IMAGE" sh -c "go build -a -installsuffix nocgo ./... 1>/dev/null 2> >(__throw >&2) && rm -rf ./${chaincode_name} &>/dev/null") || exit 1
+            (docker run --rm -v "${chaincode_path}:/usr/src/myapp" -w "/usr/src/myapp/${chaincode_name}" -e CGO_ENABLED=0 "$FABKIT_GOLANG_DOCKER_IMAGE" sh -c "go build -a -installsuffix nocgo ./... &>/dev/null && rm -rf ./${chaincode_name} &>/dev/null") || exit 1
         else
-            (cd "${chaincode_path}" && CGO_ENABLED=0 go build -a -installsuffix nocgo ./... 1>/dev/null 2> >(__throw >&2) && rm -rf ./"${chaincode_name}" &>/dev/null) || exit 1
+            (cd "${chaincode_path}" && CGO_ENABLED=0 go build -a -installsuffix nocgo ./... &>/dev/null && rm -rf ./"${chaincode_name}" &>/dev/null) || exit 1
         fi
     fi
 
@@ -683,7 +683,7 @@ __set_chaincode_module_main() {
 __check_test_deps() {
     if ! type -p ginkgo &>/dev/null; then
         logwarn "Ginkgo module missing. Going to install..."
-        go get -u github.com/onsi/ginkgo/ginkgo
+        go get -u github.com/onsi/ginkgo/ginkgo &>/dev/null || exit 1
     fi
 }
 
@@ -691,7 +691,7 @@ __init_go_mod() {
     local operation=$1
     local chaincode_relative_path=$2
 
-    cd "${chaincode_path}" 1>/dev/null 2> >(__throw >&2) || exit
+    cd "${chaincode_path}" 1>/dev/null 2> >(__throw >&2) || exit 1
 
     if [ ! -f "./go.mod" ]; then
         go mod init 1>/dev/null 2> >(__throw >&2)
@@ -700,13 +700,13 @@ __init_go_mod() {
     __delete_path vendor &>/dev/null
 
     if [ "${operation}" = "install" ]; then
-        go get ./... 1>/dev/null 2> >(__throw >&2)
+        go get ./... &>/dev/null || exit 1
     elif [ "${operation}" = "update" ]; then
-        go get -u=patch ./... 1>/dev/null 2> >(__throw >&2)
+        go get -u=patch ./... &>/dev/null || exit 1
     fi
 
-    go mod tidy 1>/dev/null 2> >(__throw >&2)
-    go mod vendor 1>/dev/null 2> >(__throw >&2)
+    go mod tidy &>/dev/null || exit 1
+    go mod vendor &>/dev/null || exit 1
 
     cd "$FABKIT_ROOT" || return
 }
