@@ -155,7 +155,6 @@ if [ "$FUNC" = "network" ]; then
     shift || true
     __set_params "$@"
     __validate_params
-    echo "PARAM $PARAM"
     if [ "$PARAM" = "install" ]; then
         __log_setup
         install_network
