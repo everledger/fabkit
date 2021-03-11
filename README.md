@@ -1,4 +1,4 @@
-![Fabkit](./docs/images/logo.jpg)
+![Fabkit](./docs/images/logo.png)
 
 ![Showcase](./docs/images/showcase.webp)
 
