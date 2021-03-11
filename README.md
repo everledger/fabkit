@@ -27,6 +27,32 @@ If you want to be able to use **test** and **build** functionalities for your ch
 - [Node](https://nodejs.org/en/) [>= 10.20]
 - [Java](https://adoptopenjdk.net/) [>= 8]
 
+### For Windows users
+
+Windows users will need to run Fabkit by using the provided Docker image and particularly caring about the syntax when defining the root installation directory. 
+
+We recommend to create a directory under your user's home directory, for example, in `C:\Users\me\...\fabkit` (where `C:` is the disk used by Windows, `me` is your current username and `...` means "any directory in between").
+
+For instance, you may want to choose to install fabkit in `C:\Users\JohnDoe\Workspace\fabkit`. In that case, you will need to reformat this directory path as:
+
+```bat
+//c/Users/JohnDoe/Workspace/fabkit
+```
+
+Then you can replace this string in `<FORMATTED_WINDOWS_PATH>` and run Fabkit with the below:
+
+```bash
+docker run --rm -it --name fabkit -e FABKIT_HOST_ROOT=<FORMATTED_WINDOWS_PATH> -v /var/run/docker.sock:/var/run/docker.sock -v <FORMATTED_WINDOWS_PATH>:/home/fabkit everledgerio/fabkit ./fabkit %*
+```
+
+You can put the following in a file called `fabkit.bat` and include it in your path environment variable to act as an alias.
+
+```bat
+@echo off
+echo.
+docker run --rm -it --name fabkit -e FABKIT_HOST_ROOT=<FORMATTED_WINDOWS_PATH> -v /var/run/docker.sock:/var/run/docker.sock -v <FORMATTED_WINDOWS_PATH>:/home/fabkit everledgerio/fabkit ./fabkit %*
+```
+
 ## Install
 
 You can simply download the `install.sh` and run it in your terminal with one command (**disclaimer: sorry this option is not available just yet as we are not public! 😞**)
@@ -46,7 +72,7 @@ or, if you have cloned the repo, you can always run the interactive installer to
 To purge `fabkit` from your system you can run anytime this simply script:
 
 ```bash
-./uninstaller.sh
+./uninstall.sh
 ```
 
 ## Getting started
@@ -63,8 +89,6 @@ The following command will spin a Hyperledger Fabric network up, generating _cha
 
 ```bash
 fabkit network start
-# or
-fabkit network start --orgs 1
 ```
 
 It will execute the following functions:

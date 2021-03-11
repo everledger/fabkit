@@ -53,7 +53,8 @@ __log_setup() {
     echo "Organizations: $(loginfo ${FABKIT_ORGS:-1})"
     echo "TLS enabled: $(loginfo ${FABKIT_TLS_ENABLED})"
     echo "Debug mode: $(loginfo ${FABKIT_DEBUG:-false})"
-    echo "Fresh-start mode: $(loginfo ${FABKIT_RESET:-false})"
+    echo "Reset mode: $(loginfo ${FABKIT_RESET:-false})"
+    echo "Quick-run mode: $(loginfo ${FABKIT_QUICK_RUN:-false})"
     echo "Interactive mode: $(loginfo ${FABKIT_INTERACTIVE:-false})"
     echo
 }
@@ -154,7 +155,6 @@ if [ "$FUNC" = "network" ]; then
     shift || true
     __set_params "$@"
     __validate_params
-    echo "PARAM $PARAM"
     if [ "$PARAM" = "install" ]; then
         __log_setup
         install_network

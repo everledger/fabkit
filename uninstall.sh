@@ -32,7 +32,8 @@ __clear_setup() {
 }
 
 __remove_docker_images() {
-    docker rmi "$(docker images --filter=reference='everledgerio/fabkit' -q)" -f &>/dev/null || true
+    # shellcheck disable=SC2046
+    docker rmi -f $(docker images --filter=reference='everledgerio/fabkit' -q) &>/dev/null || true
 }
 
 __spinner() {

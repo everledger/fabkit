@@ -24,10 +24,6 @@ __error() {
     exit 1
 }
 
-__escape_slashes() {
-    sed 's/\//\\\//g'
-}
-
 __overwrite_line() {
     local pattern=$1
     local text_to_replace=$2
@@ -51,14 +47,14 @@ __setup() {
     if ! grep -q "^export FABKIT_ROOT=" <"$profile"; then
         cmd+="export FABKIT_ROOT=\"${FABKIT_ROOT}\"\n"
     else
-        __overwrite_line "export FABKIT_ROOT" "export FABKIT_ROOT=\"${FABKIT_ROOT}\"" ${profile}
+        __overwrite_line "export FABKIT_ROOT" "export FABKIT_ROOT=\"${FABKIT_ROOT}\"" "$profile"
     fi
 
     for alias in "${ALIASES[@]}"; do
         if ! grep -q "alias ${alias}" <"$profile"; then
-            cmd+="alias ${alias}=${FABKIT_CMD}\n"
+            cmd+="alias ${alias}=\"${FABKIT_CMD}\"\n"
         else
-            __overwrite_line "alias ${alias}" "alias ${alias}=${FABKIT_CMD}" ${profile}
+            __overwrite_line "alias ${alias}" "alias ${alias}=\"${FABKIT_CMD}\"" "$profile"
         fi
     done
 
@@ -102,8 +98,13 @@ __download_and_extract() {
     echo "Downloading $(cyan $FABKIT_TARBALL)"
     # curl -L https:/bitbucket.org/everledger/${FABKIT_TARBALL} & __spinner
     read -rp "Where would you like to install Fabkit? [$(yellow "$FABKIT_DEFAULT_PATH")] " FABKIT_ROOT
+    FABKIT_ROOT=${FABKIT_ROOT:-${FABKIT_DEFAULT_PATH}}
+    FABKIT_ROOT=${FABKIT_ROOT%/}
 
-    export FABKIT_ROOT=${FABKIT_ROOT:-${FABKIT_DEFAULT_PATH}}
+    # for security reasons we will create a new directory "fabkit" if the path is not empty and it is not an existing fabkit's root
+    if [[ "$FABKIT_ROOT" = "$HOME" || ("$FABKIT_ROOT" != "$HOME" && "$(ls -A "$FABKIT_ROOT")" && ! -f ${FABKIT_ROOT}/fabkit) ]]; then
+        FABKIT_ROOT+="/fabkit"
+    fi
     while [[ ! "$yn" =~ ^Yy && -d "$FABKIT_ROOT" ]]; do
         if [ -d "$FABKIT_ROOT" ]; then
             yellow "!!!!! ATTENTION !!!!!"
@@ -133,32 +134,34 @@ __download_and_extract() {
 
 __set_installation_type() {
     FABKIT_RUNNER="${FABKIT_ROOT}/fabkit"
-    FABKIT_RUNNER_DOCKER='docker run -it --rm --name fabkit -e "FABKIT_HOST_ROOT=$FABKIT_ROOT" -v /var/run/docker.sock:/var/run/docker.sock -v "$FABKIT_ROOT":/home/fabkit everledgerio/fabkit:FABKIT_VERSION ./fabkit "$@"'
-    FABKIT_RUNNER_DOCKER=${FABKIT_RUNNER_DOCKER/FABKIT_VERSION/$FABKIT_VERSION}
+    FABKIT_RUNNER_DOCKER="docker run --rm -it --name fabkit -e \"FABKIT_HOST_ROOT=\$FABKIT_ROOT\" -v /var/run/docker.sock:/var/run/docker.sock -v \"\$FABKIT_ROOT\":/home/fabkit everledgerio/fabkit:$FABKIT_VERSION ./fabkit \"\$@\""
 
     OS="$(uname)"
     case $OS in
     Linux | FreeBSD | Darwin)
         blue "Great! It looks like your system supports Fabric natively, but you can also run it a docker container."
-        echo
-        blue "Choose any of these options: "
-        echo
-        cyan "1) Local installation (recommended)"
-        cyan "2) Docker installation"
 
-        read -r n
-        case $n in
-        1)
-            FABKIT_CMD="${FABKIT_RUNNER}"
-            green "Roger. Initiating local install!"
-            ;;
-        2)
-            FABKIT_CMD="'${FABKIT_RUNNER_DOCKER}'"
-            green "Roger. Initiating docker install!"
-            __install_docker &
-            __spinner
-            ;;
-        esac
+        while [[ ! "$cmd" =~ (1|2) ]]; do
+            echo
+            blue "Choose any of these options: "
+            echo
+            cyan "1) Local installation (recommended)"
+            cyan "2) Docker installation"
+            read -r cmd
+            case $cmd in
+            1)
+                FABKIT_CMD="${FABKIT_RUNNER}"
+                green "Roger. Initiating local install!"
+                ;;
+            2)
+                FABKIT_CMD="${FABKIT_RUNNER_DOCKER}"
+                green "Roger. Initiating docker install!"
+                __install_docker &
+                __spinner
+                ;;
+            *) ;;
+            esac
+        done
         ;;
     *)
         yellow "It looks like your system does NOT support natively Fabric, but don't worry, we've got you covered!"
@@ -168,9 +171,10 @@ __set_installation_type() {
 }
 
 __install_docker() {
-    FABKIT_DOCKER_IMAGE+=":latest"
+    FABKIT_DOCKER_IMAGE+=":$FABKIT_VERSION"
     echo -en "Downloading the official Fabkit docker image $(cyan ${FABKIT_DOCKER_IMAGE})..."
     docker pull "${FABKIT_DOCKER_IMAGE}" &>/dev/null || __error "Error pulling ${FABKIT_DOCKER_IMAGE}"
+    docker tag "${FABKIT_DOCKER_IMAGE}" "${FABKIT_DOCKER_IMAGE/$FABKIT_VERSION/latest}" || __error "Error tagging ${FABKIT_DOCKER_IMAGE} to latest"
 }
 
 __spinner() {
@@ -241,6 +245,7 @@ if git remote -v 2>/dev/null | grep "fabkit" &>/dev/null; then
     git fetch origin --tags &>/dev/null || __error "Error fetching tags from origin"
     FABKIT_VERSION=$(git describe --abbrev=0 --tags 2>/dev/null)
     FABKIT_VERSION=${FABKIT_VERSION:-latest}
+    FABKIT_VERSION=${FABKIT_VERSION/v/}
     echo
     cyan "Pulling ${FABKIT_VERSION} version"
     cyan "Going to set - ${PWD} - as your installation path!"
