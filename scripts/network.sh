@@ -89,9 +89,14 @@ start_network() {
 
     __set_lastrun
 
-    docker network create "$FABKIT_DOCKER_NETWORK" 1>/dev/null 2> >(__throw >&2)
+    docker network create "$FABKIT_DOCKER_NETWORK" &>/dev/null || true
 
-    (loginfo "Launching containers" && (eval "$command") &>/dev/null && sleep 5) &
+    (
+        if loginfo "Launching containers" && (eval "$command") 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+            logerr "Failed to launch containers"
+            exit 1
+        fi
+    ) && sleep 5 &
     __spinner
 
     __log_setup
@@ -115,7 +120,10 @@ restart_network() {
     for org in $(seq 1 "$FABKIT_ORGS"); do
         local command+="docker-compose --env-file ${FABKIT_ROOT}/.env -f ${FABKIT_NETWORK_PATH}/org${org}.yaml --force-recreate -d;"
     done
-    (eval "$command") &>/dev/null || exit 1
+    if (eval "$command") 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+        logerr "Failed to restart containers"
+        exit 1
+    fi
 
     logwarn "The chaincode container will be instantiated automatically once the peer executes the first invoke or query"
 }
@@ -126,7 +134,10 @@ stop_network() {
     for org in $(seq 1 "$FABKIT_ORGS"); do
         local command+="docker-compose --env-file ${FABKIT_ROOT}/.env -f ${FABKIT_NETWORK_PATH}/org${org}.yaml down --remove-orphans;"
     done
-    (eval "$command") &>/dev/null || exit 1
+    if (eval "$command") 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+        logerr "Failed to stop running containers"
+        exit 1
+    fi
 
     if docker ps | grep -q "hyperledger/explorer"; then
         stop_explorer
@@ -139,6 +150,7 @@ stop_network() {
     docker rmi -f $(docker images | awk '($1 ~ /^<none>|dev-/) {print $3}' &>/dev/null) &>/dev/null || true
     docker system prune -f &>/dev/null || true
 
+    # TODO: Fix to enable network restart
     if [ "${FABKIT_RESET:-}" = "true" ] || [ -z "${FABKIT_INTERACTIVE}" ] || [ "${FABKIT_INTERACTIVE}" = "false" ]; then
         docker volume prune -f $(docker volume ls | awk '($2 ~ /${FABKIT_DOCKER_NETWORK}/) {print $2}' &>/dev/null) &>/dev/null
         return 0
@@ -193,19 +205,25 @@ initialize_network() {
 __replace_config_capabilities() {
     configtx=${FABKIT_CONFIG_PATH}/configtx
     if [[ "${FABKIT_FABRIC_VERSION}" =~ 2.* ]]; then
-        __yq <"${configtx}.base.yaml" e '.Capabilities.Channel.V2_0 = true |
+        if (__yq <"${configtx}.base.yaml" e '.Capabilities.Channel.V2_0 = true |
             .Capabilities.Channel.V1_4_3 = false |
             .Capabilities.Orderer.V2_0 = true |
             .Capabilities.Orderer.V1_4_2 = false |
             .Capabilities.Application.V2_0 = true |
-            .Capabilities.Application.V1_4_2 = false' - >"${configtx}.yaml" 2> >(__throw >&2)
+            .Capabilities.Application.V1_4_2 = false' - >"${configtx}.yaml") 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+            logerr "Error in replacing Fabric capabilities"
+            exit 1
+        fi
     else
-        __yq <"${configtx}.base.yaml" e '.Capabilities.Channel.V2_0 = false |
+        if (__yq <"${configtx}.base.yaml" e '.Capabilities.Channel.V2_0 = false |
             .Capabilities.Channel.V1_4_3 = true |
             .Capabilities.Orderer.V2_0 = false |
             .Capabilities.Orderer.V1_4_2 = true |
             .Capabilities.Application.V2_0 = false |
-            .Capabilities.Application.V1_4_2 = true' - >"${configtx}.yaml" 2> >(__throw >&2)
+            .Capabilities.Application.V1_4_2 = true' - >"${configtx}.yaml") 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+            logerr "Error in replacing Fabric capabilities"
+            exit 1
+        fi
     fi
 }
 
@@ -267,7 +285,7 @@ generate_genesis() {
     __replace_config_capabilities
 
     # generate genesis block for orderer
-    if ! docker run --rm -v /var/run/docker.sock:/host/var/run/docker.sock \
+    if (docker run --rm -v /var/run/docker.sock:/host/var/run/docker.sock \
         -v "${config_path/$FABKIT_ROOT/$FABKIT_HOST_ROOT}/configtx.yaml:/configtx.yaml" \
         -v "${channel_dir/$FABKIT_ROOT/$FABKIT_HOST_ROOT}:/channels/orderer-system-channel" \
         -v "${cryptos_path/$FABKIT_ROOT/$FABKIT_HOST_ROOT}:/crypto-config" \
@@ -275,9 +293,9 @@ generate_genesis() {
         -e FABRIC_CFG_PATH=/ \
         hyperledger/fabric-tools:"$FABKIT_FABRIC_VERSION" \
         bash -c " \
-            configtxgen -profile $network_profile -channelID orderer-system-channel -outputBlock /channels/orderer-system-channel/genesis_block.pb /configtx.yaml;
+            configtxgen -profile $network_profile -channelID orderer-system-channel -outputBlock /channels/orderer-system-channel/genesis_block.pb /configtx.yaml &&
             configtxgen -inspectBlock /channels/orderer-system-channel/genesis_block.pb >/channels/orderer-system-channel/genesis_block.pb.json
-        " &>/dev/null; then
+        " 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal") > >(__throw >&2); then
         # TODO: grab error log from docker logs fabric-cli
         logerr "Failed to generate orderer genesis block"
         exit 1
@@ -364,7 +382,7 @@ generate_channeltx() {
     __replace_config_capabilities
 
     # generate channel configuration transaction
-    if ! docker run --rm -v /var/run/docker.sock:/host/var/run/docker.sock \
+    if (docker run --rm -v /var/run/docker.sock:/host/var/run/docker.sock \
         -v "${config_path/$FABKIT_ROOT/$FABKIT_HOST_ROOT}/configtx.yaml:/configtx.yaml" \
         -v "${channel_dir/$FABKIT_ROOT/$FABKIT_HOST_ROOT}:/channels/${channel_name}" \
         -v "${cryptos_path/$FABKIT_ROOT/$FABKIT_HOST_ROOT}:/crypto-config" \
@@ -372,22 +390,22 @@ generate_channeltx() {
         -e FABRIC_CFG_PATH=/ \
         hyperledger/fabric-tools:${FABKIT_FABRIC_VERSION} \
         bash -c " \
-            configtxgen -profile $channel_profile -outputCreateChannelTx /channels/${channel_name}/${channel_name}_tx.pb -channelID ${channel_name} /configtx.yaml;
+            configtxgen -profile $channel_profile -outputCreateChannelTx /channels/${channel_name}/${channel_name}_tx.pb -channelID ${channel_name} /configtx.yaml &&
             configtxgen -inspectChannelCreateTx /channels/${channel_name}/${channel_name}_tx.pb >/channels/${channel_name}/${channel_name}_tx.pb.json
-        " &>/dev/null; then
+        " 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal") > >(__throw >&2); then
         logerr "Failed to generate channel configuration transaction"
         exit 1
     fi
 
     # generate anchor peer transaction
-    if ! docker run --rm -v /var/run/docker.sock:/host/var/run/docker.sock \
+    if (docker run --rm -v /var/run/docker.sock:/host/var/run/docker.sock \
         -v "${config_path/$FABKIT_ROOT/$FABKIT_HOST_ROOT}/configtx.yaml:/configtx.yaml" \
         -v "${channel_dir/$FABKIT_ROOT/$FABKIT_HOST_ROOT}:/channels/${channel_name}" \
         -v "${cryptos_path/$FABKIT_ROOT/$FABKIT_HOST_ROOT}:/crypto-config" \
         -u "$(id -u):$(id -g)" \
         -e FABRIC_CFG_PATH=/ \
         hyperledger/fabric-tools:${FABKIT_FABRIC_VERSION} \
-        configtxgen -profile "$channel_profile" -outputAnchorPeersUpdate "/channels/${channel_name}/${org_msp}_anchors_tx.pb" -channelID "$channel_name" -asOrg "$org_msp" /configtx.yaml &>/dev/null; then
+        configtxgen -profile "$channel_profile" -outputAnchorPeersUpdate "/channels/${channel_name}/${org_msp}_anchors_tx.pb" -channelID "$channel_name" -asOrg "$org_msp" /configtx.yaml 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal") > >(__throw >&2); then
         logerr "Failed to generate anchor peer update for $org_msp"
         exit 1
     fi
@@ -431,12 +449,12 @@ generate_cryptos() {
         mkdir -p "$cryptos_path"
 
         # generate crypto material
-        if ! docker run --rm -v /var/run/docker.sock:/host/var/run/docker.sock \
+        if (docker run --rm -v /var/run/docker.sock:/host/var/run/docker.sock \
             -v "${config_path/$FABKIT_ROOT/$FABKIT_HOST_ROOT}/crypto-config.yaml:/crypto-config.yaml" \
             -v "${cryptos_path/$FABKIT_ROOT/$FABKIT_HOST_ROOT}:/crypto-config" \
             -u "$(id -u):$(id -g)" \
             hyperledger/fabric-tools:"${FABKIT_FABRIC_VERSION}" \
-            cryptogen generate --config=/crypto-config.yaml --output=/crypto-config &>/dev/null; then
+            cryptogen generate --config=/crypto-config.yaml --output=/crypto-config 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal") > >(__throw >&2); then
             logerr "Failed to generate crypto material"
             exit 1
         fi

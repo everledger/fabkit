@@ -31,31 +31,12 @@ logdebu() {
     __print_to_file "$FABKIT_LOGFILE" "$1" "[DEBUG]"
 }
 
-__print_to_file() {
-    local file="$1"
-    local message="$2"
-    local tag="$3"
-    local timestamp=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
-
-    echo -e "$tag $timestamp $message" >>"$file"
-}
-
-# remove dangling spinner when running in debug mode
-__clear_logdebu() {
-    if [ "${FABKIT_DEBUG:-}" = "false" ]; then return; fi
-    __clear_spinner && echo
-}
-
 tostring() {
     echo "$*" | __jq tostring 2>/dev/null || echo "${*//\"/\\\"}"
 }
 
 tojson() {
     echo "$*" | __jq . 2>/dev/null || echo "${*//\\\"/\"}"
-}
-
-__clear_spinner() {
-    tput cub1 && tput el
 }
 
 __spinner() {
@@ -82,5 +63,37 @@ __spinner() {
     else
         echo -e "❌ "
         return 1
+    fi
+}
+
+__clear_spinner() {
+    tput cub1 && tput el
+}
+
+__print_to_file() {
+    local file="$1"
+    local message="$2"
+    local tag="$3"
+    local timestamp=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+    echo -e "$tag $timestamp $message" >>"$file"
+}
+
+# remove dangling spinner when running in debug mode
+__clear_logdebu() {
+    if [ "${FABKIT_DEBUG:-}" = "false" ]; then return; fi
+    __clear_spinner && echo
+}
+
+__throw() {
+    local input
+
+    if [ -n "$1" ]; then
+        input="$1"
+        __clear_spinner && logerr "$input"
+    else
+        while read -r input; do
+            __clear_spinner && logerr "$input"
+        done
     fi
 }

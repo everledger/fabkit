@@ -57,9 +57,15 @@ chaincode_test() {
         __init_go_mod install "$chaincode_path"
 
         if ! type -p go &>/dev/null; then
-            (docker run --rm -v "${FABKIT_CHAINCODE_PATH}:/usr/src/myapp" -w "/usr/src/myapp/${chaincode_name}" -e CGO_ENABLED=0 -e CORE_CHAINCODE_LOGGING_LEVEL=debug "$FABKIT_GOLANG_DOCKER_IMAGE" sh -c "ginkgo -r 1>/dev/null 2> >(__throw >&2)") || exit 1
+            if (docker run --rm -v "${FABKIT_CHAINCODE_PATH}:/usr/src/myapp" -w "/usr/src/myapp/${chaincode_name}" -e CGO_ENABLED=0 -e CORE_CHAINCODE_LOGGING_LEVEL=debug "$FABKIT_GOLANG_DOCKER_IMAGE" ginkgo -r | grep -iE "erro|pani|fail|fatal" > >(__throw >&2)); then
+                logerr "Failed testing chaincode $chaincode_name"
+                exit 1
+            fi
         else
-            (cd "$chaincode_path" && CORE_CHAINCODE_LOGGING_LEVEL=debug CGO_ENABLED=0 ginkgo -r 1>/dev/null 2> >(__throw >&2)) || exit 1
+            if (cd "$chaincode_path" && (CORE_CHAINCODE_LOGGING_LEVEL=debug CGO_ENABLED=0 ginkgo -r | grep -iE "erro|pani|fail|fatal" > >(__throw >&2))); then
+                logerr "Failed testing chaincode $chaincode_name"
+                exit 1
+            fi
         fi
     fi
 
@@ -82,9 +88,15 @@ chaincode_build() {
         __init_go_mod install "$chaincode_path"
 
         if ! type -p go &>/dev/null; then
-            (docker run --rm -v "${chaincode_path}:/usr/src/myapp" -w "/usr/src/myapp/${chaincode_name}" -e CGO_ENABLED=0 "$FABKIT_GOLANG_DOCKER_IMAGE" sh -c "go build -a -installsuffix nocgo ./... &>/dev/null && rm -rf ./${chaincode_name} &>/dev/null") || exit 1
+            if ! (docker run --rm -v "${chaincode_path}:/usr/src/myapp" -w "/usr/src/myapp/${chaincode_name}" -e CGO_ENABLED=0 "$FABKIT_GOLANG_DOCKER_IMAGE" go build -a -installsuffix nocgo ./... >/dev/null 2> >(__throw >&2) && rm -rf ./${chaincode_name} &>/dev/null); then
+                logerr "Failed building chaincode $chaincode_name"
+                exit 1
+            fi
         else
-            (cd "${chaincode_path}" && CGO_ENABLED=0 go build -a -installsuffix nocgo ./... &>/dev/null && rm -rf ./"${chaincode_name}" &>/dev/null) || exit 1
+            if ! (cd "${chaincode_path}" && CGO_ENABLED=0 go build -a -installsuffix nocgo ./... >/dev/null 2> >(__throw >&2) && rm -rf ./"${chaincode_name}" &>/dev/null); then
+                logerr "Failed building chaincode $chaincode_name"
+                exit 1
+            fi
         fi
     fi
 
@@ -129,13 +141,13 @@ chaincode_install() {
 
     __clear_logdebu
     logdebu "Excecuting command: ${cmd}"
-    (eval "$cmd") &>/dev/null || {
+    if (eval "$cmd") 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
         if [ "$chaincode_language" = "golang" ]; then
             __chaincode_module_restore "$chaincode_path"
         fi
         logerr "Error executing chaincode install"
         exit 1
-    }
+    fi
 
     if [ "$chaincode_language" = "golang" ]; then
         __chaincode_module_restore "$chaincode_path"
@@ -172,7 +184,10 @@ chaincode_instantiate() {
 
     __clear_logdebu
     logdebu "Excecuting command: ${cmd}"
-    (eval "$cmd") &>/dev/null || exit 1
+    if (eval "$cmd") 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+        logerr "Error instatiating chaincode $chaincode_name"
+        exit 1
+    fi
 }
 
 chaincode_upgrade() {
@@ -205,7 +220,10 @@ chaincode_upgrade() {
 
     __clear_logdebu
     logdebu "Excecuting command: ${cmd}"
-    (eval "$cmd") &>/dev/null || exit 1
+    if (eval "$cmd") 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+        logerr "Error upgrading chaincode $chaincode_name"
+        exit 1
+    fi
 }
 
 chaincode_zip() {
@@ -306,13 +324,13 @@ chaincode_pack() {
 
     __clear_logdebu
     logdebu "Excecuting command: ${cmd}"
-    (eval "$cmd") &>/dev/null || {
+    if (eval "$cmd") 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
         logerr "Error executing chaincode pack"
         if [[ "$chaincode_language" = "golang" && -d ${FABKIT_ROOT}/.${chaincode_name}.bak ]]; then
             __chaincode_module_restore "$chaincode_path"
         fi
         exit 1
-    }
+    fi
 
     if [[ "$chaincode_language" = "golang" && -d ${FABKIT_ROOT}/.${chaincode_name}.bak ]]; then
         __chaincode_module_restore "$chaincode_path"
@@ -348,7 +366,10 @@ chaincode_invoke() {
 
     __clear_logdebu
     logdebu "Excecuting command: ${cmd}"
-    (eval "$cmd") &>/dev/null || exit 1
+    if (eval "$cmd") 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+        logerr "Error invoking chaincode $chaincode_name"
+        exit 1
+    fi
 }
 
 chaincode_query() {
@@ -379,15 +400,18 @@ chaincode_query() {
 
     __clear_logdebu
     logdebu "Excecuting command: ${cmd}"
-    local query=$(eval "$cmd" || exit 1)
-    if [ -n "$query" ]; then
-        __clear_spinner
-        echo -en "\n\n"
-        tojson "$query"
-        echo
+    local query=$(eval "$cmd" 2>&1)
+    if echo $query | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+        logerr "Error invoking chaincode $chaincode_name"
+        exit 1
     else
-        __clear_spinner
-        echo -e "\nNo results"
+        if [ -n "$query" ]; then
+            echo -en "\n\n"
+            tojson "$query"
+            echo
+        else
+            echo -e "\nNo results"
+        fi
     fi
 }
 
@@ -453,13 +477,13 @@ lifecycle_chaincode_package() {
 
     __clear_logdebu
     logdebu "Excecuting command: ${cmd}"
-    (eval "$cmd") &>/dev/null || {
+    if (eval "$cmd") 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
         logerr "Error executing chaincode package"
         if [[ "$chaincode_language" = "golang" && -d ${FABKIT_ROOT}/.${chaincode_name}.bak ]]; then
             __chaincode_module_restore "$chaincode_path"
         fi
         exit 1
-    }
+    fi
 
     if [[ "$chaincode_language" = "golang" && -d ${FABKIT_ROOT}/.${chaincode_name}.bak ]]; then
         __chaincode_module_restore "$chaincode_path"
@@ -493,7 +517,10 @@ lifecycle_chaincode_install() {
 
     __clear_logdebu
     logdebu "Excecuting command: ${cmd}"
-    (eval "$cmd") &>/dev/null || exit 1
+    if (eval "$cmd") 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+        logerr "Error installing chaincode $chaincode_name"
+        exit 1
+    fi
 }
 
 lifecycle_chaincode_approve() {
@@ -535,7 +562,10 @@ lifecycle_chaincode_approve() {
 
     __clear_logdebu
     logdebu "Excecuting command: ${cmd}"
-    (eval "$cmd") &>/dev/null || exit 1
+    if (eval "$cmd") 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+        logerr "Error approving chaincode $chaincode_name"
+        exit 1
+    fi
 }
 
 lifecycle_chaincode_commit() {
@@ -600,7 +630,10 @@ lifecycle_chaincode_commit() {
     fi
     __clear_logdebu
     logdebu "Excecuting command: ${cmd}"
-    (eval "${forall}") &>/dev/null || exit 1
+    if (eval "${forall}") 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+        logerr "Error committing chaincode $chaincode_name"
+        exit 1
+    fi
 
     logdebu "Query the chaincode definitions that have been committed to the channel"
     __set_certs "$org" "$peer"
@@ -612,7 +645,10 @@ lifecycle_chaincode_commit() {
     fi
     __clear_logdebu
     logdebu "Excecuting command: ${cmd}"
-    (eval "$cmd") &>/dev/null || exit 1
+    if (eval "$cmd") 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+        logerr "Error querying committed chaincode $chaincode_name"
+        exit 1
+    fi
 
     logdebu "Init the chaincode"
     __clear_spinner
@@ -683,7 +719,7 @@ __set_chaincode_module_main() {
 __check_test_deps() {
     if ! type -p ginkgo &>/dev/null; then
         logwarn "Ginkgo module missing. Going to install..."
-        go get -u github.com/onsi/ginkgo/ginkgo &>/dev/null || exit 1
+        go get -u github.com/onsi/ginkgo/ginkgo >/dev/null 2> >(__throw >&2) || exit 1
     fi
 }
 
@@ -691,22 +727,22 @@ __init_go_mod() {
     local operation=$1
     local chaincode_relative_path=$2
 
-    cd "${chaincode_path}" 1>/dev/null 2> >(__throw >&2) || exit 1
+    cd "${chaincode_path}" >/dev/null 2> >(__throw >&2) || exit 1
 
     if [ ! -f "./go.mod" ]; then
-        go mod init 1>/dev/null 2> >(__throw >&2)
+        go mod init >/dev/null 2> >(__throw >&2)
     fi
 
     __delete_path vendor &>/dev/null
 
     if [ "${operation}" = "install" ]; then
-        go get ./... &>/dev/null || exit 1
+        go get ./... >/dev/null 2> >(__throw >&2) || exit 1
     elif [ "${operation}" = "update" ]; then
-        go get -u=patch ./... &>/dev/null || exit 1
+        go get -u=patch ./... >/dev/null 2> >(__throw >&2) || exit 1
     fi
 
-    go mod tidy &>/dev/null || exit 1
-    go mod vendor &>/dev/null || exit 1
+    go mod tidy >/dev/null 2> >(__throw >&2) || exit 1
+    go mod vendor >/dev/null 2> >(__throw >&2) || exit 1
 
     cd "$FABKIT_ROOT" || return
 }
