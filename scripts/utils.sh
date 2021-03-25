@@ -58,6 +58,11 @@ __check_java_version() {
 }
 
 __check_docker_version() {
+    if docker info --format '{{json .}}' | grep -q "Cannot connect"; then
+        logerr "Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?"
+        exit 1
+    fi
+
     # shellcheck disable=SC2155
     local version=$(docker version --format '{{.Server.Version}}' 2>/dev/null)
     __check_version docker "$FABKIT_DOCKER_VERSION_SUPPORTED" "$version"
@@ -65,11 +70,6 @@ __check_docker_version() {
     # shellcheck disable=SC2155
     version=$(docker-compose version --short 2>/dev/null)
     __check_version docker-compose "$FABKIT_DOCKER_COMPOSE_VERSION_SUPPORTED" "$version"
-
-    if docker info --format '{{json .}}' | grep "Cannot connect" &>/dev/null; then
-        logerr "Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?"
-        exit 1
-    fi
 }
 
 # delete path recursively and asks for root permissions if needed
@@ -187,19 +187,8 @@ __catch() {
         ((frame++)) || true
         line="$(caller "$frame" 2>&1 | cut -d ' ' -f 1)"
     done
-
+    echo "Check the log file for more details: $(logwarn "cat $FABKIT_LOGFILE")"
+    
     exit "$1"
 }
 
-__throw() {
-    local input
-
-    if [ -n "$1" ]; then
-        input="$1"
-        __clear_spinner && logerr "$input"
-    else
-        while read -r input; do
-            __clear_spinner && logerr "$input"
-        done
-    fi
-}

@@ -195,7 +195,7 @@ fabkit explorer stop
 
 ### UI Explorer
 
-- Username: `admin` | Password: `adminpw`
+- Username: `exploreradmin` | Password: `exploreradminpw`
 
 - Host: [http://localhost:8090](http://localhost:8090)
 
