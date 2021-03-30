@@ -92,7 +92,9 @@ __throw() {
         input="$1"
         __clear_spinner && logerr "$input"
     else
+        local count=0
         while read -r input; do
+            if [ $count -eq 0 ]; then ((count++)) || true; echo; fi
             __clear_spinner && logerr "$input"
         done
     fi

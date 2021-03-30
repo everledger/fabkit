@@ -20,6 +20,7 @@ __error() {
         red "[ERROR] $input"
         echo -e "[ERROR] $(date -u +"%Y-%m-%d %H:%M:%S UTC") $input" >>"$FABKIT_LOGFILE"
     else
+        echo
         while read -r input; do
             red "[ERROR] $input"
             echo -e "[ERROR] $(date -u +"%Y-%m-%d %H:%M:%S UTC") $input" >>"$FABKIT_LOGFILE"
