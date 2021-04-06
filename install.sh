@@ -2,7 +2,8 @@
 
 stty -echoctl
 trap 'exit' INT TERM
-trap '__exit_on_error' EXIT QUIT
+trap 'kill 0' EXIT QUIT
+trap '__exit_on_error' ERR
 
 FABKIT_DEFAULT_PATH="${HOME}/.fabkit"
 FABKIT_DOCKER_IMAGE="everledgerio/fabkit"
@@ -20,8 +21,9 @@ __error() {
         red "[ERROR] $input"
         echo -e "[ERROR] $(date -u +"%Y-%m-%d %H:%M:%S UTC") $input" >>"$FABKIT_LOGFILE"
     else
-        echo
+        local count=0
         while read -r input; do
+            if [ $count -eq 0 ]; then ((count++)) || true; echo; fi
             red "[ERROR] $input"
             echo -e "[ERROR] $(date -u +"%Y-%m-%d %H:%M:%S UTC") $input" >>"$FABKIT_LOGFILE"
         done
@@ -94,13 +96,13 @@ __download_and_extract() {
     echo "Downloading $(cyan "$FABKIT_TARBALL")"
     # curl -L https:/bitbucket.org/everledger/${FABKIT_TARBALL} & __spinner
 
-    while [[ ! "$yn" =~ ^Yy && -d "$FABKIT_ROOT" ]]; do
+    while [[ ! ("$yn" =~ ^Yy || ( -n "$FABKIT_ROOT" && ! -d "$FABKIT_ROOT") ) ]]; do
         read -rp "Where would you like to install Fabkit? [$(yellow "$FABKIT_DEFAULT_PATH")] " FABKIT_ROOT
         FABKIT_ROOT=${FABKIT_ROOT:-${FABKIT_DEFAULT_PATH}}
         FABKIT_ROOT=${FABKIT_ROOT%/}
 
         # for security reasons we will create a new directory "fabkit" if the path is not empty and it is not an existing fabkit's root
-        if [[ "$FABKIT_ROOT" = "$HOME" || ("$FABKIT_ROOT" != "$HOME" && "$(ls -A "$FABKIT_ROOT")" && ! -f ${FABKIT_ROOT}/fabkit) ]]; then
+        if [[ "$FABKIT_ROOT" = "$HOME" || ("$FABKIT_ROOT" != "$HOME" && "$(ls -A "$FABKIT_ROOT" &>/dev/null)" && ! -f ${FABKIT_ROOT}/fabkit) ]]; then
             FABKIT_ROOT+="/fabkit"
         fi
 
