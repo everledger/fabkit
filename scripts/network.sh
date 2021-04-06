@@ -145,9 +145,9 @@ stop_network() {
 
     __clear_logdebu
     logdebu "Cleaning docker leftovers containers and images"
-    docker rm -f $(docker ps -a | awk '($2 ~ /${FABKIT_DOCKER_NETWORK}|dev-/) {print $1}' &>/dev/null) &>/dev/null || true
-    docker rmi -f $(docker images -qf "dangling=true" &>/dev/null) &>/dev/null || true
-    docker rmi -f $(docker images | awk '($1 ~ /^<none>|dev-/) {print $3}' &>/dev/null) &>/dev/null || true
+    docker rm -f $(docker ps -a | awk '($2 ~ /${FABKIT_DOCKER_NETWORK}|dev-/) {print $1}') &>/dev/null || true
+    docker rmi -f $(docker images -qf "dangling=true") &>/dev/null || true
+    docker rmi -f $(docker images | awk '($1 ~ /^<none>|dev-/) {print $3}') &>/dev/null || true
     docker system prune -f &>/dev/null || true
 
     # TODO: Fix to enable network restart
