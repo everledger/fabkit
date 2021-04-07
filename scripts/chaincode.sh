@@ -736,9 +736,15 @@ __init_go_mod() {
     __delete_path vendor &>/dev/null
 
     if [ "${operation}" = "install" ]; then
-        go get ./... >/dev/null 2> >(__throw >&2) || exit 1
+        if go get ./... 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+            logerr "Error installing go modules"
+            exit 1
+        fi
     elif [ "${operation}" = "update" ]; then
-        go get -u=patch ./... >/dev/null 2> >(__throw >&2) || exit 1
+        if go get -u=patch ./... 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+            logerr "Error updating go modules"
+            exit 1
+        fi
     fi
 
     go mod tidy >/dev/null 2> >(__throw >&2) || exit 1
