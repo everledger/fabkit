@@ -41,11 +41,13 @@ __docker_third_party_images_pull() {
 start_network() {
     loginfoln "Starting Fabric network"
 
-    if docker volume ls | grep -q "$FABKIT_DOCKER_NETWORK" && [ "${FABKIT_RESET:-}" = "false" ] && [ "${FABKIT_INTERACTIVE:-}" = "true" ]; then
+    if (docker volume ls | grep -q "$FABKIT_DOCKER_NETWORK") && [[ (-z "${FABKIT_RESET}" || "${FABKIT_RESET}" = "false") ]]; then
         logwarn "Found volumes"
-        read -rp "Do you wish to restart the network and reuse this data? [yes/no=default] " yn
+        read -rp "Do you wish to restart the network and reuse this data? (y/N) " yn
         case $yn in
         [Yy]*)
+            __load_lastrun
+            __log_setup
             restart_network &
             __spinner
             return 0
@@ -54,6 +56,7 @@ start_network() {
         esac
     fi
 
+    __prune_docker_volumes
     stop_network &
     __spinner
 
@@ -92,11 +95,14 @@ start_network() {
     docker network create "$FABKIT_DOCKER_NETWORK" &>/dev/null || true
 
     (
-        if loginfo "Launching containers" && (eval "$command") 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+        loginfo "Launching Fabric components"
+        if ! (eval "$command" &>/dev/null) > >(__throw >&2); then
+            echo
             logerr "Failed to launch containers"
             exit 1
         fi
-    ) && sleep 5 &
+        sleep 5
+    ) &
     __spinner
 
     __log_setup
@@ -105,27 +111,66 @@ start_network() {
 }
 
 restart_network() {
-    loginfo "Restarting Fabric network"
-
-    if ! docker volume ls | grep -q "$FABKIT_DOCKER_NETWORK"; then
-        logerr "No volumes from a previous run found. Run a normal start."
-        exit 1
-    fi
-
-    __load_lastrun
-    __log_setup
+    loginfo "Restarting Fabric network "
 
     docker network create "$FABKIT_DOCKER_NETWORK" &>/dev/null || true
 
     for org in $(seq 1 "$FABKIT_ORGS"); do
-        local command+="docker-compose --env-file ${FABKIT_ROOT}/.env -f ${FABKIT_NETWORK_PATH}/org${org}.yaml --force-recreate -d;"
+        local command+="docker-compose --env-file ${FABKIT_ROOT}/.env -f ${FABKIT_NETWORK_PATH}/org${org}.yaml up -d;"
     done
     if (eval "$command") 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
         logerr "Failed to restart containers"
         exit 1
     fi
 
+    __clear_logdebu
+    echo
     logwarn "The chaincode container will be instantiated automatically once the peer executes the first invoke or query"
+}
+
+__prune_docker_volumes() {
+    docker volume prune -f $(docker volume ls | awk '($2 ~ /${FABKIT_DOCKER_NETWORK}/) {print $2}') &>/dev/null || true
+}
+
+__check_docker_volumes() {
+    if [ "${FABKIT_RESET:-}" = "true" ]; then
+        __prune_docker_volumes
+    elif docker volume ls | grep -q "$FABKIT_DOCKER_NETWORK"; then
+        logwarn "!!!!! ATTENTION !!!!!"
+        logwarn "Found volumes"
+        read -rp "Do you wish to remove this data? (y/N) " yn
+        case $yn in
+        [Yy]*)
+            (
+                stop_network
+                __prune_docker_volumes
+            ) &
+            __spinner
+            ;;
+        *)
+            (
+                stop_network
+            ) &
+            __spinner
+            ;;
+        esac
+    else
+        (
+            stop_network
+        ) &
+        __spinner
+    fi
+}
+
+__check_previous_network() {
+    if ! docker volume ls | grep -q "$FABKIT_DOCKER_NETWORK"; then
+        echo
+        logwarn "No volumes from a previous run found. Running a normal start..."
+        start_network
+    else
+        (restart_network) &
+        __spinner
+    fi
 }
 
 stop_network() {
@@ -148,23 +193,6 @@ stop_network() {
     docker rm -f $(docker ps -a | awk '($2 ~ /${FABKIT_DOCKER_NETWORK}|dev-/) {print $1}') &>/dev/null || true
     docker rmi -f $(docker images -qf "dangling=true") &>/dev/null || true
     docker rmi -f $(docker images | awk '($1 ~ /^<none>|dev-/) {print $3}') &>/dev/null || true
-    docker system prune -f &>/dev/null || true
-
-    # TODO: Fix to enable network restart
-    if [ "${FABKIT_RESET:-}" = "true" ] || [ -z "${FABKIT_INTERACTIVE}" ] || [ "${FABKIT_INTERACTIVE}" = "false" ]; then
-        docker volume prune -f $(docker volume ls | awk '($2 ~ /${FABKIT_DOCKER_NETWORK}/) {print $2}' &>/dev/null) &>/dev/null
-        return 0
-    elif docker volume ls | grep -q "$FABKIT_DOCKER_NETWORK" && [ "${FABKIT_INTERACTIVE:-}" = "true" ]; then
-        logerr "!!!!! ATTENTION !!!!!"
-        logerr "Found volumes"
-        read -rp "Do you wish to remove this data? [yes/no=default] " yn
-        case $yn in
-        [Yy]*)
-            docker volume prune -f $(docker volume ls | awk '($2 ~ /${FABKIT_DOCKER_NETWORK}/) {print $2}' &>/dev/null) &>/dev/null
-            ;;
-        *) return 0 ;;
-        esac
-    fi
 }
 
 initialize_network() {
@@ -263,7 +291,7 @@ generate_genesis() {
     else
         if [ -d "$channel_dir" ]; then
             logwarn "Channel directory ${channel_dir} already exists"
-            read -rp "Do you wish to re-generate channel config? [yes/no=default] " yn
+            read -rp "Do you wish to re-generate channel config? (y/N) " yn
             case $yn in
             [Yy]*) ;;
             *) return 0 ;;
@@ -356,7 +384,7 @@ generate_channeltx() {
     else
         if [ -d "$channel_dir" ]; then
             logwarn "Channel directory ${channel_dir} already exists"
-            read -rp "Do you wish to re-generate channel config? [yes/no=default] " yn
+            read -rp "Do you wish to re-generate channel config? (y/N) " yn
             case $yn in
             [Yy]*) ;;
             *) return 0 ;;
@@ -437,7 +465,7 @@ generate_cryptos() {
     else
         if [ -d "${cryptos_path}" ]; then
             logwarn "crypto-config already exists"
-            read -rp "Do you wish to remove crypto-config and generate new ones? [yes/no=default] " yn
+            read -rp "Do you wish to remove crypto-config and generate new ones? (y/N) " yn
             case $yn in
             [Yy]*) __delete_path "$cryptos_path" ;;
             *) ;;

@@ -7,8 +7,12 @@ networks:
       name: ${FABKIT_DOCKER_NETWORK}
 
 volumes:
+  ca.org3.example.com:
+    name: ${FABKIT_DOCKER_NETWORK}_ca.org3.example.com
   peer0.org3.example.com:
+    name: ${FABKIT_DOCKER_NETWORK}_peer0.org3.example.com
   couchdb.peer0.org3.example.com:
+    name: ${FABKIT_DOCKER_NETWORK}_couchdb.peer0.org3.example.com
 
 services:
   ca.org3.example.com:
@@ -20,6 +24,7 @@ services:
       - FABRIC_CA_SERVER_CA_NAME=ca.org3.example.com
     volumes:
       - ${FABKIT_HOST_ROOT}/network/cryptos/peerOrganizations/org3.example.com/ca/:/etc/hyperledger/fabric-ca-server-config
+      - ca.org3.example.com:/etc/hyperledger/fabric-ca-server
     ports:
       - 9054:7054
 
