@@ -19,13 +19,16 @@ __error() {
     if [ -n "$1" ]; then
         input="$1"
         red "[ERROR] $input"
-        echo -e "[ERROR] $(date -u +"%Y-%m-%d %H:%M:%S UTC") $input" >>"$FABKIT_LOGFILE"
+        echo -e "$(date -u +"%Y-%m-%d %H:%M:%S UTC") [ERROR] $input" >>"$FABKIT_LOGFILE"
     else
         local count=0
         while read -r input; do
-            if [ $count -eq 0 ]; then ((count++)) || true; echo; fi
+            if [ $count -eq 0 ]; then
+                ((count++)) || true
+                echo
+            fi
             red "[ERROR] $input"
-            echo -e "[ERROR] $(date -u +"%Y-%m-%d %H:%M:%S UTC") $input" >>"$FABKIT_LOGFILE"
+            echo -e "$(date -u +"%Y-%m-%d %H:%M:%S UTC") [ERROR] $input" >>"$FABKIT_LOGFILE"
         done
     fi
 }
@@ -96,7 +99,7 @@ __download_and_extract() {
     echo "Downloading $(cyan "$FABKIT_TARBALL")"
     # curl -L https:/bitbucket.org/everledger/${FABKIT_TARBALL} & __spinner
 
-    while [[ ! ("$yn" =~ ^Yy || ( -n "$FABKIT_ROOT" && ! -d "$FABKIT_ROOT") ) ]]; do
+    while [[ ! ("$yn" =~ ^Yy || (-n "$FABKIT_ROOT" && ! -d "$FABKIT_ROOT")) ]]; do
         read -rp "Where would you like to install Fabkit? [$(yellow "$FABKIT_DEFAULT_PATH")] " FABKIT_ROOT
         FABKIT_ROOT=${FABKIT_ROOT:-${FABKIT_DEFAULT_PATH}}
         FABKIT_ROOT=${FABKIT_ROOT%/}
@@ -109,7 +112,7 @@ __download_and_extract() {
         if [ -d "$FABKIT_ROOT" ]; then
             yellow "!!!!! ATTENTION !!!!!"
             yellow "Directory ${FABKIT_ROOT} already exists and cannot be overwritten"
-            read -rp "Do you want to delete this directory in order to proceed with the installation? [yes/no=default] " yn
+            read -rp "Do you want to delete this directory in order to proceed with the installation? (y/N) " yn
             case $yn in
             [Yy]*) if [ -w "$FABKIT_ROOT" ]; then rm -rf "$FABKIT_ROOT"; fi ;;
             *) ;;

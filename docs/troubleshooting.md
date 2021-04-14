@@ -104,3 +104,18 @@ Error: could not assemble transaction, err proposal response was not successful,
 ## Possible solutions
 
 - Uncheck “Use gRPC FUSE for file sharing” option in the Docker "Preferences > Experimental Features" and restart your daemon
+
+## Issue scenario
+
+When running the network start command, the following error message is shown:
+
+```bash
+   → Generating cryptos ⡿
+       [ERROR] Failed to generate crypto material
+       [ERROR] panic: runtime error: invalid memory address or nil pointer dereference
+       [ERROR] 2021-04-14 12:56:30.685 UTC [bccsp_sw] storePrivateKey -> ERRO 001 Failed storing private key [e77c33598a67d7c08d2be1e920c80a602ef0b56343d9a3ccb62e7bacb5cc6a2e]: [open /crypto-config/peerOrganizations/org1.example.com/ca/e77c33598a67d7c08d2be1e920c80a602ef0b56343d9a3ccb62e7bacb5cc6a2e_sk: stale NFS file handle]
+```
+
+## Possible solutions
+
+It is a volume synchronization error that happens with docker every so often. Try to run the same command again.

@@ -24,7 +24,10 @@ create_channel() {
 
     __clear_logdebu
     logdebu "Excecuting command: ${cmd}"
-    (eval "$cmd") &>/dev/null || exit 1
+    if (eval "$cmd") 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+        logerr "Error creating channel $channel_name"
+        exit 1
+    fi
 }
 
 join_channel() {
@@ -52,7 +55,10 @@ join_channel() {
     __clear_logdebu
     __clear_logdebu
     logdebu "Excecuting command: ${cmd}"
-    (eval "$cmd") &>/dev/null || exit 1
+    if (eval "$cmd") 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+        logerr "Error joining channel $channel_name"
+        exit 1
+    fi
 }
 
 update_channel() {
@@ -80,5 +86,8 @@ update_channel() {
 
     __clear_logdebu
     logdebu "Excecuting command: ${cmd}"
-    (eval "$cmd") &>/dev/null || exit 1
+    if (eval "$cmd") 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+        logerr "Error updating channel $channel_name"
+        exit 1
+    fi
 }

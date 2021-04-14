@@ -76,7 +76,7 @@ __print_to_file() {
     local tag="$3"
     local timestamp=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
 
-    echo -e "$tag $timestamp $message" >>"$file"
+    echo -e "$timestamp $tag $message" >>"$file"
 }
 
 # remove dangling spinner when running in debug mode

@@ -33,7 +33,7 @@ start_explorer() {
     fi
 
     (
-        if loginfo "Launching containers" && docker-compose --env-file "${FABKIT_ROOT}/.env" -f "${FABKIT_EXPLORER_PATH}/docker-compose.yaml" up --force-recreate -d 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+        if loginfo "Launching Explorer components" && docker-compose --env-file "${FABKIT_ROOT}/.env" -f "${FABKIT_EXPLORER_PATH}/docker-compose.yaml" up --force-recreate -d 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
             logerr "Failed to launch containers"
             exit 1
         fi
