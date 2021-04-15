@@ -152,6 +152,10 @@ __set_debug "$@"
 shift || true
 if [ "$FUNC" = "network" ]; then
     PARAM="$1"
+    if [ -z $PARAM ]; then
+        help_network
+        exit
+    fi
     shift || true
     __set_params "$@"
     __validate_params
@@ -173,6 +177,10 @@ if [ "$FUNC" = "network" ]; then
     fi
 elif [ "$FUNC" = "explorer" ]; then
     PARAM="$1"
+    if [ -z $PARAM ]; then
+        help_explorer
+        exit
+    fi
     shift || true
     if [ "$PARAM" = "start" ]; then
         start_explorer
@@ -185,6 +193,10 @@ elif [ "$FUNC" = "explorer" ]; then
     fi
 elif [ "$FUNC" = "dep" ]; then
     PARAM="$1"
+    if [ -z $PARAM ]; then
+        help_dep
+        exit
+    fi
     shift || true
     if [ "$PARAM" = "install" ]; then
         (dep_install "$@") &
@@ -199,6 +211,10 @@ elif [ "$FUNC" = "dep" ]; then
 elif [ "$FUNC" = "chaincode" ]; then
     __load_lastrun
     PARAM="$1"
+    if [ -z $PARAM ]; then
+        help_chaincode
+        exit
+    fi
     shift || true
     if [ "$PARAM" = "lifecycle" ]; then
         __check_fabric_version 2
@@ -255,6 +271,10 @@ elif [ "$FUNC" = "chaincode" ]; then
     fi
 elif [ "$FUNC" = "generate" ]; then
     PARAM="$1"
+    if [ -z $PARAM ]; then
+        help_generate
+        exit
+    fi
     shift
     if [ "$PARAM" = "cryptos" ]; then
         generate_cryptos "$@"
@@ -268,6 +288,10 @@ elif [ "$FUNC" = "generate" ]; then
     fi
 elif [ "$FUNC" = "ca" ]; then
     PARAM="$1"
+    if [ -z $PARAM ]; then
+        help_ca
+        exit
+    fi
     shift || true
     if [ "$PARAM" = "register" ]; then
         register_user "$@"
@@ -283,9 +307,14 @@ elif [ "$FUNC" = "ca" ]; then
     fi
 elif [ "$FUNC" = "channel" ]; then
     PARAM="$1"
+    __load_lastrun
+    if [ -z $PARAM ]; then
+        help_channel
+        exit
+    fi
     shift
     if [ "$PARAM" = "create" ]; then
-        (create_channel "$@") &
+        (init_and_create_channel "$@") &
         __spinner
     elif [ "$PARAM" = "update" ]; then
         (update_channel "$@") &
@@ -299,6 +328,10 @@ elif [ "$FUNC" = "channel" ]; then
     fi
 elif [ "$FUNC" = "benchmark" ]; then
     PARAM="$1"
+    if [ -z $PARAM ]; then
+        help_benchmark
+        exit
+    fi
     shift || true
     if [ "$PARAM" = "load" ]; then
         (__exec_jobs "$@") &
@@ -309,6 +342,10 @@ elif [ "$FUNC" = "benchmark" ]; then
     fi
 elif [ "$FUNC" = "utils" ]; then
     PARAM="$1"
+    if [ -z $PARAM ]; then
+        help_utils
+        exit
+    fi
     shift || true
     if [ "$PARAM" = "tostring" ]; then
         tostring "$@"

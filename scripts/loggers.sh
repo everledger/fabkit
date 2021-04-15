@@ -39,6 +39,13 @@ tojson() {
     echo "$*" | __jq . 2>/dev/null || echo "${*//\\\"/\"}"
 }
 
+# used to simulate spinner formatting when running within sub-processes
+__spinner_formatter() {
+    tput el
+    echo
+    echo -en "\033[3C→ "
+}
+
 __spinner() {
     local LC_CTYPE=C
     local pid=$!
@@ -94,7 +101,10 @@ __throw() {
     else
         local count=0
         while read -r input; do
-            if [ $count -eq 0 ]; then ((count++)) || true; echo; fi
+            if [ $count -eq 0 ]; then
+                ((count++)) || true
+                echo
+            fi
             __clear_spinner && logerr "$input"
         done
     fi

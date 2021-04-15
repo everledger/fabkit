@@ -71,16 +71,10 @@ start_network() {
         local command+="docker-compose --env-file ${FABKIT_ROOT}/.env -f ${FABKIT_NETWORK_PATH}/org${org}.yaml up -d;"
     done
 
+    __set_network_env
     # TODO: create raft profiles for different network topologies (multi-org support)
     if [ "$FABKIT_CONFIGTX_PROFILE_NETWORK" = "$RAFT_ONE_ORG" ]; then
-        FABKIT_CONFIGTX_PROFILE_NETWORK=${RAFT_ONE_ORG}
         command+="docker-compose --env-file ${FABKIT_ROOT}/.env -f ${FABKIT_NETWORK_PATH}/raft.yaml up -d;"
-    elif [ "${FABKIT_ORGS}" = "2" ]; then
-        FABKIT_CONFIGTX_PROFILE_NETWORK=${TWO_ORGS}
-        FABKIT_CONFIGTX_PROFILE_CHANNEL=TwoOrgsChannel
-    elif [ "${FABKIT_ORGS}" = "3" ]; then
-        FABKIT_CONFIGTX_PROFILE_NETWORK=${THREE_ORGS}
-        FABKIT_CONFIGTX_PROFILE_CHANNEL=ThreeOrgsChannel
     fi
 
     (generate_cryptos "$FABKIT_CONFIG_PATH" "$FABKIT_CRYPTOS_PATH") &
@@ -255,6 +249,18 @@ __replace_config_capabilities() {
     fi
 }
 
+__set_network_env() {
+    if [ "$FABKIT_CONFIGTX_PROFILE_NETWORK" = "$RAFT_ONE_ORG" ]; then
+        FABKIT_CONFIGTX_PROFILE_NETWORK=${RAFT_ONE_ORG}
+    elif [ "${FABKIT_ORGS}" = "2" ]; then
+        FABKIT_CONFIGTX_PROFILE_NETWORK=${TWO_ORGS}
+        FABKIT_CONFIGTX_PROFILE_CHANNEL=TwoOrgsChannel
+    elif [ "${FABKIT_ORGS}" = "3" ]; then
+        FABKIT_CONFIGTX_PROFILE_NETWORK=${THREE_ORGS}
+        FABKIT_CONFIGTX_PROFILE_CHANNEL=ThreeOrgsChannel
+    fi
+}
+
 # generate genesis block
 # $1: base path
 # $2: config path
@@ -379,10 +385,10 @@ generate_channeltx() {
     local channel_profile="$6"
     local org_msp="$7"
 
-    if [ "${FABKIT_RESET:-}" = "true" ] || [ -z "${FABKIT_INTERACTIVE}" ] || [ "${FABKIT_INTERACTIVE}" = "false" ]; then
-        __delete_path "$channel_dir"
-    else
-        if [ -d "$channel_dir" ]; then
+    if [ -d "$channel_dir" ]; then
+        if [ "${FABKIT_RESET:-}" = "true" ] || [ -z "${FABKIT_INTERACTIVE}" ] || [ "${FABKIT_INTERACTIVE}" = "false" ]; then
+            __delete_path "$channel_dir"
+        else
             logwarn "Channel directory ${channel_dir} already exists"
             read -rp "Do you wish to re-generate channel config? (y/N) " yn
             case $yn in
@@ -390,6 +396,7 @@ generate_channeltx() {
             *) return 0 ;;
             esac
             __delete_path "$channel_dir"
+
         fi
     fi
 
