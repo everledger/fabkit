@@ -83,7 +83,7 @@ __delete_path() {
     else
         logerr "!!!!! ATTENTION !!!!!"
         logerr "Directory \"${1}\" requires superuser permissions"
-        read -rp "Do you wish to continue? [yes/no=default] " yn
+        read -rp "Do you wish to continue? (y/N) " yn
         case $yn in
         [Yy]*) sudo rm -rf "$1" ;;
         *) return ;;
@@ -187,8 +187,18 @@ __catch() {
         ((frame++)) || true
         line="$(caller "$frame" 2>&1 | cut -d ' ' -f 1)"
     done
-    echo "Check the log file for more details: $(logwarn "cat $FABKIT_LOGFILE")"
-    
+    logwarn "Check the log file for more details: cat $FABKIT_LOGFILE"
+
     exit "$1"
 }
 
+__exit_interactive() {
+    echo
+    logwarn "Do you want to quit? (y/N)" | tr '\n' ' '
+    read -r yn
+    case $yn in
+    [Yy]*) exit ;;
+    *) ;;
+    esac
+    trap __exit_interactive ABRT INT
+}
