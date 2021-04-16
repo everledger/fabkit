@@ -1,27 +1,41 @@
 #!/usr/bin/env bash
 
 stty -echoctl
-trap '__quit' INT TERM
+trap 'exit' INT TERM
+trap 'kill 0' EXIT QUIT
+trap '__exit_on_error' ERR
 
-CTRLC_COUNT=0
 FABKIT_DEFAULT_PATH="${HOME}/.fabkit"
 FABKIT_DOCKER_IMAGE="everledgerio/fabkit"
+FABKIT_LOGFILE=".fabkit.log"
+# TODO: Retrieve latest available version from web
+FABKIT_VERSION="latest"
+FABKIT_BRANCH="release/0.1.0-rc2"
 ALIASES=("fabkit" "fk")
 
-__quit() {
-    ((CTRLC_COUNT++))
-    echo
-    if [[ $CTRLC_COUNT == 1 ]]; then
-        yellow "Do you really want to quit?"
+__error() {
+    local input
+
+    if [ -n "$1" ]; then
+        input="$1"
+        red "[ERROR] $input"
+        echo -e "$(date -u +"%Y-%m-%d %H:%M:%S UTC") [ERROR] $input" >>"$FABKIT_LOGFILE"
     else
-        echo "Ok byyye"
-        exit
+        local count=0
+        while read -r input; do
+            if [ $count -eq 0 ]; then
+                ((count++)) || true
+                echo
+            fi
+            red "[ERROR] $input"
+            echo -e "$(date -u +"%Y-%m-%d %H:%M:%S UTC") [ERROR] $input" >>"$FABKIT_LOGFILE"
+        done
     fi
 }
 
-__error() {
-    red "$*" >&2
-    exit 1
+__exit_on_error() {
+    echo "Check the log file for more details: $(yellow "cat $FABKIT_LOGFILE")"
+    kill 0
 }
 
 __overwrite_line() {
@@ -32,7 +46,7 @@ __overwrite_line() {
 
     sed -i'.bak' '/'"${pattern}"'/s/.*/'"${new_text}"'/' "${file}"
 
-    mv "${file}.bak" ~/.
+    mv "${file}.bak" "$HOME" &>/dev/null
 }
 
 __setup() {
@@ -81,35 +95,24 @@ __setup() {
 }
 
 __download_and_extract() {
-    # TODO: Add spinners and beautify direct installation
-    blue "Which version would you like to install? (press RETURN to get the latest):"
-    echo
-    cyan "1) 0.1.0-rc1"
-    read -r n
-    case $n in
-    *)
-        # retrieve latest
-        FABKIT_VERSION="0.1.0-rc1"
-        ;;
-    esac
-    green "$FABKIT_VERSION"
-
     FABKIT_TARBALL="fabkit-${FABKIT_VERSION}.tar.gz"
-    echo "Downloading $(cyan $FABKIT_TARBALL)"
+    echo "Downloading $(cyan "$FABKIT_TARBALL")"
     # curl -L https:/bitbucket.org/everledger/${FABKIT_TARBALL} & __spinner
-    read -rp "Where would you like to install Fabkit? [$(yellow "$FABKIT_DEFAULT_PATH")] " FABKIT_ROOT
-    FABKIT_ROOT=${FABKIT_ROOT:-${FABKIT_DEFAULT_PATH}}
-    FABKIT_ROOT=${FABKIT_ROOT%/}
 
-    # for security reasons we will create a new directory "fabkit" if the path is not empty and it is not an existing fabkit's root
-    if [[ "$FABKIT_ROOT" = "$HOME" || ("$FABKIT_ROOT" != "$HOME" && "$(ls -A "$FABKIT_ROOT")" && ! -f ${FABKIT_ROOT}/fabkit) ]]; then
-        FABKIT_ROOT+="/fabkit"
-    fi
-    while [[ ! "$yn" =~ ^Yy && -d "$FABKIT_ROOT" ]]; do
+    while [[ ! ("$yn" =~ ^Yy || (-n "$FABKIT_ROOT" && ! -d "$FABKIT_ROOT")) ]]; do
+        read -rp "Where would you like to install Fabkit? [$(yellow "$FABKIT_DEFAULT_PATH")] " FABKIT_ROOT
+        FABKIT_ROOT=${FABKIT_ROOT:-${FABKIT_DEFAULT_PATH}}
+        FABKIT_ROOT=${FABKIT_ROOT%/}
+
+        # for security reasons we will create a new directory "fabkit" if the path is not empty and it is not an existing fabkit's root
+        if [[ "$FABKIT_ROOT" = "$HOME" || ("$FABKIT_ROOT" != "$HOME" && "$(ls -A "$FABKIT_ROOT" &>/dev/null)" && ! -f ${FABKIT_ROOT}/fabkit) ]]; then
+            FABKIT_ROOT+="/fabkit"
+        fi
+
         if [ -d "$FABKIT_ROOT" ]; then
             yellow "!!!!! ATTENTION !!!!!"
             yellow "Directory ${FABKIT_ROOT} already exists and cannot be overwritten"
-            read -rp "Do you want to delete this directory in order to proceed with the installation? [yes/no=default] " yn
+            read -rp "Do you want to delete this directory in order to proceed with the installation? (y/N) " yn
             case $yn in
             [Yy]*) if [ -w "$FABKIT_ROOT" ]; then rm -rf "$FABKIT_ROOT"; fi ;;
             *) ;;
@@ -119,9 +122,18 @@ __download_and_extract() {
     mkdir -p "$FABKIT_ROOT" &>/dev/null
 
     if [ -w "$FABKIT_ROOT" ]; then
-        # tar -C "$FABKIT_ROOT" -xzvf "${FABKIT_TARBALL}"
-        # rm ${FABKIT_TARBALL}
-        ( (echo -en "Installing into $(cyan "${FABKIT_ROOT}")" && git clone git@bitbucket.org:everledger/fabkit "$FABKIT_ROOT" &>/dev/null) || __error "Error cloning remote repository") &
+        # tar -C "$FABKIT_ROOT" -xzvf "${FABKIT_TARBALL}" && rm ${FABKIT_TARBALL}
+        # TODO: Clone the repo for the time being - remove once published
+        (
+            if echo -n "Installing into $(cyan "${FABKIT_ROOT}")" && (git clone git@bitbucket.org:everledger/fabkit "$FABKIT_ROOT" 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal") > >(__error >&2); then
+                __error "There was an error in cloning the remote repository with the SSH key. Be sure your SSH is added to Bitbucket - this is a private repo!"
+                exit 1
+            fi
+            if (cd "$FABKIT_ROOT" && git checkout ${FABKIT_BRANCH} 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal") > >(__error >&2); then
+                __error "Error checking out branch ${FABKIT_BRANCH}"
+                exit 1
+            fi
+        ) &
         __spinner
         echo
     else
@@ -139,7 +151,7 @@ __set_installation_type() {
     OS="$(uname)"
     case $OS in
     Linux | FreeBSD | Darwin)
-        blue "Great! It looks like your system supports Fabric natively, but you can also run it a docker container."
+        green "Great! It looks like your system supports Fabric natively, but you can also run it in a docker container if you like."
 
         while [[ ! "$cmd" =~ (1|2) ]]; do
             echo
@@ -171,10 +183,16 @@ __set_installation_type() {
 }
 
 __install_docker() {
-    FABKIT_DOCKER_IMAGE+=":$FABKIT_VERSION"
+    FABKIT_DOCKER_IMAGE+=":${FABKIT_VERSION:-latest}"
     echo -en "Downloading the official Fabkit docker image $(cyan ${FABKIT_DOCKER_IMAGE})..."
-    docker pull "${FABKIT_DOCKER_IMAGE}" &>/dev/null || __error "Error pulling ${FABKIT_DOCKER_IMAGE}"
-    docker tag "${FABKIT_DOCKER_IMAGE}" "${FABKIT_DOCKER_IMAGE/$FABKIT_VERSION/latest}" || __error "Error tagging ${FABKIT_DOCKER_IMAGE} to latest"
+    if (docker pull "${FABKIT_DOCKER_IMAGE}" 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal") > >(__error >&2); then
+        __error "Error pulling ${FABKIT_DOCKER_IMAGE}"
+        exit 1
+    fi
+    if (docker tag "${FABKIT_DOCKER_IMAGE}" "${FABKIT_DOCKER_IMAGE/$FABKIT_VERSION/latest}" 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal") > >(__error >&2); then
+        __error "Error tagging ${FABKIT_DOCKER_IMAGE} to latest"
+        exit 1
+    fi
 }
 
 __spinner() {
@@ -240,15 +258,15 @@ read -n 1 -s -r -p "Press any key to start! (or CTRL-C to exit) "
 echo
 echo
 
-if git remote -v 2>/dev/null | grep "fabkit" &>/dev/null; then
-    cyan "Looks like you want to run Fabkit from inside its repository path"
-    git fetch origin --tags &>/dev/null || __error "Error fetching tags from origin"
-    FABKIT_VERSION=$(git describe --abbrev=0 --tags 2>/dev/null)
-    FABKIT_VERSION=${FABKIT_VERSION:-latest}
-    FABKIT_VERSION=${FABKIT_VERSION/v/}
+if git remote -v 2>/dev/null | grep -q "fabkit"; then
+    cyan "Looks like you want to run Fabkit from inside its repository path."
     echo
-    cyan "Pulling ${FABKIT_VERSION} version"
-    cyan "Going to set - ${PWD} - as your installation path!"
+    if (git checkout ${FABKIT_BRANCH} 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal") > >(__error >&2); then
+        __error "Error checking out branch ${FABKIT_BRANCH}"
+        exit 1
+    fi
+    echo "Setting to $(cyan "${FABKIT_VERSION}") version."
+    echo "Going to set - $(cyan "${PWD}") - as your installation path!"
     echo
     FABKIT_ROOT="$PWD"
 else
@@ -278,7 +296,7 @@ case $SHELL in
 esac
 
 sleep 1
-echo "For more information visit:" "$(cyan "https://bitbucket.org/everledger/fabkit/src/master/docs/")"
+echo "For more information visit: $(cyan "https://bitbucket.org/everledger/fabkit/src/master/docs/")"
 echo
 echo
 green "Have fun! 💃🕺"

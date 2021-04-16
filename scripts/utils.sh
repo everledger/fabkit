@@ -58,6 +58,11 @@ __check_java_version() {
 }
 
 __check_docker_version() {
+    if docker info --format '{{json .}}' | grep -q "Cannot connect"; then
+        logerr "Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?"
+        exit 1
+    fi
+
     # shellcheck disable=SC2155
     local version=$(docker version --format '{{.Server.Version}}' 2>/dev/null)
     __check_version docker "$FABKIT_DOCKER_VERSION_SUPPORTED" "$version"
@@ -65,11 +70,6 @@ __check_docker_version() {
     # shellcheck disable=SC2155
     version=$(docker-compose version --short 2>/dev/null)
     __check_version docker-compose "$FABKIT_DOCKER_COMPOSE_VERSION_SUPPORTED" "$version"
-
-    if docker info --format '{{json .}}' | grep "Cannot connect" &>/dev/null; then
-        logerr "Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?"
-        exit 1
-    fi
 }
 
 # delete path recursively and asks for root permissions if needed
@@ -83,7 +83,7 @@ __delete_path() {
     else
         logerr "!!!!! ATTENTION !!!!!"
         logerr "Directory \"${1}\" requires superuser permissions"
-        read -rp "Do you wish to continue? [yes/no=default] " yn
+        read -rp "Do you wish to continue? (y/N) " yn
         case $yn in
         [Yy]*) sudo rm -rf "$1" ;;
         *) return ;;
@@ -187,19 +187,18 @@ __catch() {
         ((frame++)) || true
         line="$(caller "$frame" 2>&1 | cut -d ' ' -f 1)"
     done
+    logwarn "Check the log file for more details: cat $FABKIT_LOGFILE"
 
     exit "$1"
 }
 
-__throw() {
-    local input
-
-    if [ -n "$1" ]; then
-        input="$1"
-        __clear_spinner && logerr "$input"
-    else
-        while read -r input; do
-            __clear_spinner && logerr "$input"
-        done
-    fi
+__exit_interactive() {
+    echo
+    logwarn "Do you want to quit? (y/N)" | tr '\n' ' '
+    read -r yn
+    case $yn in
+    [Yy]*) exit ;;
+    *) ;;
+    esac
+    trap __exit_interactive ABRT INT
 }

@@ -19,7 +19,7 @@ __exec_jobs() {
     fi
 
     loginfo "Benchmarking network"
-    lodebu "Running in parallel:\nJobs: $jobs\nEntries: $entries"
+    logdebu "Running in parallel:\nJobs: $jobs\nEntries: $entries"
 
     for i in $(seq 1 "$jobs"); do
         __loader "$entries" &

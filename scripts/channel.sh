@@ -1,5 +1,25 @@
 #!/usr/bin/env bash
 
+init_and_create_channel() {
+    if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
+        logerr "Incorrect usage of ${FUNCNAME[0]}. Please consult the help: fabkit help"
+        exit 1
+    fi
+
+    local channel_name="$1"
+    local org="$2"
+    local peer="$3"
+
+    __set_network_env
+
+    msp_id=Org${org}MSP
+
+    generate_channeltx "$channel_name" "$FABKIT_NETWORK_PATH" "$FABKIT_CONFIG_PATH" "$FABKIT_CRYPTOS_PATH" "$FABKIT_CONFIGTX_PROFILE_NETWORK" "$FABKIT_CONFIGTX_PROFILE_CHANNEL" "$msp_id"
+
+    __spinner_formatter
+    create_channel $@
+}
+
 create_channel() {
     if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ]; then
         logerr "Incorrect usage of ${FUNCNAME[0]}. Please consult the help: fabkit help"
@@ -24,7 +44,10 @@ create_channel() {
 
     __clear_logdebu
     logdebu "Excecuting command: ${cmd}"
-    (eval "$cmd") &>/dev/null || exit 1
+    if (eval "$cmd") 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+        logerr "Error creating channel $channel_name"
+        exit 1
+    fi
 }
 
 join_channel() {
@@ -52,7 +75,10 @@ join_channel() {
     __clear_logdebu
     __clear_logdebu
     logdebu "Excecuting command: ${cmd}"
-    (eval "$cmd") &>/dev/null || exit 1
+    if (eval "$cmd") 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+        logerr "Error joining channel $channel_name"
+        exit 1
+    fi
 }
 
 update_channel() {
@@ -80,5 +106,8 @@ update_channel() {
 
     __clear_logdebu
     logdebu "Excecuting command: ${cmd}"
-    (eval "$cmd") &>/dev/null || exit 1
+    if (eval "$cmd") 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+        logerr "Error updating channel $channel_name"
+        exit 1
+    fi
 }
