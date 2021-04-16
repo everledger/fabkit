@@ -10,7 +10,9 @@ FABKIT_DOCKER_IMAGE="everledgerio/fabkit"
 FABKIT_LOGFILE=".fabkit.log"
 # TODO: Retrieve latest available version from web
 FABKIT_VERSION="latest"
-FABKIT_BRANCH="release/0.1.0-rc2"
+FABKIT_BRANCH="master"
+FABKIT_MASTER_TARBALL_URI="https://github.com/everledger/fabkit/archive/refs/heads/master.zip"
+FABKIT_TARBALL="fabkit-${FABKIT_VERSION}.zip"
 ALIASES=("fabkit" "fk")
 
 __error() {
@@ -95,11 +97,13 @@ __setup() {
 }
 
 __download_and_extract() {
-    FABKIT_TARBALL="fabkit-${FABKIT_VERSION}.tar.gz"
-    echo "Downloading $(cyan "$FABKIT_TARBALL")"
-    # curl -L https:/bitbucket.org/everledger/${FABKIT_TARBALL} & __spinner
+    (
+        echo -n "Downloading $(cyan "$FABKIT_TARBALL")"
+        curl -sL $FABKIT_MASTER_TARBALL_URI -o "$FABKIT_TARBALL"
+    ) &
+    __spinner
 
-    while [[ ! ("$yn" =~ ^Yy || (-n "$FABKIT_ROOT" && ! -d "$FABKIT_ROOT")) ]]; do
+    while [[ (-n "$yn" && ! "$yn" =~ ^(Y|y)) || -z "$FABKIT_ROOT" || (-n "$FABKIT_ROOT" && ! -d "$FABKIT_ROOT") ]]; do
         read -rp "Where would you like to install Fabkit? [$(yellow "$FABKIT_DEFAULT_PATH")] " FABKIT_ROOT
         FABKIT_ROOT=${FABKIT_ROOT:-${FABKIT_DEFAULT_PATH}}
         FABKIT_ROOT=${FABKIT_ROOT%/}
@@ -114,23 +118,23 @@ __download_and_extract() {
             yellow "Directory ${FABKIT_ROOT} already exists and cannot be overwritten"
             read -rp "Do you want to delete this directory in order to proceed with the installation? (y/N) " yn
             case $yn in
-            [Yy]*) if [ -w "$FABKIT_ROOT" ]; then rm -rf "$FABKIT_ROOT"; fi ;;
+            [Yy]*)
+                if [ -w "$FABKIT_ROOT" ]; then
+                    rm -rf "$FABKIT_ROOT"
+                fi
+                mkdir -p "$FABKIT_ROOT" &>/dev/null
+                ;;
             *) ;;
             esac
+        else
+            mkdir -p "$FABKIT_ROOT" &>/dev/null
         fi
     done
-    mkdir -p "$FABKIT_ROOT" &>/dev/null
 
     if [ -w "$FABKIT_ROOT" ]; then
-        # tar -C "$FABKIT_ROOT" -xzvf "${FABKIT_TARBALL}" && rm ${FABKIT_TARBALL}
-        # TODO: Clone the repo for the time being - remove once published
         (
-            if echo -n "Installing into $(cyan "${FABKIT_ROOT}")" && (git clone git@bitbucket.org:everledger/fabkit "$FABKIT_ROOT" 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal") > >(__error >&2); then
-                __error "There was an error in cloning the remote repository with the SSH key. Be sure your SSH is added to Bitbucket - this is a private repo!"
-                exit 1
-            fi
-            if (cd "$FABKIT_ROOT" && git checkout ${FABKIT_BRANCH} 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal") > >(__error >&2); then
-                __error "Error checking out branch ${FABKIT_BRANCH}"
+            if echo -n "Installing into $(cyan "${FABKIT_ROOT}")" && (__unpack_tarball 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal") > >(__error >&2); then
+                __error "There was an error extracting ${FABKIT_TARBALL} into ${FABKIT_ROOT}"
                 exit 1
             fi
         ) &
@@ -142,6 +146,12 @@ __download_and_extract() {
         yellow "Be sure you are setting an installation path accessible from your current user (preferably under ${HOME})!"
         exit
     fi
+}
+
+__unpack_tarball() {
+    local temp_dir=".__fabkit_tmp"
+    mkdir "$temp_dir" && tar -C "$temp_dir" -xzf "$FABKIT_TARBALL" && mv {${temp_dir}/fabkit-master/*,${temp_dir}/fabkit-master/.*} "${FABKIT_ROOT}/"
+    rm -rf "$temp_dir" "${FABKIT_TARBALL}" &>/dev/null
 }
 
 __set_installation_type() {
@@ -296,7 +306,7 @@ case $SHELL in
 esac
 
 sleep 1
-echo "For more information visit: $(cyan "https://bitbucket.org/everledger/fabkit/src/master/docs/")"
+echo "For more information visit: $(cyan "https://github.com/everledger/fabkit/tree/master/docs")"
 echo
 echo
 green "Have fun! 💃🕺"

@@ -55,10 +55,10 @@ docker run --rm -it --name fabkit -e FABKIT_HOST_ROOT=<FORMATTED_WINDOWS_PATH> -
 
 ## Install
 
-You can simply download the `install.sh` and run it in your terminal with one command (**disclaimer: sorry this option is not available just yet as we are not public! 😞**)
+You can simply download the `install.sh` and run it in your terminal with one command:
 
 ```bash
-bash <(curl -sL ...)
+bash <(curl -sL https://raw.githubusercontent.com/everledger/fabkit/master/install.sh)
 ```
 
 or, if you have cloned the repo, you can always run the interactive installer to help you configure fabkit.
@@ -70,6 +70,12 @@ or, if you have cloned the repo, you can always run the interactive installer to
 ## Uninstall
 
 To purge `fabkit` from your system you can run anytime this simply script:
+
+```bash
+bash <(curl -sL https://raw.githubusercontent.com/everledger/fabkit/master/uninstall.sh)
+```
+
+or directly from this repo with:
 
 ```bash
 ./uninstall.sh
