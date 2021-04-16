@@ -151,7 +151,7 @@ __set_debug "$@"
 
 shift || true
 if [ "$FUNC" = "network" ]; then
-    PARAM="${1:-}"
+    PARAM="$1"
     shift || true
     __set_params "$@"
     __validate_params
@@ -282,7 +282,7 @@ elif [ "$FUNC" = "ca" ]; then
         exit
     fi
 elif [ "$FUNC" = "channel" ]; then
-    PARAM="${1:-}"
+    PARAM="$1"
     __load_lastrun
     shift || true
     if [ "$PARAM" = "create" ]; then
