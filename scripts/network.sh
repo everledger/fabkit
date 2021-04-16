@@ -56,9 +56,9 @@ start_network() {
         esac
     fi
 
-    __prune_docker_volumes
     stop_network &
     __spinner
+    __prune_docker_volumes
 
     if [ -z "${FABKIT_QUICK_RUN}" ]; then
         (chaincode_build "$FABKIT_CHAINCODE_NAME") &
@@ -87,12 +87,11 @@ start_network() {
     __set_lastrun
 
     docker network create "$FABKIT_DOCKER_NETWORK" &>/dev/null || true
-
     (
         loginfo "Launching Fabric components"
         if ! (eval "$command" &>/dev/null) > >(__throw >&2); then
             echo
-            logerr "Failed to launch containers"
+            logerr "Failed to launch containers. Check there are no other networks running or containers using the same ports. Clean your docker services and run this command again."
             exit 1
         fi
         sleep 5
@@ -123,7 +122,7 @@ restart_network() {
 }
 
 __prune_docker_volumes() {
-    docker volume prune -f $(docker volume ls | awk '($2 ~ /${FABKIT_DOCKER_NETWORK}/) {print $2}') &>/dev/null || true
+    docker volume prune -f $(docker volume ls | awk '($2 ~ /${FABKIT_DOCKER_NETWORK}/) {print $2}') &>/dev/null
 }
 
 __check_docker_volumes() {
