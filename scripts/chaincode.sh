@@ -425,16 +425,24 @@ lifecycle_chaincode_package_id() {
     __set_certs "$org" "$peer"
     __set_peer_exec cmd
 
-    local chaincode_label="\"${chaincode_name}_${chaincode_version}\""
+    logdebu "Retrieving package id"
 
+    local chaincode_label="\"${chaincode_name}_${chaincode_version}\""
     logdebu "Chaincode label: $chaincode_label"
+
     if [ "${FABKIT_TLS_ENABLED:-}" = "false" ]; then
-        cmd+="peer lifecycle chaincode queryinstalled --output json | jq -r '.installed_chaincodes[] | select(.label == ${chaincode_label})' | jq -r '.package_id'"
+        cmd+="peer lifecycle chaincode queryinstalled --output json | __jq -r '.installed_chaincodes[] | select(.label == ${chaincode_label})' | __jq -r '.package_id'"
     else
-        cmd+="peer lifecycle chaincode queryinstalled --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA --output json | jq -r '.installed_chaincodes[] | select(.label == ${chaincode_label})' | jq -r '.package_id'"
+        cmd+="peer lifecycle chaincode queryinstalled --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA --output json | __jq -r '.installed_chaincodes[] | select(.label == ${chaincode_label})' | __jq -r '.package_id'"
     fi
 
-    export PACKAGE_ID=$(eval ${cmd})
+    __clear_logdebu
+    logdebu "Excecuting command: ${cmd}"
+    export PACKAGE_ID=$(eval "$cmd")
+    if echo "$PACKAGE_ID" | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+        logerr "Error retrieving package id for chaincode $chaincode_name"
+        exit 1
+    fi
 
     logdebu "Package ID: $PACKAGE_ID"
 }
@@ -611,7 +619,10 @@ lifecycle_chaincode_commit() {
     fi
     __clear_logdebu
     logdebu "Excecuting command: ${cmd}"
-    (eval "$cmd") &>/dev/null || exit 1
+    if (eval "$cmd") 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+        logerr "Error checking commit readiness for chaincode $chaincode_name"
+        exit 1
+    fi
 
     __set_peer_exec cmd
     if [ "${FABKIT_TLS_ENABLED:-}" = "false" ]; then
@@ -730,7 +741,10 @@ __init_go_mod() {
     cd "${chaincode_path}" >/dev/null 2> >(__throw >&2) || exit 1
 
     if [ ! -f "./go.mod" ]; then
-        go mod init >/dev/null 2> >(__throw >&2)
+        if go mod init 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+            logerr "Error initializing go mod"
+            exit 1
+        fi
     fi
 
     __delete_path vendor &>/dev/null
@@ -747,8 +761,14 @@ __init_go_mod() {
         fi
     fi
 
-    go mod tidy >/dev/null 2> >(__throw >&2) || exit 1
-    go mod vendor >/dev/null 2> >(__throw >&2) || exit 1
+    if go mod tidy 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+        logerr "Error running go mod tidy"
+        exit 1
+    fi
+    if go mod vendor 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+        logerr "Error downloading go vendor"
+        exit 1
+    fi
 
     cd "$FABKIT_ROOT" || return
 }
