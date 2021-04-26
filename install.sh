@@ -103,6 +103,7 @@ __download_and_extract() {
     ) &
     __spinner
 
+    unset FABKIT_ROOT
     while [[ (-n "$yn" && ! "$yn" =~ ^(Y|y)) || -z "$FABKIT_ROOT" || (-n "$FABKIT_ROOT" && ! -d "$FABKIT_ROOT") ]]; do
         read -rp "Where would you like to install Fabkit? [$(yellow "$FABKIT_DEFAULT_PATH")] " FABKIT_ROOT
         FABKIT_ROOT=${FABKIT_ROOT:-${FABKIT_DEFAULT_PATH}}
@@ -120,11 +121,11 @@ __download_and_extract() {
             case $yn in
             [Yy]*)
                 if [ -w "$FABKIT_ROOT" ]; then
-                    rm -rf "$FABKIT_ROOT"
+                    rm -rf "$FABKIT_ROOT" &>/dev/null
                 fi
                 mkdir -p "$FABKIT_ROOT" &>/dev/null
                 ;;
-            *) ;;
+            *) unset FABKIT_ROOT ;;
             esac
         else
             mkdir -p "$FABKIT_ROOT" &>/dev/null

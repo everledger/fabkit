@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+FABKIT_DOCKER_IMAGE="everledgerio/fabkit"
 ALIASES=("fabkit" "fk")
 
 __clear_setup() {
@@ -32,8 +33,13 @@ __clear_setup() {
 }
 
 __remove_docker_images() {
+    if docker info --format '{{json .}}' | grep -q "Cannot connect"; then
+        red "Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?"
+        exit 1
+    fi
+
     # shellcheck disable=SC2046
-    docker rmi -f $(docker images --filter=reference='everledgerio/fabkit' -q) &>/dev/null || true
+    docker rmi -f $(docker images --filter=reference="$FABKIT_DOCKER_IMAGE" -q) &>/dev/null || true
 }
 
 __spinner() {

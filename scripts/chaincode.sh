@@ -47,22 +47,21 @@ chaincode_test() {
 
     if [ "$chaincode_language" = "golang" ]; then
         __check_go_version
-        # avoid "found no test suites" ginkgo error
+        # avoid "found no test suites" error
         if ! find "$chaincode_path" -type f -name "*_test*" ! -path "**/node_modules/*" ! -path "**/vendor/*" &>/dev/null; then
             logwarn "No test suites found. Skipping tests..."
             return
         fi
 
-        __check_test_deps
         __init_go_mod install "$chaincode_path"
 
         if ! type -p go &>/dev/null; then
-            if (docker run --rm -v "${FABKIT_CHAINCODE_PATH}:/usr/src/myapp" -w "/usr/src/myapp/${chaincode_name}" -e CGO_ENABLED=0 -e CORE_CHAINCODE_LOGGING_LEVEL=debug "$FABKIT_GOLANG_DOCKER_IMAGE" ginkgo -r | grep -iE "erro|pani|fail|fatal" > >(__throw >&2)); then
+            if ! docker run --rm -v "${FABKIT_CHAINCODE_PATH}:/usr/src/myapp" -w "/usr/src/myapp/${chaincode_name}" "$FABKIT_GOLANG_DOCKER_IMAGE" go test ./... &>/dev/null; then
                 logerr "Failed testing chaincode $chaincode_name"
                 exit 1
             fi
         else
-            if (cd "$chaincode_path" && (CORE_CHAINCODE_LOGGING_LEVEL=debug CGO_ENABLED=0 ginkgo -r | grep -iE "erro|pani|fail|fatal" > >(__throw >&2))); then
+            if ! (cd "$chaincode_path" && go test ./... &>/dev/null); then
                 logerr "Failed testing chaincode $chaincode_name"
                 exit 1
             fi
@@ -88,12 +87,12 @@ chaincode_build() {
         __init_go_mod install "$chaincode_path"
 
         if ! type -p go &>/dev/null; then
-            if ! (docker run --rm -v "${chaincode_path}:/usr/src/myapp" -w "/usr/src/myapp/${chaincode_name}" -e CGO_ENABLED=0 "$FABKIT_GOLANG_DOCKER_IMAGE" go build -a -installsuffix nocgo ./... >/dev/null 2> >(__throw >&2) && rm -rf ./${chaincode_name} &>/dev/null); then
+            if ! (docker run --rm -v "${FABKIT_CHAINCODE_PATH}:/usr/src/myapp" -w "/usr/src/myapp/${chaincode_name}" -e CGO_ENABLED=0 "$FABKIT_GOLANG_DOCKER_IMAGE" bash -c "go build -a -installsuffix nocgo ./... &>/dev/null && rm -rf ./\"${chaincode_name}\" &>/dev/null"); then
                 logerr "Failed building chaincode $chaincode_name"
                 exit 1
             fi
         else
-            if ! (cd "${chaincode_path}" && CGO_ENABLED=0 go build -a -installsuffix nocgo ./... >/dev/null 2> >(__throw >&2) && rm -rf ./"${chaincode_name}" &>/dev/null); then
+            if ! (cd "${chaincode_path}" && CGO_ENABLED=0 go build -a -installsuffix nocgo ./... &>/dev/null && rm -rf "./${chaincode_name}" &>/dev/null); then
                 logerr "Failed building chaincode $chaincode_name"
                 exit 1
             fi
@@ -246,6 +245,7 @@ chaincode_zip() {
     __get_chaincode_language "$chaincode_path" chaincode_language
 
     if [ "$chaincode_language" = "golang" ]; then
+        __delete_path "${chaincode_path}/vendor" &>/dev/null
         __init_go_mod install "$chaincode_path"
         __chaincode_module_pack "$chaincode_path"
     fi
@@ -304,6 +304,7 @@ chaincode_pack() {
     __set_chaincode_remote_path "$chaincode_path" "$chaincode_language" chaincode_remote_path
 
     if [ "$chaincode_language" = "golang" ]; then
+        __delete_path "${chaincode_path}/vendor" &>/dev/null
         __init_go_mod install "$chaincode_path"
         __chaincode_module_pack "$chaincode_path"
     fi
@@ -401,7 +402,7 @@ chaincode_query() {
     __clear_logdebu
     logdebu "Excecuting command: ${cmd}"
     local query=$(eval "$cmd" 2>&1)
-    if echo $query | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+    if echo "$query" | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
         logerr "Error invoking chaincode $chaincode_name"
         exit 1
     else
@@ -727,13 +728,6 @@ __set_chaincode_module_main() {
     eval $__result="'$__chaincode_path'"
 }
 
-__check_test_deps() {
-    if ! type -p ginkgo &>/dev/null; then
-        logwarn "Ginkgo module missing. Going to install..."
-        go get -u github.com/onsi/ginkgo/ginkgo >/dev/null 2> >(__throw >&2) || exit 1
-    fi
-}
-
 __init_go_mod() {
     local operation=$1
     local chaincode_relative_path=$2
@@ -741,31 +735,29 @@ __init_go_mod() {
     cd "${chaincode_path}" >/dev/null 2> >(__throw >&2) || exit 1
 
     if [ ! -f "./go.mod" ]; then
-        if go mod init 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+        if ! go mod init &>/dev/null; then
             logerr "Error initializing go mod"
             exit 1
         fi
     fi
-
-    __delete_path vendor &>/dev/null
-
+    
     if [ "${operation}" = "install" ]; then
-        if go get ./... 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+        if ! go get &>/dev/null; then
             logerr "Error installing go modules"
             exit 1
         fi
     elif [ "${operation}" = "update" ]; then
-        if go get -u=patch ./... 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+        if ! go get -u=patch ./... &>/dev/null; then
             logerr "Error updating go modules"
             exit 1
         fi
     fi
 
-    if go mod tidy 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+    if ! go mod tidy &>/dev/null; then
         logerr "Error running go mod tidy"
         exit 1
     fi
-    if go mod vendor 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+    if ! go mod vendor &>/dev/null; then
         logerr "Error downloading go vendor"
         exit 1
     fi

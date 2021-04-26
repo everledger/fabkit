@@ -20,8 +20,6 @@ ENV GOPATH /go
 ENV PATH /usr/local/go/bin:$GOPATH/bin:$PATH
 RUN mkdir -p "$GOPATH/src" "$GOPATH/bin" && chmod -R 777 "$GOPATH"
 
-RUN go get -u github.com/onsi/ginkgo/ginkgo
-
 RUN rm -rf \
   /usr/lib/go/pkg/*/cmd \
   /usr/lib/go/pkg/bootstrap \
