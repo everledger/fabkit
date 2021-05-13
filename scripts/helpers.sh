@@ -7,6 +7,9 @@ title() {
         ╚  ┴ ┴└─┘┴ ┴ ┴ ┴ 
              ■-■-■               
     "
+    loginfo "
+        Version: $FABKIT_VERSION
+    "
 }
 
 help_header() {
@@ -23,23 +26,19 @@ help() {
         help                                                                                  : this help
         version                                                                               : show running version
     "
-    help_dep_info
-    help_ca_info
-    help_network_info
-    help_explorer_info
-    help_channel_info
-    help_generate_info
-    help_chaincode_info
-    help_benchmark_info
-    help_utils_info
+    help_dep
+    help_ca
+    help_network
+    help_explorer
+    help_channel
+    help_generate
+    help_chaincode
+    help_benchmark
+    help_utils
 }
 
 help_dep() {
     help_header "fabkit dep"
-    help_dep_info
-}
-
-help_dep_info() {
     loginfo "
         install [chaincode_name]                                                              : install all go modules as vendor and init go.mod if does not exist yet
         update [chaincode_name]                                                               : update all go modules and rerun install
@@ -48,10 +47,6 @@ help_dep_info() {
 
 help_ca() {
     help_header "fabkit ca"
-    help_ca_info
-}
-
-help_ca_info() {
     loginfo "
         register                                                                              : register a new user
         enroll                                                                                : enroll a previously registered user    
@@ -62,10 +57,6 @@ help_ca_info() {
 
 help_network() {
     help_header "fabkit network"
-    help_network_info
-}
-
-help_network_info() {
     loginfo "
         install                                                                               : install all the dependencies and docker images
         start [options]                                                                       : start the blockchain network and initialize it
@@ -81,10 +72,6 @@ help_network_info() {
 
 help_explorer() {
     help_header "fabkit explorer"
-    help_explorer_info
-}
-
-help_explorer_info() {
     loginfo "
         start                                                                                 : run the blockchain explorer user-interface and analytics
         stop                                                                                  : stop the blockchain explorer user-interface and analytics
@@ -93,10 +80,6 @@ help_explorer_info() {
 
 help_channel() {
     help_header "fabkit channel"
-    help_channel_info
-}
-
-help_channel_info() {
     loginfo "
         create [channel_name] [org_no] [peer_no]                                              : generate channel configuration file
         update [channel_name] [org_msp] [org_no] [peer_no]                                    : update channel with anchor peers
@@ -106,10 +89,6 @@ help_channel_info() {
 
 help_generate() {
     help_header "fabkit generate"
-    help_generate_info
-}
-
-help_generate_info() {
     loginfo "
         cryptos [config_path] [cryptos_path]                                                  : generate all the crypto keys and certificates for the network
         genesis [base_path] [config_path]                                                     : generate the genesis block for the ordering service
@@ -120,10 +99,6 @@ help_generate_info() {
 
 help_chaincode() {
     help_header "fabkit chaincode"
-    help_chaincode_info
-}
-
-help_chaincode_info() {
     loginfo "
         test [chaincode_path]                                                                 : run unit tests
         build [chaincode_path]                                                                : run build and test against the binary file
@@ -149,10 +124,6 @@ help_chaincode_info() {
 
 help_benchmark() {
     help_header "fabkit benchmark"
-    help_benchmark_info
-}
-
-help_benchmark_info() {
     loginfo "
         load [jobs] [entries]                                                                 : run benchmark bulk loading of [entries] per parallel [jobs] against a running network        
     "
@@ -160,10 +131,6 @@ help_benchmark_info() {
 
 help_utils() {
     help_header "fabkit utils"
-    help_utils_info
-}
-
-help_utils_info() {
     loginfo "
         tojson                                                                                : transform a string format with escaped characters to a valid JSON format
         tostring                                                                              : transform a valid JSON format to

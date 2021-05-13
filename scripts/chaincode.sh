@@ -732,7 +732,7 @@ __init_go_mod() {
     local operation=$1
     local chaincode_relative_path=$2
 
-    cd "${chaincode_path}" >/dev/null 2> >(__throw >&2) || exit 1
+    cd "${chaincode_relative_path}" >/dev/null 2> >(__throw >&2) || exit 1
 
     if [ ! -f "./go.mod" ]; then
         if ! go mod init &>/dev/null; then
@@ -742,7 +742,7 @@ __init_go_mod() {
     fi
     
     if [ "${operation}" = "install" ]; then
-        if ! go get &>/dev/null; then
+        if ! go get ./... &>/dev/null; then
             logerr "Error installing go modules"
             exit 1
         fi
