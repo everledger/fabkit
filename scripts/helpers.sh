@@ -7,9 +7,6 @@ title() {
         ╚  ┴ ┴└─┘┴ ┴ ┴ ┴ 
              ■-■-■               
     "
-    loginfo "
-        Version: $FABKIT_VERSION
-    "
 }
 
 help_header() {
@@ -21,6 +18,9 @@ help_header() {
 }
 
 help() {
+    loginfo "
+        Version: $FABKIT_VERSION
+    "
     help_header fabkit
     loginfo "
         help                                                                                  : this help
