@@ -30,12 +30,8 @@ __docker_fabric_pull() {
 __docker_third_party_images_pull() {
     loginfo "Pulling utilities images"
     __clear_logdebu
-    logdebu "Pulling ${FABKIT_GOLANG_DOCKER_IMAGE}"
-    docker pull "$FABKIT_GOLANG_DOCKER_IMAGE" 1>/dev/null 2> >(__throw >&2)
-    logdebu "Pulling ${FABKIT_JQ_DOCKER_IMAGE}"
-    docker pull "$FABKIT_JQ_DOCKER_IMAGE" 1>/dev/null 2> >(__throw >&2)
-    logdebu "Pulling ${FABKIT_YQ_DOCKER_IMAGE}"
-    docker pull "$FABKIT_YQ_DOCKER_IMAGE" 1>/dev/null 2> >(__throw >&2)
+    logdebu "Pulling ${FABKIT_DOCKER_IMAGE}"
+    docker pull "$FABKIT_DOCKER_IMAGE" 1>/dev/null 2> >(__throw >&2)
 }
 
 start_network() {
@@ -43,16 +39,16 @@ start_network() {
 
     if (docker volume ls | grep -q "$FABKIT_DOCKER_NETWORK") && [[ (-z "${FABKIT_RESET}" || "${FABKIT_RESET}" = "false") ]]; then
         logwarn "Found volumes"
-        read -rp "Do you wish to restart the network and reuse this data? (y/N) " yn
+        read -rp "Do you wish to restart the network and reuse this data? (Y/n) " yn
         case $yn in
-        [Yy]*)
+        [Nn]*) ;;
+        *)
             __load_lastrun
             __log_setup
             restart_network &
             __spinner
             return 0
             ;;
-        *) ;;
         esac
     fi
 
@@ -178,6 +174,7 @@ stop_network() {
     fi
 
     if docker ps | grep -q "hyperledger/explorer"; then
+        echo -en "\n\033[3C→ "
         stop_explorer
     fi
 
@@ -226,22 +223,22 @@ initialize_network() {
 __replace_config_capabilities() {
     configtx=${FABKIT_CONFIG_PATH}/configtx
     if [[ "${FABKIT_FABRIC_VERSION}" =~ 2.* ]]; then
-        if (__yq <"${configtx}.base.yaml" e '.Capabilities.Channel.V2_0 = true |
+        if (cat "${configtx}.base.yaml" | __run "$FABKIT_ROOT" yq "e '.Capabilities.Channel.V2_0 = true |
             .Capabilities.Channel.V1_4_3 = false |
             .Capabilities.Orderer.V2_0 = true |
             .Capabilities.Orderer.V1_4_2 = false |
             .Capabilities.Application.V2_0 = true |
-            .Capabilities.Application.V1_4_2 = false' - >"${configtx}.yaml") 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+            .Capabilities.Application.V1_4_2 = false' -" >"${configtx}.yaml") 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
             logerr "Error in replacing Fabric capabilities"
             exit 1
         fi
     else
-        if (__yq <"${configtx}.base.yaml" e '.Capabilities.Channel.V2_0 = false |
+        if (cat "${configtx}.base.yaml" | __run "$FABKIT_ROOT" yq "e '.Capabilities.Channel.V2_0 = false |
             .Capabilities.Channel.V1_4_3 = true |
             .Capabilities.Orderer.V2_0 = false |
             .Capabilities.Orderer.V1_4_2 = true |
             .Capabilities.Application.V2_0 = false |
-            .Capabilities.Application.V1_4_2 = true' - >"${configtx}.yaml") 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+            .Capabilities.Application.V1_4_2 = true' -" >"${configtx}.yaml") 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
             logerr "Error in replacing Fabric capabilities"
             exit 1
         fi

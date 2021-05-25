@@ -23,13 +23,13 @@ If your OS supports `bash` and you are running this code locally, then beware th
 
 If you want to be able to use **test** and **build** functionalities for your chaincode, depending on the language which it is written in, you may need to install any of the following dependencies:
 
-- [Go](https://golang.org/doc/install) [>= 1.11]
+- [Go](https://golang.org/doc/install) [>= 1.12]
 - [Node](https://nodejs.org/en/) [>= 10.20]
 - [Java](https://adoptopenjdk.net/) [>= 8]
 
 ### For Windows users
 
-Windows users will need to run Fabkit by using the provided Docker image and particularly caring about the syntax when defining the root installation directory. 
+Windows users will need to run Fabkit by using the provided Docker image and particularly caring about the syntax when defining the root installation directory.
 
 We recommend to create a directory under your user's home directory, for example, in `C:\Users\me\...\fabkit` (where `C:` is the disk used by Windows, `me` is your current username and `...` means "any directory in between").
 

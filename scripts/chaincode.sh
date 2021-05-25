@@ -55,16 +55,14 @@ chaincode_test() {
 
         __init_go_mod install "$chaincode_path"
 
-        if ! type -p go &>/dev/null; then
-            if ! docker run --rm -v "${FABKIT_CHAINCODE_PATH}:/usr/src/myapp" -w "/usr/src/myapp/${chaincode_name}" "$FABKIT_GOLANG_DOCKER_IMAGE" go test ./... &>/dev/null; then
-                logerr "Failed testing chaincode $chaincode_name"
-                exit 1
-            fi
-        else
-            if ! (cd "$chaincode_path" && go test ./... &>/dev/null); then
-                logerr "Failed testing chaincode $chaincode_name"
-                exit 1
-            fi
+        if ! (__run "$chaincode_path" go test ./... &>/dev/null); then
+            logerr "Failed testing chaincode $chaincode_name"
+            exit 1
+        fi
+    elif [ "$chaincode_language" = "node" ]; then
+        if ! (__run "$chaincode_path" npm run test &>/dev/null); then
+            logerr "Failed testing chaincode $chaincode_name"
+            exit 1
         fi
     fi
 
@@ -86,16 +84,9 @@ chaincode_build() {
         __check_go_version
         __init_go_mod install "$chaincode_path"
 
-        if ! type -p go &>/dev/null; then
-            if ! (docker run --rm -v "${FABKIT_CHAINCODE_PATH}:/usr/src/myapp" -w "/usr/src/myapp/${chaincode_name}" -e CGO_ENABLED=0 "$FABKIT_GOLANG_DOCKER_IMAGE" bash -c "go build -a -installsuffix nocgo ./... &>/dev/null && rm -rf ./\"${chaincode_name}\" &>/dev/null"); then
-                logerr "Failed building chaincode $chaincode_name"
-                exit 1
-            fi
-        else
-            if ! (cd "${chaincode_path}" && CGO_ENABLED=0 go build -a -installsuffix nocgo ./... &>/dev/null && rm -rf "./${chaincode_name}" &>/dev/null); then
-                logerr "Failed building chaincode $chaincode_name"
-                exit 1
-            fi
+        if ! (__run "$chaincode_path" go build ./... &>/dev/null && rm -rf "${chaincode_path}/${chaincode_name}" &>/dev/null); then
+            logerr "Failed building chaincode $chaincode_name"
+            exit 1
         fi
     fi
 
@@ -432,14 +423,14 @@ lifecycle_chaincode_package_id() {
     logdebu "Chaincode label: $chaincode_label"
 
     if [ "${FABKIT_TLS_ENABLED:-}" = "false" ]; then
-        cmd+="peer lifecycle chaincode queryinstalled --output json | __jq -r '.installed_chaincodes[] | select(.label == ${chaincode_label})' | __jq -r '.package_id'"
+        cmd+="peer lifecycle chaincode queryinstalled --output json"
     else
-        cmd+="peer lifecycle chaincode queryinstalled --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA --output json | __jq -r '.installed_chaincodes[] | select(.label == ${chaincode_label})' | __jq -r '.package_id'"
+        cmd+="peer lifecycle chaincode queryinstalled --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA --output json"
     fi
 
     __clear_logdebu
     logdebu "Excecuting command: ${cmd}"
-    export PACKAGE_ID=$(eval "$cmd")
+    export PACKAGE_ID=$(eval "$cmd" | __run "$FABKIT_ROOT" jq -r "'.installed_chaincodes[] | select(.label == ${chaincode_label})'" | __run "$FABKIT_ROOT" jq -r '.package_id')
     if echo "$PACKAGE_ID" | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
         logerr "Error retrieving package id for chaincode $chaincode_name"
         exit 1
@@ -735,29 +726,29 @@ __init_go_mod() {
     cd "${chaincode_relative_path}" >/dev/null 2> >(__throw >&2) || exit 1
 
     if [ ! -f "./go.mod" ]; then
-        if ! go mod init &>/dev/null; then
+        if ! __run "${chaincode_relative_path}" go mod init &>/dev/null; then
             logerr "Error initializing go mod"
             exit 1
         fi
     fi
-    
+
     if [ "${operation}" = "install" ]; then
-        if ! go get ./... &>/dev/null; then
+        if ! __run "${chaincode_relative_path}" go get ./... &>/dev/null; then
             logerr "Error installing go modules"
             exit 1
         fi
     elif [ "${operation}" = "update" ]; then
-        if ! go get -u=patch ./... &>/dev/null; then
+        if ! __run "${chaincode_relative_path}" go get -u=patch ./... &>/dev/null; then
             logerr "Error updating go modules"
             exit 1
         fi
     fi
 
-    if ! go mod tidy &>/dev/null; then
+    if ! __run "${chaincode_relative_path}" go mod tidy &>/dev/null; then
         logerr "Error running go mod tidy"
         exit 1
     fi
-    if ! go mod vendor &>/dev/null; then
+    if ! __run "${chaincode_relative_path}" go mod vendor &>/dev/null; then
         logerr "Error downloading go vendor"
         exit 1
     fi

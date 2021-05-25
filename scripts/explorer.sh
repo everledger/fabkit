@@ -1,11 +1,7 @@
 #!/usr/bin/env bash
 
 start_explorer() {
-    loginfo "Starting explorer"
-    echo
-
-    (stop_explorer) &
-    __spinner
+    loginfoln "Starting explorer"
 
     if ! docker ps | grep -q "fabric"; then
         logerr "No Fabric networks running. First launch fabkit start"
@@ -17,12 +13,15 @@ start_explorer() {
         exit 1
     fi
 
+    __clear_logdebu
+    (stop_explorer) &
+    __spinner
+
     # replacing private key path in connection profile
     config="${FABKIT_EXPLORER_PATH}/connection-profile/first-network"
     admin_key_path="peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp/keystore"
     private_key="/tmp/crypto/${admin_key_path}/$(ls ${FABKIT_CRYPTOS_PATH}/${admin_key_path})"
-    if (__jq <"${config}.base.json" -r --arg private_key "$private_key" '.organizations.Org1MSP.adminPrivateKey.path = $private_key' |
-        __jq -r --argjson FABKIT_TLS_ENABLED "$FABKIT_TLS_ENABLED" '.client.tlsEnable = $FABKIT_TLS_ENABLED' >"${config}.json") 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+    if (cat "${config}.base.json" | __run "$FABKIT_ROOT" jq -r "'.organizations.Org1MSP.adminPrivateKey.path = \"$private_key\" | .client.tlsEnable = $FABKIT_TLS_ENABLED'" >"${config}.json") 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
         logerr "Error in replacing private key in explorer configuration"
         exit 1
     fi

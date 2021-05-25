@@ -13,8 +13,10 @@ __check_version() {
     local installed_version=($(echo -e "${3//./\\n}"))
 
     if ! type -p "$cmd" &>/dev/null; then
-        logerr "${cmd} is not installed. Version >= $2} is required"
-        exit 1
+        if (docker run --rm -i "$FABKIT_DOCKER_IMAGE" bash -c "type -p $cmd" 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal") > >(__throw >&2); then
+            logerr "${cmd} is not installed. Version >= $2 is required"
+            exit 1
+        fi
     fi
 
     for i in "${!supported_version[@]}"; do
@@ -34,26 +36,26 @@ __check_dep_version() {
 
 __check_bash_version() {
     # shellcheck disable=SC2155
-    local version="$(bash --version 2>/dev/null | cut -d ' ' -f 4 | head -n 1 | cut -d '(' -f 1)"
+    local version="$(__run "$FABKIT_ROOT" bash --version 2>/dev/null | cut -d ' ' -f 4 | head -n 1 | cut -d '(' -f 1)"
     __check_version bash "$FABKIT_BASH_VERSION_SUPPORTED" "$version"
 }
 
 __check_go_version() {
     # shellcheck disable=SC2155
-    local version=$(go version 2>/dev/null | cut -d ' ' -f 3 | cut -c 3-)
+    local version=$(__run "$FABKIT_ROOT" go version 2>/dev/null | cut -d ' ' -f 3 | cut -c 3-)
     __check_version go "$FABKIT_GO_VERSION_SUPPORTED" "$version"
 }
 
 __check_node_version() {
     # shellcheck disable=SC2155
-    local version=$(node -v 2>/dev/null | cut -c 2-)
+    local version=$(__run "$FABKIT_ROOT" node -v 2>/dev/null | cut -c 2-)
     __check_version node "$FABKIT_NODE_VERSION_SUPPORTED" "$version"
 
 }
 
 __check_java_version() {
     # shellcheck disable=SC2155
-    local version=$(java --version 2>/dev/null | cut -d ' ' -f 2 | head -n 1)
+    local version=$(__run "$FABKIT_ROOT" java --version 2>/dev/null | cut -d ' ' -f 2 | head -n 1)
     __check_version java "$FABKIT_JAVA_VERSION_SUPPORTED" "$version"
 }
 
@@ -66,7 +68,6 @@ __check_docker_version() {
     # shellcheck disable=SC2155
     local version=$(docker version --format '{{.Server.Version}}' 2>/dev/null)
     __check_version docker "$FABKIT_DOCKER_VERSION_SUPPORTED" "$version"
-
     # shellcheck disable=SC2155
     version=$(docker-compose version --short 2>/dev/null)
     __check_version docker-compose "$FABKIT_DOCKER_COMPOSE_VERSION_SUPPORTED" "$version"
@@ -187,7 +188,7 @@ __catch() {
         ((frame++)) || true
         line="$(caller "$frame" 2>&1 | cut -d ' ' -f 1)"
     done
-    logwarn "Check the log file for more details: cat $FABKIT_LOGFILE"
+    logwarn "Check the log file for more details: cat ${FABKIT_LOGFILE/$FABKIT_ROOT/$FABKIT_HOST_ROOT}"
 
     exit "$1"
 }
