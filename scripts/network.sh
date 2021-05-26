@@ -218,6 +218,18 @@ initialize_network() {
         (chaincode_instantiate "$FABKIT_CHAINCODE_NAME" "$FABKIT_CHAINCODE_VERSION" "$FABKIT_CHANNEL_NAME" 1 0) &
         __spinner
     fi
+
+    local key="mydiamond"
+    local value='{\"cut_grade\":\"excellent\",\"color_grade\":\"d\",\"clarity_grade\":\"vs1\",\"carat_weight\":0.31,\"origin\":\"russia\",\"certifier\":\"GIA\",\"certificate_no\":\"5363986006\",\"uri\":\"https://provenance.everledger.io/time-lapse/GIA/5363986006\"}'
+    echo
+    logsucc "Great! Your blockchain network is up and running 🚀 now you can try to run a couple of simple commands:"
+    echo
+    echo "Let's add a new diamond! ✨💎✨"
+    loghead "\tfabkit chaincode invoke mychannel mygocc 1 0 '{\"Args\":[\"put\",\"$key\",\"$value\"]}'\n"
+    echo "And then let's fetch it! 🤩 (tip: click on the uri link to explore its journey 🌎)"
+    loghead "\tfabkit chaincode query mychannel mygocc 1 0 '{\"Args\":[\"get\",\"$key\"]}'\n"
+    echo
+    echo "Find more available commands at: $(loginfo "https://github.com/everledger/fabkit/blob/master/docs/chaincode.md")"
 }
 
 __replace_config_capabilities() {
