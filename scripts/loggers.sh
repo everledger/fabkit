@@ -32,11 +32,11 @@ logdebu() {
 }
 
 tostring() {
-    echo "$*" | __jq tostring 2>/dev/null || echo "${*//\"/\\\"}"
+    echo "$*" | __run "$FABKIT_ROOT" jq tostring 2>/dev/null || echo "${*//\"/\\\"}"
 }
 
 tojson() {
-    echo "$*" | __jq . 2>/dev/null || echo "${*//\\\"/\"}"
+    echo "$*" | __run "$FABKIT_ROOT" jq . 2>/dev/null || echo "${*//\\\"/\"}"
 }
 
 # used to simulate spinner formatting when running within sub-processes
@@ -83,7 +83,7 @@ __print_to_file() {
     local tag="$3"
     local timestamp=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
 
-    echo -e "$timestamp $tag $message" >>"$file"
+    echo -e "$timestamp $tag $message" >>"$file" 2>/dev/null
 }
 
 # remove dangling spinner when running in debug mode

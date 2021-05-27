@@ -31,7 +31,7 @@ readonly FABKIT_DOCKER_COMPOSE_VERSION_SUPPORTED="1.24"
 # shellcheck disable=SC2034
 readonly FABKIT_BASH_VERSION_SUPPORTED="3.2"
 # shellcheck disable=SC2034
-readonly FABKIT_GO_VERSION_SUPPORTED="1.11"
+readonly FABKIT_GO_VERSION_SUPPORTED="1.12"
 # shellcheck disable=SC2034
 readonly FABKIT_NODE_VERSION_SUPPORTED="10.20"
 # shellcheck disable=SC2034
@@ -59,19 +59,14 @@ __log_setup() {
     echo
 }
 
-__yq() {
-    if type -p yq &>/dev/null; then
-        yq "$@"
+__run() {
+    local path="$1"
+    local cmd="$2"
+    shift 2 || true
+    if type -p "$cmd" &>/dev/null; then
+        cd "$path" && (eval "$cmd" "$@")
     else
-        docker run --rm -i -v "${PWD}":/workdir "$FABKIT_YQ_DOCKER_IMAGE" "$@"
-    fi
-}
-
-__jq() {
-    if type -p jq &>/dev/null; then
-        jq "$@"
-    else
-        docker run --rm -i -v "${PWD}":/workdir "$FABKIT_JQ_DOCKER_IMAGE" "$@"
+        docker run --rm -i -v "$path":/workdir -w /workdir "$FABKIT_DOCKER_IMAGE" bash -c "$cmd $*"
     fi
 }
 

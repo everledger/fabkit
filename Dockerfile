@@ -1,15 +1,16 @@
 FROM alpine:3.13.0
 
-RUN echo "https://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories
+RUN echo "@edgecommunity https://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories
 
-RUN apk --update add --no-cache \
-  bash \
+RUN apk add --no-cache \
+  bash@edgecommunity \
+  gawk \
   ncurses \
   git \
   zip \
   rsync \
-  jq \
-  yq \
+  jq@edgecommunity \
+  yq@edgecommunity \
   go \
   npm \
   openjdk11 \
