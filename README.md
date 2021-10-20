@@ -17,7 +17,7 @@ The minimum requirements for running Fabkit are simply the following:
 
 If your OS supports `bash` and you are running this code locally, then beware the following installed version is required
 
-- [Bash](https://www.gnu.org/software/bash/) [>= 3.2]
+- [Bash](https://www.gnu.org/software/bash/) [>= 4.2]
 - zip
 - rsync
 
@@ -128,12 +128,12 @@ Note: **The maximum number of organizations supported at the time of writing is 
 Or you might want to run a multi-org setup, in debug mode and on a specific version of Fabric:
 
 ```bash
-fabkit network start -o 3 -d -v 1.4.9
+fabkit network start -o 3 -d -v 2.3.2
 ```
 
 For the full list of params, check the helper by typing `fabkit network`.
 
-**Note: Fabkit will save the options of the last deployed network. To redeploy using the same configurations, simply run `fabkit network start`. To start afresh add the `-r` option to the command.**
+Note: **Fabkit will save the options of the last deployed network. To redeploy using the same configurations, simply run `fabkit network start`. To start afresh add the `-r` option to the command.**
 
 ## Stop a running network
 

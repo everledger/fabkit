@@ -169,7 +169,7 @@ chaincode_instantiate() {
     if [ "${FABKIT_TLS_ENABLED:-}" = "false" ]; then
         cmd+="peer chaincode instantiate -o $FABKIT_ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -C $channel_name -l $chaincode_language $options"
     else
-        cmd+="peer chaincode instantiate -o $FABKIT_ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -C $channel_name -l $chaincode_language $options --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA"
+        cmd+="peer chaincode instantiate -o $FABKIT_ORDERER_ADDRESS -n $chaincode_name -v $chaincode_version -C $channel_name -l $chaincode_language $options --tls --cafile $ORDERER_CA"
     fi
 
     __clear_logdebu
@@ -205,7 +205,7 @@ chaincode_upgrade() {
     if [ "${FABKIT_TLS_ENABLED:-}" = "false" ]; then
         cmd+="peer chaincode upgrade -n $chaincode_name -v $chaincode_version -C $channel_name -l $chaincode_language $options"
     else
-        cmd+="peer chaincode upgrade -n $chaincode_name -v $chaincode_version -C $channel_name -l $chaincode_language $options --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA"
+        cmd+="peer chaincode upgrade -n $chaincode_name -v $chaincode_version -C $channel_name -l $chaincode_language $options --tls --cafile $ORDERER_CA"
     fi
 
     __clear_logdebu
@@ -353,7 +353,7 @@ chaincode_invoke() {
     if [ "${FABKIT_TLS_ENABLED:-}" = "false" ]; then
         cmd+="peer chaincode invoke -o $FABKIT_ORDERER_ADDRESS -C $channel_name -n $chaincode_name --peerAddresses $CORE_PEER_ADDRESS --waitForEvent $options"
     else
-        cmd+="peer chaincode invoke -o $FABKIT_ORDERER_ADDRESS -C $channel_name -n $chaincode_name --waitForEvent $options --peerAddresses $CORE_PEER_ADDRESS --tlsRootCertFiles $CORE_PEER_TLS_ROOTCERT_FILE --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA"
+        cmd+="peer chaincode invoke -o $FABKIT_ORDERER_ADDRESS -C $channel_name -n $chaincode_name --waitForEvent $options --peerAddresses $CORE_PEER_ADDRESS --tlsRootCertFiles $CORE_PEER_TLS_ROOTCERT_FILE --tls --cafile $ORDERER_CA"
     fi
 
     __clear_logdebu
@@ -387,7 +387,7 @@ chaincode_query() {
     if [ "${FABKIT_TLS_ENABLED:-}" = "false" ]; then
         cmd+="peer chaincode query -o $FABKIT_ORDERER_ADDRESS -C $channel_name -n $chaincode_name -c '$request' $options"
     else
-        cmd+="peer chaincode query -o $FABKIT_ORDERER_ADDRESS -C $channel_name -n $chaincode_name -c '$request' $options --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA"
+        cmd+="peer chaincode query -o $FABKIT_ORDERER_ADDRESS -C $channel_name -n $chaincode_name -c '$request' $options --tls --cafile $ORDERER_CA"
     fi
 
     __clear_logdebu
@@ -425,7 +425,7 @@ lifecycle_chaincode_package_id() {
     if [ "${FABKIT_TLS_ENABLED:-}" = "false" ]; then
         cmd+="peer lifecycle chaincode queryinstalled --output json"
     else
-        cmd+="peer lifecycle chaincode queryinstalled --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA --output json"
+        cmd+="peer lifecycle chaincode queryinstalled --tls --cafile $ORDERER_CA --output json"
     fi
 
     __clear_logdebu
@@ -512,7 +512,7 @@ lifecycle_chaincode_install() {
     if [ "${FABKIT_TLS_ENABLED:-}" = "false" ]; then
         cmd+="peer lifecycle chaincode install ${chaincode_name}_${chaincode_version}.tar.gz $options"
     else
-        cmd+="peer lifecycle chaincode install ${chaincode_name}_${chaincode_version}.tar.gz $options --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA"
+        cmd+="peer lifecycle chaincode install ${chaincode_name}_${chaincode_version}.tar.gz $options --tls --cafile $ORDERER_CA"
     fi
 
     __clear_logdebu
@@ -557,7 +557,7 @@ lifecycle_chaincode_approve() {
     if [ "${FABKIT_TLS_ENABLED:-}" = "false" ]; then
         cmd+="peer lifecycle chaincode approveformyorg --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --package-id $PACKAGE_ID --sequence $sequence_no --waitForEvent --signature-policy '${signature_policy}' $options"
     else
-        cmd+="peer lifecycle chaincode approveformyorg --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --package-id $PACKAGE_ID --sequence $sequence_no --waitForEvent --signature-policy '${signature_policy}' $options --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA"
+        cmd+="peer lifecycle chaincode approveformyorg --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --package-id $PACKAGE_ID --sequence $sequence_no --waitForEvent --signature-policy '${signature_policy}' $options --tls --cafile $ORDERER_CA"
     fi
 
     __clear_logdebu
@@ -607,7 +607,7 @@ lifecycle_chaincode_commit() {
     if [ "${FABKIT_TLS_ENABLED:-}" = "false" ]; then
         cmd+="peer lifecycle chaincode checkcommitreadiness --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --sequence $sequence_no --output json --signature-policy '${signature_policy}' $options"
     else
-        cmd+="peer lifecycle chaincode checkcommitreadiness --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --sequence $sequence_no --output json --signature-policy '${signature_policy}' $options --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA"
+        cmd+="peer lifecycle chaincode checkcommitreadiness --channelID $channel_name --name $chaincode_name --version $chaincode_version --init-required --sequence $sequence_no --output json --signature-policy '${signature_policy}' $options --tls --cafile $ORDERER_CA"
     fi
     __clear_logdebu
     logdebu "Excecuting command: ${cmd}"
@@ -620,7 +620,7 @@ lifecycle_chaincode_commit() {
     if [ "${FABKIT_TLS_ENABLED:-}" = "false" ]; then
         cmd+="peer lifecycle chaincode commit --channelID $channel_name --name $chaincode_name --version $chaincode_version --sequence $sequence_no --init-required --peerAddresses $CORE_PEER_ADDRESS --signature-policy '${signature_policy}' $options"
     else
-        cmd+="peer lifecycle chaincode commit --channelID $channel_name --name $chaincode_name --version $chaincode_version --sequence $sequence_no --init-required  --signature-policy '${signature_policy}' $options --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA"
+        cmd+="peer lifecycle chaincode commit --channelID $channel_name --name $chaincode_name --version $chaincode_version --sequence $sequence_no --init-required  --signature-policy '${signature_policy}' $options --tls --cafile $ORDERER_CA"
         forall=${cmd}
         for o in $(seq 1 "$FABKIT_ORGS"); do
             #TODO: Create from endorsement policy and make endorsement policy dynamic
@@ -644,7 +644,7 @@ lifecycle_chaincode_commit() {
     if [ "${FABKIT_TLS_ENABLED:-}" = "false" ]; then
         cmd+="peer lifecycle chaincode querycommitted --channelID $channel_name --name $chaincode_name --peerAddresses $CORE_PEER_ADDRESS --output json"
     else
-        cmd+="peer lifecycle chaincode querycommitted --channelID $channel_name --name $chaincode_name --peerAddresses $CORE_PEER_ADDRESS --output json --tls $FABKIT_TLS_ENABLED --cafile $ORDERER_CA --tlsRootCertFiles $CORE_PEER_TLS_ROOTCERT_FILE"
+        cmd+="peer lifecycle chaincode querycommitted --channelID $channel_name --name $chaincode_name --peerAddresses $CORE_PEER_ADDRESS --output json --tls --cafile $ORDERER_CA --tlsRootCertFiles $CORE_PEER_TLS_ROOTCERT_FILE"
     fi
     __clear_logdebu
     logdebu "Excecuting command: ${cmd}"
@@ -826,15 +826,20 @@ __set_chaincode_remote_path() {
     local __chaincode_name=$(basename "$__chaincode_relative_path")
 
     if [ "$__chaincode_language" = "golang" ]; then
-        case $FABKIT_CHAINCODE_REMOTE_PATH/ in
-        /opt/gopath/src/*)
-            local __chaincode_remote_path="${FABKIT_CHAINCODE_REMOTE_PATH#/opt/gopath/src/}/${__chaincode_name}"
-            ;;
-        *)
-            logerr "Chaincode not mounted in gopath"
-            exit 1
-            ;;
-        esac
+        # TODO: Path replacement does not work 
+        # case $FABKIT_CHAINCODE_REMOTE_PATH/ in
+        # /opt/gopath/src/*)
+        #     local __chaincode_remote_path="${FABKIT_CHAINCODE_REMOTE_PATH#/opt/gopath/src/}/${__chaincode_name}"
+        #     ;;
+        # /usr/local/go/src/*)
+        #     local __chaincode_remote_path="${FABKIT_CHAINCODE_REMOTE_PATH#/usr/local/go/src/}/${__chaincode_name}"
+        #     ;;
+        # *)
+        #     logerr "Chaincode not mounted in gopath"
+        #     exit 1
+        #     ;;
+        # esac
+        local __chaincode_remote_path="${FABKIT_CHAINCODE_REMOTE_PATH}/${__chaincode_name}"
 
         if [[ ! $(find "$__chaincode_relative_path" -type f -name '*.go' -maxdepth 1 2>/dev/null) && -d "${__chaincode_relative_path}/cmd" ]]; then
             __chaincode_remote_path+="/cmd"

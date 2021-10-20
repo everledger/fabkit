@@ -15,16 +15,13 @@ __docker_fabric_pull() {
     for image in peer orderer ccenv tools; do
         logdebu "Pulling hyperledger/fabric-$image:${FABKIT_FABRIC_VERSION}"
         docker pull hyperledger/fabric-$image:"${FABKIT_FABRIC_VERSION}" 1>/dev/null 2> >(__throw >&2)
-        docker tag hyperledger/fabric-$image:"${FABKIT_FABRIC_VERSION}" hyperledger/fabric-$image:latest 1>/dev/null 2> >(__throw >&2)
     done
 
     logdebu "Pulling hyperledger/fabric-ca:${FABKIT_FABRIC_CA_VERSION}"
     docker pull hyperledger/fabric-ca:"${FABKIT_FABRIC_CA_VERSION}" 1>/dev/null 2> >(__throw >&2)
-    docker tag hyperledger/fabric-ca:"${FABKIT_FABRIC_CA_VERSION}" hyperledger/fabric-ca:latest 1>/dev/null 2> >(__throw >&2)
 
-    logdebu "Pulling hyperledger/fabric-couchdb:${FABKIT_FABRIC_THIRDPARTY_IMAGE_VERSION}"
-    docker pull hyperledger/fabric-couchdb:"${FABKIT_FABRIC_THIRDPARTY_IMAGE_VERSION}" 1>/dev/null 2> >(__throw >&2)
-    docker tag hyperledger/fabric-couchdb:"${FABKIT_FABRIC_THIRDPARTY_IMAGE_VERSION}" hyperledger/fabric-couchdb:latest 1>/dev/null 2> >(__throw >&2)
+    logdebu "Pulling ${FABKIT_COUCHDB_IMAGE}"
+    docker pull "${FABKIT_COUCHDB_IMAGE}" 1>/dev/null 2> >(__throw >&2)
 }
 
 __docker_third_party_images_pull() {
@@ -197,7 +194,7 @@ initialize_network() {
     (update_channel "$FABKIT_CHANNEL_NAME" "$FABKIT_ORG_MSP" 1 0) &
     __spinner
 
-    if [[ "${FABKIT_FABRIC_VERSION}" =~ 2.* ]]; then
+    if [[ "${FABKIT_FABRIC_VERSION}" =~ ^2.* ]]; then
         (lifecycle_chaincode_package "$FABKIT_CHAINCODE_NAME" "$FABKIT_CHAINCODE_VERSION" "$FABKIT_CHAINCODE_NAME" 1 0) &
         __spinner
 
@@ -234,7 +231,7 @@ initialize_network() {
 
 __replace_config_capabilities() {
     configtx=${FABKIT_CONFIG_PATH}/configtx
-    if [[ "${FABKIT_FABRIC_VERSION}" =~ 2.* ]]; then
+    if [[ "${FABKIT_FABRIC_VERSION}" =~ ^2.* ]]; then
         if (cat "${configtx}.base.yaml" | __run "$FABKIT_ROOT" yq "e '.Capabilities.Channel.V2_0 = true |
             .Capabilities.Channel.V1_4_3 = false |
             .Capabilities.Orderer.V2_0 = true |
@@ -266,6 +263,10 @@ __set_network_env() {
     elif [ "${FABKIT_ORGS}" = "3" ]; then
         FABKIT_CONFIGTX_PROFILE_NETWORK=${THREE_ORGS}
         FABKIT_CONFIGTX_PROFILE_CHANNEL=ThreeOrgsChannel
+    fi
+
+    if [[ "${FABKIT_FABRIC_VERSION}" =~ ^1.* || "${FABKIT_FABRIC_VERSION}" =~ ^2.1.* ]]; then
+        export FABKIT_COUCHDB_IMAGE="hyperledger/fabric-couchdb:${FABKIT_FABRIC_THIRDPARTY_IMAGE_VERSION}"
     fi
 }
 
