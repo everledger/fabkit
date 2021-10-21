@@ -826,20 +826,20 @@ __set_chaincode_remote_path() {
     local __chaincode_name=$(basename "$__chaincode_relative_path")
 
     if [ "$__chaincode_language" = "golang" ]; then
-        # TODO: Path replacement does not work 
-        # case $FABKIT_CHAINCODE_REMOTE_PATH/ in
-        # /opt/gopath/src/*)
-        #     local __chaincode_remote_path="${FABKIT_CHAINCODE_REMOTE_PATH#/opt/gopath/src/}/${__chaincode_name}"
-        #     ;;
-        # /usr/local/go/src/*)
-        #     local __chaincode_remote_path="${FABKIT_CHAINCODE_REMOTE_PATH#/usr/local/go/src/}/${__chaincode_name}"
-        #     ;;
-        # *)
-        #     logerr "Chaincode not mounted in gopath"
-        #     exit 1
-        #     ;;
-        # esac
-        local __chaincode_remote_path="${FABKIT_CHAINCODE_REMOTE_PATH}/${__chaincode_name}"
+        # Fabric versions prior 2.x require a relative path to be set in order to correctly deploy chaincodes
+        if [[ "${FABKIT_FABRIC_VERSION}" =~ ^1.* ]]; then
+            case $FABKIT_CHAINCODE_REMOTE_PATH/ in
+            /opt/gopath/src/*)
+                local __chaincode_remote_path="${FABKIT_CHAINCODE_REMOTE_PATH#/opt/gopath/src/}/${__chaincode_name}"
+                ;;
+            *)
+                logerr "Chaincode not mounted in gopath"
+                exit 1
+                ;;
+            esac
+        else
+            local __chaincode_remote_path="${FABKIT_CHAINCODE_REMOTE_PATH}/${__chaincode_name}"
+        fi
 
         if [[ ! $(find "$__chaincode_relative_path" -type f -name '*.go' -maxdepth 1 2>/dev/null) && -d "${__chaincode_relative_path}/cmd" ]]; then
             __chaincode_remote_path+="/cmd"
