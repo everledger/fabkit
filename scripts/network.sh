@@ -265,7 +265,7 @@ __set_network_env() {
         FABKIT_CONFIGTX_PROFILE_CHANNEL=ThreeOrgsChannel
     fi
 
-    if [[ "${FABKIT_FABRIC_VERSION}" =~ ^1.* || "${FABKIT_FABRIC_VERSION}" =~ ^2.1.* ]]; then
+    if [[ "${FABKIT_FABRIC_VERSION}" =~ ^1.* || "${FABKIT_FABRIC_VERSION}" =~ ^2.[012].* ]]; then
         export FABKIT_COUCHDB_IMAGE="hyperledger/fabric-couchdb:${FABKIT_FABRIC_THIRDPARTY_IMAGE_VERSION}"
     fi
 }
