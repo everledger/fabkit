@@ -84,7 +84,7 @@ start_network() {
         loginfo "Launching Fabric components"
         if ! (eval "$command" &>/dev/null) > >(__throw >&2); then
             echo
-            logerr "Failed to launch containers. Check there are no other networks running or containers using the same ports. Clean your docker services and run this command again."
+            logerr "Failed to launch containers. Possible causes:\n1. Other running networks or containers using the same ports. Clean your docker services and run this command again.\n2. Configuration variables unset. Navigate to the FABKIT_ROOT and check your shell is automatically importing the .env file."
             exit 1
         fi
         sleep 5
