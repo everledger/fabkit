@@ -119,3 +119,16 @@ When running the network start command, the following error message is shown:
 ## Possible solutions
 
 It is a volume synchronization error that happens with docker every so often. Try to run the same command again.
+
+## Issue scenario
+
+Trying to run a Fabric network version <=2.1.* on Apple MacBook with an ARM-based Silicon (e.g. M1) chipset, resulting in the following error:
+
+```bash
+    [ERROR] Error joining channel mychannel
+    [ERROR] Error: error getting endorser client for channel: endorser client failed to connect to peer0.org1.example.com:7051: failed to create new connection: connection error: desc = "transport: error while dialing: dial tcp 172.21.0.5:7051: connect: connection refused"
+```
+
+## Possible solutions
+
+Fabric _<=2.1.x_ won't work on Mac with ARM-based Silicon chipset (e.g. M1) as the `fabric-couchdb` CouchDB image will panic. All users running on this architecture should use a Fabric version _>=2.2.x_.

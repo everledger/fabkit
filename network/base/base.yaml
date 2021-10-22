@@ -1,4 +1,4 @@
-version: '2.4'
+version: "2.4"
 
 # good samples here: https://github.com/yeasy/docker-compose-files/blob/master/hyperledger_fabric
 
@@ -28,12 +28,14 @@ services:
       - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
       - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
       - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
-      - CORE_CHIANCODE_BUILDER=hyperledger/fabric-ccenv:${FABKIT_FABRIC_THIRDPARTY_IMAGE_VERSION}
-      - CORE_CHIANCODE_NODE_RUNTIME=hyperledger/fabric-nodeenv:${FABKIT_FABRIC_THIRDPARTY_IMAGE_VERSION}
+      - CORE_CHAINCODE_BUILDER=hyperledger/fabric-ccenv:${FABKIT_FABRIC_VERSION}
+      - CORE_CHAINCODE_NODE_RUNTIME=hyperledger/fabric-nodeenv:${FABKIT_FABRIC_VERSION}
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
     expose:
-      - '7051' # gRPC
-      - '9443' # Operation REST
+      - "7051" # gRPC
+      - "9443" # Operation REST
     #command: bash -c 'bash /tmp/peer_build.sh; peer node start'
     command: peer node start
 
@@ -65,8 +67,8 @@ services:
       - ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE=/var/hyperledger/orderer/tls/server.crt
       - ORDERER_GENERAL_CLUSTER_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
     expose:
-      - '7050' # gRPC
-      - '8443' # Operation REST
+      - "7050" # gRPC
+      - "8443" # Operation REST
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric
     #command: bash -c 'bash /tmp/orderer_build.sh; orderer start' # use this if to debug orderer
     command: orderer start
@@ -94,10 +96,10 @@ services:
     command: /bin/bash
 
   couchdb-base:
-    image: hyperledger/fabric-couchdb:${FABKIT_FABRIC_THIRDPARTY_IMAGE_VERSION}
+    image: ${FABKIT_COUCHDB_IMAGE}
     restart: always
     # Populate the COUCHDB_USER and COUCHDB_PASSWORD to set an admin user and password
     # for CouchDB.  This will prevent CouchDB from operating in an "Admin Party" mode.
     environment:
-      - COUCHDB_USER=
-      - COUCHDB_PASSWORD=
+      - COUCHDB_USER=admin
+      - COUCHDB_PASSWORD=adminpw

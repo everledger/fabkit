@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 __check_fabric_version() {
-    if [[ ! "${FABKIT_FABRIC_VERSION}" =~ ${1}.* ]]; then
+    if [[ ! "${FABKIT_FABRIC_VERSION}" =~ ^${1}.* ]]; then
         logerr "This command is not enabled on Fabric v${FABKIT_FABRIC_VERSION}. In order to run, run your network with the flag: -v|--version [version]"
         exit 1
     fi
@@ -20,9 +20,9 @@ __check_version() {
     fi
 
     for i in "${!supported_version[@]}"; do
-        if [[ "${installed_version[$i]}" -gt "${supported_version[$i]}" ]]; then
+        if [[ "${installed_version[$i]//[aA-zZ]/}" -gt "${supported_version[$i]}" ]]; then
             break
-        elif [[ "${installed_version[$i]}" -lt "${supported_version[$i]}" ]]; then
+        elif [[ "${installed_version[$i]//[aA-zZ]/}" -lt "${supported_version[$i]}" ]]; then
             logerr "${cmd} >= $2 is required"
             exit 1
         fi
@@ -137,7 +137,7 @@ __validate_params() {
         fi
     done
     if [ "$version_exists" = "false" ]; then
-        logerr "Fabric version ${FABKIT_FABRIC_VERSION} does not exist. For the complete list of releases visit: https://github.com/hyperledger/fabric/tags"
+        logerr "Fabric version ${FABKIT_FABRIC_VERSION} does not exist. For the complete list of releases visit: https://github.com/hyperledger/fabric/tags or pick any of the following: ${FABKIT_FABRIC_AVAILABLE_VERSIONS[*]}" 
         exit 1
     fi
 
