@@ -1,4 +1,4 @@
-version: '2.4'
+version: "2.4"
 
 networks:
   default:
@@ -46,8 +46,6 @@ services:
       - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp
       - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
       - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb.peer0.org3.example.com:5984
-      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
-      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw
       - GODEBUG=netdns=go
     volumes:
       - /var/run/docker.sock:/host/var/run/docker.sock
@@ -64,9 +62,6 @@ services:
     extends:
       file: ${FABKIT_NETWORK_PATH}/base/base.yaml
       service: couchdb-base
-    environment:
-      - COUCHDB_USER=admin
-      - COUCHDB_PASSWORD=adminpw
     volumes:
       - couchdb.peer0.org3.example.com:/opt/couchdb/data
     ports:
