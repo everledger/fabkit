@@ -175,6 +175,11 @@ stop_network() {
         stop_explorer
     fi
 
+    if docker ps | grep -q "fabric-console"; then
+        echo -en "\n\033[3C→ "
+        stop_console
+    fi
+
     __clear_logdebu
     logdebu "Cleaning docker leftovers containers and images"
     docker rm -f $(docker ps -a | awk '($2 ~ /${FABKIT_DOCKER_NETWORK}|dev-/) {print $1}') &>/dev/null || true

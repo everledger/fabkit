@@ -30,6 +30,7 @@ help() {
     help_ca
     help_network
     help_explorer
+    help_console
     help_channel
     help_generate
     help_chaincode
@@ -75,6 +76,14 @@ help_explorer() {
     loginfo "
         start                                                                                 : run the blockchain explorer user-interface and analytics
         stop                                                                                  : stop the blockchain explorer user-interface and analytics
+    "
+}
+
+help_explorer() {
+    help_header "fabkit console"
+    loginfo "
+        start                                                                                 : run the blockchain console user-interface
+        stop                                                                                  : stop the blockchain console user-interface
     "
 }
 

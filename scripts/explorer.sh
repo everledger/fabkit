@@ -40,7 +40,7 @@ start_explorer() {
     __spinner
 
     echo "Blockchain Explorer default user is exploreradmin/exploreradminpw - $(logsucc http://localhost:8090)"
-    echo "Grafana default user is admin/admin - $(logsucc http://localhost:3000)"
+    echo "Grafana default user is admin/admin - $(logsucc http://localhost:3333)"
 }
 
 stop_explorer() {
