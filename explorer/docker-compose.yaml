@@ -72,4 +72,4 @@ services:
       - ${FABKIT_HOST_ROOT}/explorer/artifacts/operations/grafana_conf/provisioning:/etc/grafana/provisioning
       - grafana:/var/lib/grafana
     ports:
-      - 3000:3000
+      - 3333:3000
