@@ -30,13 +30,17 @@ __check_version() {
 }
 
 __check_dep_version() {
-    __check_bash_version
     __check_docker_version
+    __check_bash_version
 }
 
 __check_bash_version() {
     # shellcheck disable=SC2155
-    local version="$(__run "$FABKIT_ROOT" bash --version 2>/dev/null | cut -d ' ' -f 4 | head -n 1 | cut -d '(' -f 1)"
+    local version="$(__run "$FABKIT_ROOT" bash --version 2>/dev/null | head -n 1 | cut -d ' ' -f 4 | cut -d '(' -f 1)"
+    # quick fix for non-ascii encoding
+    if [ -z "$version" ]; then
+        version="$(__run "$FABKIT_ROOT" bash --version 2>/dev/null | head -n 1 | cut -d ' ' -f 3 | cut -d '(' -f 1)"
+    fi
     __check_version bash "$FABKIT_BASH_VERSION_SUPPORTED" "$version"
 }
 
@@ -55,11 +59,20 @@ __check_node_version() {
 
 __check_java_version() {
     # shellcheck disable=SC2155
-    local version=$(__run "$FABKIT_ROOT" java --version 2>/dev/null | cut -d ' ' -f 2 | head -n 1)
+    local version=$(__run "$FABKIT_ROOT" java --version 2>/dev/null | head -n 1 | cut -d ' ' -f 2)
     __check_version java "$FABKIT_JAVA_VERSION_SUPPORTED" "$version"
 }
 
+__check_docker() {
+    if ! type -p docker &>/dev/null; then
+        logerr "docker is not installed. Version >= $FABKIT_DOCKER_VERSION_SUPPORTED is required"
+        exit 1
+    fi
+}
+
 __check_docker_version() {
+    __check_docker
+
     if docker info --format '{{json .}}' | grep -q "Cannot connect"; then
         logerr "Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?"
         exit 1
