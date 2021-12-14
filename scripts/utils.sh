@@ -23,7 +23,7 @@ __check_version() {
         if [[ "${installed_version[$i]//[aA-zZ]/}" -gt "${supported_version[$i]}" ]]; then
             break
         elif [[ "${installed_version[$i]//[aA-zZ]/}" -lt "${supported_version[$i]}" ]]; then
-            logerr "${cmd} >= $2 is required"
+            logerr "${cmd} >= $2 is required but installed version is: ${3//[aA-zZ]/}"
             exit 1
         fi
     done
