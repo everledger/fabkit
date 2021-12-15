@@ -12,13 +12,6 @@ __check_version() {
     local supported_version=($(echo -e "${2//./\\n}"))
     local installed_version=($(echo -e "${3//./\\n}"))
 
-    if ! type -p "$cmd" &>/dev/null; then
-        if (docker run --rm -i "$FABKIT_DOCKER_IMAGE" bash -c "type -p $cmd" 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal") > >(__throw >&2); then
-            logerr "${cmd} is not installed. Version >= $2 is required"
-            exit 1
-        fi
-    fi
-
     for i in "${!supported_version[@]}"; do
         if [[ "${installed_version[$i]//[aA-zZ]/}" -gt "${supported_version[$i]}" ]]; then
             break
@@ -31,10 +24,22 @@ __check_version() {
 
 __check_dep_version() {
     __check_docker_version
+    __check_docker_compose_version
     __check_bash_version
 }
 
+__check_dep() {
+    local dep=$1
+
+    if ! type -p "$dep" &>/dev/null; then
+        logerr "${dep} is not installed."
+        exit 1
+    fi
+}
+
 __check_bash_version() {
+    __check_dep bash
+
     # shellcheck disable=SC2155
     local version="$(__run "$FABKIT_ROOT" bash --version 2>/dev/null | head -n 1 | cut -d ' ' -f 4 | cut -d '(' -f 1)"
     # quick fix for non-ascii encoding
@@ -63,15 +68,8 @@ __check_java_version() {
     __check_version java "$FABKIT_JAVA_VERSION_SUPPORTED" "$version"
 }
 
-__check_docker() {
-    if ! type -p docker &>/dev/null; then
-        logerr "docker is not installed. Version >= $FABKIT_DOCKER_VERSION_SUPPORTED is required"
-        exit 1
-    fi
-}
-
 __check_docker_version() {
-    __check_docker
+    __check_dep docker
 
     if docker info --format '{{json .}}' | grep -q "Cannot connect"; then
         logerr "Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?"
@@ -81,8 +79,13 @@ __check_docker_version() {
     # shellcheck disable=SC2155
     local version=$(docker version --format '{{.Server.Version}}' 2>/dev/null)
     __check_version docker "$FABKIT_DOCKER_VERSION_SUPPORTED" "$version"
+}
+
+__check_docker_compose_version() {
+    __check_dep docker-compose
+
     # shellcheck disable=SC2155
-    version=$(docker-compose version --short 2>/dev/null)
+    local version=$(docker-compose version --short 2>/dev/null)
     __check_version docker-compose "$FABKIT_DOCKER_COMPOSE_VERSION_SUPPORTED" "$version"
 }
 
