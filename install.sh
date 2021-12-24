@@ -10,9 +10,6 @@ FABKIT_DOCKER_IMAGE="everledgerio/fabkit"
 FABKIT_LOGFILE=".fabkit.log"
 # TODO: Retrieve latest available version from web
 FABKIT_VERSION="latest"
-FABKIT_BRANCH="master"
-FABKIT_MASTER_TARBALL_URI="https://github.com/everledger/fabkit/archive/refs/heads/master.zip"
-FABKIT_TARBALL="fabkit-${FABKIT_VERSION}.zip"
 ALIASES=("fabkit" "fk")
 
 __error() {
@@ -38,6 +35,13 @@ __error() {
 __exit_on_error() {
     echo "Check the log file for more details: $(yellow "cat $FABKIT_LOGFILE")"
     kill 0
+}
+
+__check_deps() {
+    if ! type -p git &>/dev/null; then
+        __error "git required but not installed"
+        exit 1
+    fi
 }
 
 __overwrite_line() {
@@ -96,13 +100,7 @@ __setup() {
     echo
 }
 
-__download_and_extract() {
-    (
-        echo -n "Downloading $(cyan "$FABKIT_TARBALL")"
-        curl -sL $FABKIT_MASTER_TARBALL_URI -o "$FABKIT_TARBALL"
-    ) &
-    __spinner
-
+__install() {
     unset FABKIT_ROOT
     while [[ (-n "$yn" && ! "$yn" =~ ^(Y|y)) || -z "$FABKIT_ROOT" || (-n "$FABKIT_ROOT" && ! -d "$FABKIT_ROOT") ]]; do
         read -rp "Where would you like to install Fabkit? [$(yellow "$FABKIT_DEFAULT_PATH")] " FABKIT_ROOT
@@ -134,7 +132,7 @@ __download_and_extract() {
 
     if [ -w "$FABKIT_ROOT" ]; then
         (
-            if echo -n "Installing into $(cyan "${FABKIT_ROOT}")" && (__unpack_tarball 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal") > >(__error >&2); then
+            if echo -n "Downloading and installing into $(cyan "${FABKIT_ROOT}")" && (__fetch 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal") > >(__error >&2); then
                 __error "There was an error extracting ${FABKIT_TARBALL} into ${FABKIT_ROOT}"
                 exit 1
             fi
@@ -149,10 +147,8 @@ __download_and_extract() {
     fi
 }
 
-__unpack_tarball() {
-    local temp_dir=".__fabkit_tmp"
-    mkdir "$temp_dir" && tar -C "$temp_dir" -xzf "$FABKIT_TARBALL" && mv {${temp_dir}/fabkit-master/*,${temp_dir}/fabkit-master/.*} "${FABKIT_ROOT}/"
-    rm -rf "$temp_dir" "${FABKIT_TARBALL}" &>/dev/null
+__fetch() {
+    git clone https://github.com/everledger/fabkit.git ${FABKIT_ROOT}
 }
 
 __set_installation_type() {
@@ -269,19 +265,17 @@ read -n 1 -s -r -p "Press any key to start! (or CTRL-C to exit) "
 echo
 echo
 
+__check_deps
+
 if git remote -v 2>/dev/null | grep -q "fabkit"; then
     cyan "Looks like you want to run Fabkit from inside its repository path."
     echo
-    if (git checkout ${FABKIT_BRANCH} 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal") > >(__error >&2); then
-        __error "Error checking out branch ${FABKIT_BRANCH}"
-        exit 1
-    fi
     echo "Setting to $(cyan "${FABKIT_VERSION}") version."
     echo "Going to set - $(cyan "${PWD}") - as your installation path!"
     echo
     FABKIT_ROOT="$PWD"
 else
-    __download_and_extract
+    __install
 fi
 
 sleep 1
