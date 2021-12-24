@@ -16,27 +16,32 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Use latest tag and replace in env file
+        id: prep
         run: |
-          FABKIT_NEW_VERSION=${GITHUB_REF#refs/tags/v}
-          echo "FABKIT_NEW_VERSION=${FABKIT_NEW_VERSION}"
+          FABKIT_VERSION=${GITHUB_REF#refs/tags/v}
+          echo "FABKIT_VERSION=${FABKIT_VERSION}"
           
-          # switch to HEAD branch (master/main)
-          HEAD_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD | cut -d'/' -f4)
+          # switch to HEAD branch (probably redundant)
+          HEAD_BRANCH=master
           echo "Switching to ${HEAD_BRANCH} branch"
           git checkout $HEAD_BRANCH
           
           # overwrite Fabkit version in .env file
-          sed -i "s+^FABKIT_VERSION=.*+FABKIT_VERSION=${FABKIT_NEW_VERSION}+" .env
+          sed -i "s+^FABKIT_VERSION=.*+FABKIT_VERSION=${FABKIT_VERSION}+" .env
           echo "Fabkit version set to: $(head -n 1 .env)"
+          
+          # set output parameters
+          echo ::set-output name=fabkit_version::${FABKIT_VERSION}
+          echo ::set-output name=head_branch::${HEAD_BRANCH}
 
       - name: Commit changes
         uses: EndBug/add-and-commit@v7
         with:
           default_author: github_actions
-          branch: "${HEAD_BRANCH}"
-          add: ".env"
-          message: "Update version to v${FABKIT_NEW_VERSION}"
-          tag: "v${FABKIT_NEW_VERSION} --force"
+          branch: ${{ steps.prep.outputs.head_branch }}
+          add: '.env'
+          message: Update version to v${{ steps.prep.outputs.fabkit_version }}
+          tag: v${{ steps.prep.outputs.fabkit_version }} --force
           
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
