@@ -8,9 +8,6 @@ jobs:
   update_version_and_push_to_registry:
     name: Update Fabkit version
     runs-on: ubuntu-latest
-    permissions:
-      packages: write
-      contents: read
     steps:
       - name: Check out the repo
         uses: actions/checkout@v2
