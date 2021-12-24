@@ -23,8 +23,6 @@ jobs:
           
           # switch to HEAD branch (probably redundant)
           HEAD_BRANCH=master
-          echo "Switching to ${HEAD_BRANCH} branch"
-          git checkout $HEAD_BRANCH
           
           # overwrite Fabkit version in .env file
           sed -i "s+^FABKIT_VERSION=.*+FABKIT_VERSION=${FABKIT_VERSION}+" .env
