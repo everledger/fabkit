@@ -67,6 +67,9 @@ jobs:
           images: |
             everledgerio/fabkit
             ghcr.io/${{ github.repository }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
 
       - name: Build and push Docker images
         uses: docker/build-push-action@v2
@@ -75,5 +78,5 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ${{ steps.prep.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
