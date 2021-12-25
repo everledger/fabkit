@@ -19,7 +19,7 @@ jobs:
           echo "FABKIT_VERSION=${FABKIT_VERSION}"
           
           # switch to HEAD branch (probably redundant)
-          HEAD_BRANCH=master
+          HEAD_BRANCH=main
           
           # overwrite Fabkit version in .env file
           sed -i "s+^FABKIT_VERSION=.*+FABKIT_VERSION=${FABKIT_VERSION}+" .env

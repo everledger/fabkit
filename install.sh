@@ -301,7 +301,7 @@ case $SHELL in
 esac
 
 sleep 1
-echo "For more information visit: $(cyan "https://github.com/everledger/fabkit/tree/master/docs")"
+echo "For more information visit: $(cyan "https://github.com/everledger/fabkit/tree/main/docs")"
 echo
 echo
 green "Have fun! 💃🕺"

@@ -226,7 +226,7 @@ initialize_network() {
     echo "And then let's fetch it! 🤩 (tip: click on the uri link to explore its journey 🌎)"
     loghead "\tfabkit chaincode query mychannel mygocc 1 0 '{\"Args\":[\"get\",\"$key\"]}'\n"
     echo
-    echo "Find more available commands at: $(loginfo "https://github.com/everledger/fabkit/blob/master/docs/chaincode.md")"
+    echo "Find more available commands at: $(loginfo "https://github.com/everledger/fabkit/blob/main/docs/chaincode.md")"
 }
 
 __replace_config_capabilities() {
