@@ -213,6 +213,31 @@ fabkit explorer stop
 
 Note: If you are using _docker-machine_ replace `localhost` with the docker-machine IP address. You can find this out by running `docker-machine ip`.
 
+## Fabric Operations Console (aka IBM Blockchain Platform UI)
+
+![Fabric Operations Console: Dashboard](./docs/images/console1.jpg)
+
+Fabric Operations Console provides functionalities to manage Hyperledger Fabric components (peers, CAs, orderers) and perform operations on the network like installing, instantiating, upgrading chaincodes or creating new channels.
+
+To start the console components:
+
+```bash
+fabkit console start
+```
+
+To stop and remove all console running components:
+
+```bash
+fabkit console stop
+```
+
+Accessing the console:
+
+- Username: `admin` | Password: `password`
+- Host: [http://localhost:3000](http://localhost:3000)
+
+For additional information on how to configure and use the console check the [Fabric Operations Console](./docs/console.md) page.
+
 ## Register and enroll users
 
 Fabkit offers full support to interact with a Fabric CA. To have a complete overview of the all available commands visit the [Fabric CA and user certificates management](./docs/ca.md) page.
