@@ -160,8 +160,7 @@ if [ "$FUNC" = "network" ]; then
     elif [ "$PARAM" = "stop" ]; then
         __load_lastrun
         __log_setup
-        (stop_network) &
-        __spinner
+        __check_docker_volumes
     else
         help_network
         exit
