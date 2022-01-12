@@ -178,6 +178,7 @@ elif [ "$FUNC" = "explorer" ]; then
         exit
     fi
 elif [ "$FUNC" = "console" ]; then
+    __load_lastrun
     PARAM="$1"
     shift || true
     if [ "$PARAM" = "start" ]; then

@@ -4,27 +4,27 @@
     "type": "msp",
     "admins": [],
     "root_certs": [
-        "<CERT>"
+        ""
     ],
     "tls_root_certs": [
-        "<CERT>"
+        ""
     ],
     "fabric_node_ous": {
         "admin_ou_identifier": {
-            "certificate": "<CERT>",
+            "certificate": "",
             "organizational_unit_identifier": "admin"
         },
         "client_ou_identifier": {
-            "certificate": "<CERT>",
+            "certificate": "",
             "organizational_unit_identifier": "client"
         },
         "enable": true,
         "orderer_ou_identifier": {
-            "certificate": "<CERT>",
+            "certificate": "",
             "organizational_unit_identifier": "orderer"
         },
         "peer_ou_identifier": {
-            "certificate": "<CERT>",
+            "certificate": "",
             "organizational_unit_identifier": "peer"
         }
     },

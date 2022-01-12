@@ -13,7 +13,6 @@ start_console() {
         exit 1
     fi
 
-    __clear_logdebu
     (stop_console) &
     __spinner
 
@@ -44,45 +43,78 @@ __generate_assets() {
     local assets_path="${FABKIT_CONSOLE_PATH}/assets"
     local templates_path="${FABKIT_CONSOLE_PATH}/templates"
 
-    rm -fr "${assets_path}"
+    rm -rf "${assets_path}"
     mkdir -p "${assets_path}/Certificate_Authorities"
     mkdir -p "${assets_path}/Ordering_Services"
     mkdir -p "${assets_path}/Peers"
     mkdir -p "${assets_path}/Organizations"
 
-    local ORG1_CAINFO="${assets_path}/org1_ca.json"
-    # ORDERER_CAINFO=${assets_path}/orderer_ca.json
+    local orderer_root_cert=""
+    for org in $(seq 1 "${FABKIT_ORGS}"); do
+        # extract org root cert from ca info
+        local org_root_cert=$(curl -sk http"$(if [ "${FABKIT_TLS_ENABLED:-}" = "true" ]; then echo "s"; fi)"://localhost:$((6 + org))054/cainfo | __run "$FABKIT_ROOT" jq -r .result.CAChain)
 
-    curl -k https://localhost:7054/cainfo >"${ORG1_CAINFO}"
-    local ORG1_ROOT_CERT=$(jq .result.CAChain "${ORG1_CAINFO}" -r)
+        # create org ca import
+        if (
+            (__run "$FABKIT_ROOT" jq --arg org_root_cert "$org_root_cert" "'.tls_cert = \"$org_root_cert\" | .msp.ca.root_certs[0] = \"$org_root_cert\"'" "${templates_path}/Certificate_Authorities/orgca-local_ca.json" >"${assets_path}/Certificate_Authorities/org${org}ca-local_ca.json") &&
+                sed -i'.bak' -e "s/%ORG%/${org}/g" -e "s/%PORT_INDEX%/$((6 + org))/g" "${assets_path}/Certificate_Authorities/org${org}ca-local_ca.json" && rm "${assets_path}/Certificate_Authorities/org${org}ca-local_ca.json.bak" &>/dev/null
+        ) 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+            logerr "Error creating org${org} ca import"
+            exit 1
+        fi
 
-    # curl -k https://localhost:9054/cainfo > "${ORDERER_CAINFO}"
-    # ORDERER_ROOT_CERT=$(jq .result.CAChain "${ORDERER_CAINFO}" -r)
-    ORDERER_ROOT_CERT=$ORG1_ROOT_CERT
+        # TODO: repeat for number of peers
+        # create peer import
+        if (
+            (__run "$FABKIT_ROOT" jq --arg org_root_cert "$org_root_cert" \
+                "'.msp.component.tls_cert = \"$org_root_cert\" | .msp.ca.root_certs[0] = \"$org_root_cert\" | .msp.tlsca.root_certs[0] = \"$org_root_cert\" | .pem = \"$org_root_cert\" | .tls_cert = \"$org_root_cert\" | .tls_ca_root_cert = \"$org_root_cert\"'" \
+                "${templates_path}/Peers/org_peer-local_peer.json" >"${assets_path}/Peers/org${org}_peer0-local_peer.json") &&
+                sed -i'.bak' -e "s/%ORG%/${org}/g" -e "s/%PORT_INDEX%/$((6 + org))/g" "${assets_path}/Peers/org${org}_peer0-local_peer.json" && rm "${assets_path}/Peers/org${org}_peer0-local_peer.json.bak" &>/dev/null
+        ) 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+            logerr "Error creating org${org} peer import"
+            exit 1
+        fi
 
-    # Create CA Imports
-    jq --arg ORG1_ROOT_CERT "$ORG1_ROOT_CERT" '.tls_cert = $ORG1_ROOT_CERT' "${templates_path}/Certificate_Authorities/org1ca-local_ca.json" >"${assets_path}/Certificate_Authorities/org1ca-local_ca.json"
-    jq --arg ORDERER_ROOT_CERT "$ORDERER_ROOT_CERT" '.tls_cert = $ORDERER_ROOT_CERT' "${templates_path}/Certificate_Authorities/ordererca-local_ca.json" >"${assets_path}/Certificate_Authorities/ordererca-local_ca.json"
+        # create org msp import
+        if (
+            (__run "$FABKIT_ROOT" jq --arg org_root_cert "$org_root_cert" \
+                "'.root_certs[0] = \"$org_root_cert\" | .tls_root_certs[0] = \"$org_root_cert\" | .fabric_node_ous.admin_ou_identifier.certificate = \"$org_root_cert\" | .fabric_node_ous.client_ou_identifier.certificate = \"$org_root_cert\" | .fabric_node_ous.orderer_ou_identifier.certificate = \"$org_root_cert\" | .fabric_node_ous.peer_ou_identifier.certificate = \"$org_root_cert\"'" \
+                "${templates_path}/Organizations/orgmsp_msp.json" >"${assets_path}/Organizations/org${org}msp_msp.json") &&
+                sed -i'.bak' -e "s/%ORG%/${org}/g" "${assets_path}/Organizations/org${org}msp_msp.json" && rm "${assets_path}/Organizations/org${org}msp_msp.json.bak" &>/dev/null
+        ) 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+            logerr "Error creating org${org} msp import"
+            exit 1
+        fi
 
-    # Create Peer Imports
-    jq --arg ORG1_ROOT_CERT "$ORG1_ROOT_CERT" \
-        '.msp.component.tls_cert = $ORG1_ROOT_CERT | .msp.ca.root_certs[0] = $ORG1_ROOT_CERT | .msp.tlsca.root_certs[0] = $ORG1_ROOT_CERT | .pem = $ORG1_ROOT_CERT | .tls_cert = $ORG1_ROOT_CERT | .tls_ca_root_cert = $ORG1_ROOT_CERT' \
-        "${templates_path}/Peers/org1_peer1-local_peer.json" >"${assets_path}/Peers/org1_peer1-local_peer.json"
+        if [ "${org}" -eq 1 ]; then
+            orderer_root_cert=$org_root_cert
 
-    # Create Orderer Imports
-    jq --arg ORDERER_ROOT_CERT "$ORDERER_ROOT_CERT" \
-        '.msp.component.tls_cert = $ORDERER_ROOT_CERT | .msp.ca.root_certs[0] = $ORDERER_ROOT_CERT | .msp.tlsca.root_certs[0] = $ORDERER_ROOT_CERT | .pem = $ORDERER_ROOT_CERT | .tls_cert = $ORDERER_ROOT_CERT | .tls_ca_root_cert = $ORDERER_ROOT_CERT' \
-        "${templates_path}/Ordering_Services/orderer-local_orderer.json" >"${assets_path}/Ordering_Services/orderer-local_orderer.json"
+            # TODO: if an orderer ca msp is defined, retrieve its root certificate with curl pointing to the right address
+            # local orderer_root_cert=$(curl -sk http"$(if [ "${FABKIT_TLS_ENABLED:-}" = "true" ]; then echo "s"; fi)"://localhost:$((6 + org))$((0 + org))54/cainfo | __run "$FABKIT_ROOT" jq -r .result.CAChain)
 
-    # Create MSP Imports
-    jq --arg ORG1_ROOT_CERT "$ORG1_ROOT_CERT" \
-        '.root_certs[0] = $ORG1_ROOT_CERT | .tls_root_certs[0] = $ORG1_ROOT_CERT | .fabric_node_ous.admin_ou_identifier.certificate = $ORG1_ROOT_CERT | .fabric_node_ous.client_ou_identifier.certificate = $ORG1_ROOT_CERT | .fabric_node_ous.orderer_ou_identifier.certificate = $ORG1_ROOT_CERT | .fabric_node_ous.peer_ou_identifier.certificate = $ORG1_ROOT_CERT' \
-        "${templates_path}/Organizations/org1msp_msp.json" >"${assets_path}/Organizations/org1msp_msp.json"
+            # create orderer ca import
+            # if (__run "$FABKIT_ROOT" jq --arg orderer_root_cert "$orderer_root_cert" "'.tls_cert = \"$orderer_root_cert\"'" "${templates_path}/Certificate_Authorities/ordererca-local_ca.json" >"${assets_path}/Certificate_Authorities/ordererca-local_ca.json") 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+            #     logerr "Error creating orderer ca import"
+            #     exit 1
+            # fi
 
-    jq --arg ORDERER_ROOT_CERT "$ORDERER_ROOT_CERT" \
-        '.root_certs[0] = $ORDERER_ROOT_CERT | .tls_root_certs[0] = $ORDERER_ROOT_CERT | .fabric_node_ous.admin_ou_identifier.certificate = $ORDERER_ROOT_CERT | .fabric_node_ous.client_ou_identifier.certificate = $ORDERER_ROOT_CERT | .fabric_node_ous.orderer_ou_identifier.certificate = $ORDERER_ROOT_CERT | .fabric_node_ous.peer_ou_identifier.certificate = $ORDERER_ROOT_CERT' \
-        "${templates_path}/Organizations/orderermsp_msp.json" >"${assets_path}/Organizations/orderermsp_msp.json"
+            # create orderers import
+            if (__run "$FABKIT_ROOT" jq --arg orderer_root_cert "$orderer_root_cert" \
+                "'.msp.component.tls_cert = \"$orderer_root_cert\" | .msp.ca.root_certs[0] = \"$orderer_root_cert\" | .msp.tlsca.root_certs[0] = \"$orderer_root_cert\" | .pem = \"$orderer_root_cert\" | .tls_cert = \"$orderer_root_cert\" | .tls_ca_root_cert = \"$orderer_root_cert\"'" \
+                "${templates_path}/Ordering_Services/orderer-local_orderer.json" >"${assets_path}/Ordering_Services/orderer-local_orderer.json") 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+                logerr "Error creating orderers import"
+                exit 1
+            fi
 
-    rm "${ORG1_CAINFO}"
+            # create orderer msp import
+            if (__run "$FABKIT_ROOT" jq --arg orderer_root_cert "$orderer_root_cert" \
+                "'.root_certs[0] = \"$orderer_root_cert\" | .tls_root_certs[0] = \"$orderer_root_cert\" | .fabric_node_ous.admin_ou_identifier.certificate = \"$orderer_root_cert\" | .fabric_node_ous.client_ou_identifier.certificate = \"$orderer_root_cert\" | .fabric_node_ous.orderer_ou_identifier.certificate = \"$orderer_root_cert\" | .fabric_node_ous.peer_ou_identifier.certificate = \"$orderer_root_cert\"'" \
+                "${templates_path}/Organizations/orderermsp_msp.json" >"${assets_path}/Organizations/orderermsp_msp.json") 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
+                logerr "Error creating orderer msp import"
+                exit 1
+            fi
+        fi
+    done
+
     cd "${assets_path}" && zip -rq "${FABKIT_DIST_PATH}/console_assets.zip" .
 }

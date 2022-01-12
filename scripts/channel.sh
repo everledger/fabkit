@@ -17,7 +17,7 @@ init_and_create_channel() {
     generate_channeltx "$channel_name" "$FABKIT_NETWORK_PATH" "$FABKIT_CONFIG_PATH" "$FABKIT_CRYPTOS_PATH" "$FABKIT_CONFIGTX_PROFILE_NETWORK" "$FABKIT_CONFIGTX_PROFILE_CHANNEL" "$msp_id"
 
     __spinner_formatter
-    create_channel $@
+    create_channel "$@"
 }
 
 create_channel() {

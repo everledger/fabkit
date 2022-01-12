@@ -11,20 +11,20 @@
     "name": "ordering node - local",
     "msp": {
         "component": {
-            "tls_cert": "<CERT>"
+            "tls_cert": ""
         },
         "ca": {
             "root_certs": [
-                "<CERT>"
+                ""
             ]
         },
         "tlsca": {
             "root_certs": [
-                "<CERT>"
+                ""
             ]
         }
     },
-    "pem": "<CERT>",
-    "tls_cert": "<CERT>",
-    "tls_ca_root_cert": "<CERT>"
+    "pem": "",
+    "tls_cert": "",
+    "tls_ca_root_cert": ""
 }
