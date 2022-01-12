@@ -40,9 +40,6 @@ services:
       - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
       - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
-    ports:
-      - 7051:7051
-      - 17051:17051
     command: peer node start
 
   orderer-base:
@@ -79,10 +76,6 @@ services:
       - ORDERER_ADMIN_TLS_CLIENTROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
       - ORDERER_ADMIN_LISTENADDRESS=0.0.0.0:7053
       - ORDERER_OPERATIONS_LISTENADDRESS=0.0.0.0:17050
-    ports:
-      - 7050:7050
-      - 7053:7053
-      - 17050:17050
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric
     #command: bash -c 'bash /tmp/orderer_build.sh; orderer start' # use this if to debug orderer
     command: orderer start
@@ -93,9 +86,6 @@ services:
       - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
       - FABRIC_CA_SERVER_TLS_ENABLED=${FABKIT_TLS_ENABLED}
       - FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS=0.0.0.0:17054
-    ports:
-      - 7054:7054
-      - 17054:17054
     command: sh -c 'fabric-ca-server start --ca.certfile `ls /etc/hyperledger/fabric-ca-server-config/*.pem` --ca.keyfile `ls /etc/hyperledger/fabric-ca-server-config/*_sk` -b admin:adminpw -d'
 
   tools-base:

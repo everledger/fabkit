@@ -2,9 +2,8 @@ version: "2.4"
 
 networks:
   default:
-    external:
-      # This value should be the same for fabric network and client
-      name: ${FABKIT_DOCKER_NETWORK}
+    # This value should be the same for fabric network and client
+    name: ${FABKIT_DOCKER_NETWORK}
 
 volumes:
   orderer.example.com:

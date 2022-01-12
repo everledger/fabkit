@@ -2,9 +2,8 @@ version: "2.4"
 
 networks:
   default:
-    external:
-      # This value should be the same for fabric network and client
-      name: ${FABKIT_DOCKER_NETWORK}
+    # This value should be the same for fabric network and client
+    name: ${FABKIT_DOCKER_NETWORK}
 
 volumes:
   ca.org3.example.com:
@@ -22,12 +21,12 @@ services:
       service: ca-base
     environment:
       - FABRIC_CA_SERVER_CA_NAME=ca.org3.example.com
+      - FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS=0.0.0.0:19054
     volumes:
       - ${FABKIT_HOST_ROOT}/network/cryptos/peerOrganizations/org3.example.com/ca/:/etc/hyperledger/fabric-ca-server-config
       - ca.org3.example.com:/etc/hyperledger/fabric-ca-server
-      - FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS=0.0.0.0:19054
     ports:
-      - 9054:9054
+      - 9054:7054
       - 19054:19054
 
   peer0.org3.example.com:
