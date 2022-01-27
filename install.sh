@@ -42,6 +42,7 @@ __check_deps() {
         __error "git required but not installed"
         exit 1
     fi
+    __check_dep_version
 }
 
 __overwrite_line() {

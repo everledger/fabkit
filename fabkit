@@ -128,7 +128,6 @@ __set_debug() {
         esac
     done
 }
-
 readonly FUNC="$1"
 if [ -z "$FUNC" ]; then
     title
@@ -141,7 +140,6 @@ fi
 
 readonly START_TIME="$(date -u +%s)"
 title
-__check_dep_version
 __set_debug "$@"
 
 shift || true
