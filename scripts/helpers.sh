@@ -79,7 +79,7 @@ help_explorer() {
     "
 }
 
-help_explorer() {
+help_console() {
     help_header "fabkit console"
     loginfo "
         start                                                                                 : run the blockchain console user-interface
