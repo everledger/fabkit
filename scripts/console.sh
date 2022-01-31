@@ -36,14 +36,15 @@ stop_console() {
         logerr "Failed to stop containers"
         exit 1
     fi
-    docker volume prune -f $(docker volume ls | awk '($2 ~ /console/) {print $2}') &>/dev/null || true
+    docker volume rm -f $(docker volume ls | awk '($2 ~ /console/) {print $2}') &>/dev/null || true
 }
 
 __generate_assets() {
     local assets_path="${FABKIT_CONSOLE_PATH}/assets"
     local templates_path="${FABKIT_CONSOLE_PATH}/templates"
+    local assets_file="${FABKIT_DIST_PATH}/console_assets.zip"
 
-    rm -rf "${assets_path}"
+    rm -rf "${assets_path}" &>/dev/null
     mkdir -p "${assets_path}/Certificate_Authorities"
     mkdir -p "${assets_path}/Ordering_Services"
     mkdir -p "${assets_path}/Peers"
@@ -55,7 +56,7 @@ __generate_assets() {
         local org_root_cert=$(curl -sk http"$(if [ "${FABKIT_TLS_ENABLED:-}" = "true" ]; then echo "s"; fi)"://localhost:$((6 + org))054/cainfo | __run "$FABKIT_ROOT" jq -r .result.CAChain)
 
         # create org ca import
-        if (
+        if ( 
             (__run "$FABKIT_ROOT" jq --arg org_root_cert "$org_root_cert" "'.tls_cert = \"$org_root_cert\" | .msp.ca.root_certs[0] = \"$org_root_cert\"'" "${templates_path}/Certificate_Authorities/orgca-local_ca.json" >"${assets_path}/Certificate_Authorities/org${org}ca-local_ca.json") &&
                 sed -i'.bak' -e "s/%ORG%/${org}/g" -e "s/%PORT_INDEX%/$((6 + org))/g" "${assets_path}/Certificate_Authorities/org${org}ca-local_ca.json" && rm "${assets_path}/Certificate_Authorities/org${org}ca-local_ca.json.bak" &>/dev/null
         ) 2>&1 >/dev/null | grep -iE "erro|pani|fail|fatal" > >(__throw >&2); then
@@ -65,7 +66,7 @@ __generate_assets() {
 
         # TODO: repeat for number of peers
         # create peer import
-        if (
+        if ( 
             (__run "$FABKIT_ROOT" jq --arg org_root_cert "$org_root_cert" \
                 "'.msp.component.tls_cert = \"$org_root_cert\" | .msp.ca.root_certs[0] = \"$org_root_cert\" | .msp.tlsca.root_certs[0] = \"$org_root_cert\" | .pem = \"$org_root_cert\" | .tls_cert = \"$org_root_cert\" | .tls_ca_root_cert = \"$org_root_cert\"'" \
                 "${templates_path}/Peers/org_peer-local_peer.json" >"${assets_path}/Peers/org${org}_peer0-local_peer.json") &&
@@ -76,7 +77,7 @@ __generate_assets() {
         fi
 
         # create org msp import
-        if (
+        if ( 
             (__run "$FABKIT_ROOT" jq --arg org_root_cert "$org_root_cert" \
                 "'.root_certs[0] = \"$org_root_cert\" | .tls_root_certs[0] = \"$org_root_cert\" | .fabric_node_ous.admin_ou_identifier.certificate = \"$org_root_cert\" | .fabric_node_ous.client_ou_identifier.certificate = \"$org_root_cert\" | .fabric_node_ous.orderer_ou_identifier.certificate = \"$org_root_cert\" | .fabric_node_ous.peer_ou_identifier.certificate = \"$org_root_cert\"'" \
                 "${templates_path}/Organizations/orgmsp_msp.json" >"${assets_path}/Organizations/org${org}msp_msp.json") &&
@@ -116,5 +117,5 @@ __generate_assets() {
         fi
     done
 
-    cd "${assets_path}" && zip -rq "${FABKIT_DIST_PATH}/console_assets.zip" .
+    cd "${assets_path}" && rm -rf "${assets_file}" &>/dev/null && zip -rq "${assets_file}" .
 }
