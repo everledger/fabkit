@@ -55,9 +55,9 @@ From the menu on the left, switch to _Nodes_ page and for each component in _Cer
 
 - Click on the CA component to access the CA details page
 - Click on _Associate Identity_
-- Enter enroll id `admin` and secret `adminpw` and click on _Enroll_
+- Enter enroll id `admin` and secret `adminpw` and click on _Associate Identity_
 - A new _admin_ user will be added to the list
-- Select _Register identity_
+- Select _Register user_
 - Choose enroll id and secret for the admin user that will manage your organization, for example, for Org1MSP, simple mnemonic credentials could be `org1msp-admin` and `org1msp-adminpw`
 - Select `admin` under _Type_
 - Then click _Next_ and finally on _Register User_
