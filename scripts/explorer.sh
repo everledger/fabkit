@@ -50,5 +50,5 @@ stop_explorer() {
         logerr "Failed to stop containers"
         exit 1
     fi
-    docker volume prune -f $(docker volume ls | awk '($2 ~ /explorer/) {print $2}') &>/dev/null || true
+    docker volume rm -f $(docker volume ls | awk '($2 ~ /explorer/) {print $2}') &>/dev/null || true
 }
