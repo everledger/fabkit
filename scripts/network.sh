@@ -115,7 +115,7 @@ restart_network() {
 }
 
 __prune_docker_volumes() {
-    docker volume prune -f $(docker volume ls | awk '($2 ~ /${FABKIT_DOCKER_NETWORK}/) {print $2}') &>/dev/null
+    docker volume rm -f $(docker volume ls | awk -v network="$FABKIT_DOCKER_NETWORK" '($2 ~ network) {print $2}') &>/dev/null || true
 }
 
 __check_docker_volumes() {
@@ -175,9 +175,15 @@ stop_network() {
         stop_explorer
     fi
 
+    if docker ps | grep -q "fabric-console"; then
+        echo -en "\n\033[3C→ "
+        stop_console
+    fi
+
     __clear_logdebu
     logdebu "Cleaning docker leftovers containers and images"
-    docker rm -f $(docker ps -a | awk '($2 ~ /${FABKIT_DOCKER_NETWORK}|dev-/) {print $1}') &>/dev/null || true
+    docker rm -f $(docker ps -a | awk -v network="$FABKIT_DOCKER_NETWORK" '($2 ~ network) {print $1}') &>/dev/null || true
+    docker rm -f $(docker ps -a | awk '($2 ~ /dev-/) {print $1}') &>/dev/null || true
     docker rmi -f $(docker images -qf "dangling=true") &>/dev/null || true
     docker rmi -f $(docker images | awk '($1 ~ /^<none>|dev-/) {print $3}') &>/dev/null || true
 }

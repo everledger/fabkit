@@ -1,0 +1,33 @@
+{
+    "display_name": "Orderer MSP",
+    "msp_id": "OrdererMSP",
+    "type": "msp",
+    "admins": [],
+    "root_certs": [
+        ""
+    ],
+    "tls_root_certs": [
+        ""
+    ],
+    "fabric_node_ous": {
+        "admin_ou_identifier": {
+            "certificate": "",
+            "organizational_unit_identifier": "admin"
+        },
+        "client_ou_identifier": {
+            "certificate": "",
+            "organizational_unit_identifier": "client"
+        },
+        "enable": true,
+        "orderer_ou_identifier": {
+            "certificate": "",
+            "organizational_unit_identifier": "orderer"
+        },
+        "peer_ou_identifier": {
+            "certificate": "",
+            "organizational_unit_identifier": "peer"
+        }
+    },
+    "host_url": "http://localhost:3002",
+    "name": "Orderer MSP"
+}

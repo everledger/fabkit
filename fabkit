@@ -160,8 +160,7 @@ if [ "$FUNC" = "network" ]; then
     elif [ "$PARAM" = "stop" ]; then
         __load_lastrun
         __log_setup
-        (stop_network) &
-        __spinner
+        __check_docker_volumes
     else
         help_network
         exit
@@ -176,6 +175,19 @@ elif [ "$FUNC" = "explorer" ]; then
         __spinner
     else
         help_explorer
+        exit
+    fi
+elif [ "$FUNC" = "console" ]; then
+    __load_lastrun
+    PARAM="$1"
+    shift || true
+    if [ "$PARAM" = "start" ]; then
+        start_console
+    elif [ "$PARAM" = "stop" ]; then
+        (stop_console) &
+        __spinner
+    else
+        help_console
         exit
     fi
 elif [ "$FUNC" = "dep" ]; then

@@ -40,7 +40,7 @@ start_explorer() {
     __spinner
 
     echo "Blockchain Explorer default user is exploreradmin/exploreradminpw - $(logsucc http://localhost:8090)"
-    echo "Grafana default user is admin/admin - $(logsucc http://localhost:3000)"
+    echo "Grafana default user is admin/admin - $(logsucc http://localhost:3333)"
 }
 
 stop_explorer() {
@@ -50,5 +50,5 @@ stop_explorer() {
         logerr "Failed to stop containers"
         exit 1
     fi
-    docker volume prune -f $(docker volume ls | awk '($2 ~ /explorer/) {print $2}') &>/dev/null || true
+    docker volume rm -f $(docker volume ls | awk '($2 ~ /explorer/) {print $2}') &>/dev/null || true
 }

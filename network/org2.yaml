@@ -2,9 +2,8 @@ version: "2.4"
 
 networks:
   default:
-    external:
-      # This value should be the same for fabric network and client
-      name: ${FABKIT_DOCKER_NETWORK}
+    # This value should be the same for fabric network and client
+    name: ${FABKIT_DOCKER_NETWORK}
 
 volumes:
   ca.org2.example.com:
@@ -22,11 +21,13 @@ services:
       service: ca-base
     environment:
       - FABRIC_CA_SERVER_CA_NAME=ca.org2.example.com
+      - FABRIC_CA_SERVER_OPERATIONS_LISTENADDRESS=0.0.0.0:18054
     volumes:
       - ${FABKIT_HOST_ROOT}/network/cryptos/peerOrganizations/org2.example.com/ca/:/etc/hyperledger/fabric-ca-server-config
       - ca.org2.example.com:/etc/hyperledger/fabric-ca-server
     ports:
       - 8054:7054
+      - 18054:18054
 
   peer0.org2.example.com:
     container_name: peer0.org2.example.com
@@ -41,8 +42,10 @@ services:
       - CORE_PEER_LISTENADDRESS=0.0.0.0:8051
       - CORE_PEER_CHAINCODEADDRESS=peer0.org2.example.com:8052
       - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:8052
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.org2.example.com:8051
       - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.org2.example.com:8051
       - CORE_PEER_LOCALMSPID=Org2MSP
+      - CORE_OPERATIONS_LISTENADDRESS=0.0.0.0:18051
       - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp
       - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
       - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb.peer0.org2.example.com:5984
@@ -54,6 +57,7 @@ services:
       - peer0.org2.example.com:/var/hyperledger/production
     ports:
       - 8051:8051
+      - 18051:18051
     depends_on:
       - couchdb.peer0.org2.example.com
 

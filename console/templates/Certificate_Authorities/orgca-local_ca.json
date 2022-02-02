@@ -1,0 +1,11 @@
+{
+    "display_name": "org%ORG%ca - local",
+    "api_url": "https://ca.org%ORG%.example.com:7054",
+    "operations_url": "http://ca.org%ORG%.example.com:1%PORT_INDEX%054",
+    "ca_url": "https://ca.org%ORG%.example.com:7054",
+    "name": "org%ORG%ca - local",
+    "type": "fabric-ca",
+    "ca_name": "ca.org%ORG%.example.com",
+    "tlsca_name": "ca.org%ORG%.example.com",
+    "tls_cert": ""
+}
