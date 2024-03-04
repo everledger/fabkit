@@ -17,5 +17,5 @@ require (
 	github.com/spf13/viper v1.7.1 // indirect
 	github.com/sykesm/zap-logfmt v0.0.4 // indirect
 	go.uber.org/zap v1.16.0 // indirect
-	google.golang.org/grpc v1.35.0 // indirect
+	google.golang.org/grpc v1.56.3 // indirect
 )
